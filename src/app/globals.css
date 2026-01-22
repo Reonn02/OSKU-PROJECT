@@ -1,0 +1,135 @@
+@import "tailwindcss";
+
+@theme {
+  --color-primary: #378142;
+  --color-primary-light: #38A169;
+  --color-primary-dark: #135B1D;
+  --color-secondary: #F0FFF4;
+  --color-tertiary: #D9F2E1;
+  --color-tertiary-light: #F7FAF7;
+  --color-primary-faded: #78AE82;
+  --color-Dark-blue: #111826;
+  --color-shiny-green: #61C670;
+  --color-medium-gray: #AEAEAE;
+  --color-light-gray: #EAEAEA;
+
+
+  /* warning color */
+  --color-warning: #D43A3C;
+  --color-warning-light: #F1CECE;
+
+  /* warna proses atau menunggu */
+  --color-dark-yellow: #7E8137;
+  --color-yellow-light: #F2F2D9;
+
+
+  --font-sans: var(--font-metropolis), ui-sans-serif, system-ui, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+}
+
+:root {
+  --background: #ffffff;
+  --foreground: #171717;
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+  font-family: var(--font-metropolis), sans-serif;
+  overflow-x: hidden;
+}
+
+/* Global cursor pointer for all clickable elements */
+button,
+[type="button"],
+[type="submit"],
+[type="reset"],
+[role="button"],
+.cursor-pointer {
+  cursor: pointer;
+}
+
+/* Standard CSS Utilities */
+/* Custom Scrollbar for Tables */
+.custom-scrollbar::-webkit-scrollbar {
+  height: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: #BBBBBB;
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: #999999;
+}
+
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #BBBBBB #f1f1f1;
+}
+
+/* Custom Scrollbar for Modals & Pretty UI */
+.scrollbar-custom::-webkit-scrollbar {
+  width: 6px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-track {
+  background: #E8F5E9;
+  border-radius: 10px;
+  margin: 8px 0;
+  border: 1px solid #E0E0E0;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #78AE82 0%, #378142 100%);
+  border-radius: 10px;
+}
+
+.scrollbar-custom::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #378142 0%, #135B1D 100%);
+}
+
+.scrollbar-custom {
+  scrollbar-width: thin;
+  scrollbar-color: #378142 #E8F5E9;
+}
+
+/* Filter to transform any color to #378142 (Primary Green) */
+@utility filter-primary {
+  filter: brightness(0) saturate(100%) invert(38%) sepia(23%) saturate(1588%) hue-rotate(84deg) brightness(96%) contrast(89%);
+}
+
+/* Hide scrollbar but keep scrollable */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  /* IE and Edge */
+  scrollbar-width: none;
+  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+  /* Chrome, Safari and Opera */
+}
+
+/* Mobile-friendly visible scrollbar */
+@media (max-width: 640px) {
+  .mobile-scrollbar::-webkit-scrollbar {
+    height: 4px;
+  }
+
+  .mobile-scrollbar::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+  }
+
+  .mobile-scrollbar::-webkit-scrollbar-thumb {
+    background: #378142;
+    border-radius: 10px;
+  }
+}
