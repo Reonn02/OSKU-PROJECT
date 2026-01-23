@@ -1,16 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 // Create Supabase admin client with service role key
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
+// Initialized lazily or with a check to avoid build-time errors
+const getSupabaseAdmin = () => {
+    if (!supabaseUrl || !supabaseServiceKey) {
+        throw new Error('Supabase URL and Service Key are required');
     }
-});
+    return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+};
 
 export async function POST(request: NextRequest) {
     try {
@@ -38,7 +44,8 @@ export async function POST(request: NextRequest) {
         let passwordReset = false;
 
         // 1. Try to find user in nasabah table (Supabase Auth) and update if found
-        const { data: nasabah, error: nasabahError } = await supabaseAdmin
+        const supabase = getSupabaseAdmin();
+        const { data: nasabah, error: nasabahError } = await supabase
             .from('nasabah')
             .select('auth_user_id')
             .eq('email', email)
@@ -47,7 +54,7 @@ export async function POST(request: NextRequest) {
         if (nasabah && nasabah.auth_user_id) {
             const userId = nasabah.auth_user_id;
 
-            const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(
+            const { error: updateError } = await getSupabaseAdmin().auth.admin.updateUserById(
                 userId,
                 {
                     password: newPassword,
@@ -67,15 +74,16 @@ export async function POST(request: NextRequest) {
         }
 
         // 2. Try to find user in petugas table (Custom Auth/Plaintext) and update if found
-        const { data: petugas, error: petugasError } = await supabaseAdmin
+        const { data: petugas, error: petugasError } = await getSupabaseAdmin()
             .from('petugas')
             .select('id')
             .eq('email', email)
             .single();
 
         if (petugas && petugas.id) {
+            const supabase = getSupabaseAdmin();
             // Update password in petugas table
-            const { error: updatePetugasError } = await supabaseAdmin
+            const { error: updatePetugasError } = await supabase
                 .from('petugas')
                 .update({ password: newPassword })
                 .eq('id', petugas.id);
