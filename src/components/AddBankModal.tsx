@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useBankSampah, BankSampah, DayOfWeek } from '@/contexts/BankSampahContext';
+import { usePetugas, Petugas } from '@/contexts/PetugasContext';
 import { showStandaloneToast } from './Toast';
 
 interface AddBankModalProps {
@@ -14,6 +15,7 @@ const DAYS_OF_WEEK: DayOfWeek[] = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 
 
 export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBankModalProps) {
     const { addBank, updateBank } = useBankSampah();
+    const { petugasList } = usePetugas();
     const isEditMode = !!editingBank;
 
     const [formData, setFormData] = useState({
@@ -27,7 +29,13 @@ export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBan
         image: '/images/location1.svg'
     });
 
-    // Load editing bank data when in edit mode
+    // Dropdown state
+    const [showPetugasDropdown, setShowPetugasDropdown] = useState(false);
+    const [petugasSearch, setPetugasSearch] = useState('');
+    const [selectedPetugasId, setSelectedPetugasId] = useState<string | undefined>(undefined);
+    const dropdownRef = useRef<HTMLDivElement>(null);
+
+    // Initial load handler
     useEffect(() => {
         if (editingBank) {
             setFormData({
@@ -40,8 +48,43 @@ export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBan
                 kontakLayanan: editingBank.kontakLayanan || '',
                 image: editingBank.image
             });
+            // Set initial search value if editing and has contact
+            if (editingBank.kontakLayanan) {
+                // If the contact matches the pattern "Name (Phone)", extract name for display or just show full string
+                setPetugasSearch(editingBank.kontakLayanan);
+
+                // Try to find the matching petugas from the list to set the ID
+                const matchingPetugas = petugasList.find(p => p.nama === editingBank.kontakLayanan);
+                if (matchingPetugas) {
+                    setSelectedPetugasId(matchingPetugas.id);
+                }
+            }
         }
-    }, [editingBank]);
+    }, [editingBank, petugasList]);
+
+    // Click outside handler for dropdown
+    useEffect(() => {
+        function handleClickOutside(event: MouseEvent) {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+                setShowPetugasDropdown(false);
+            }
+        }
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+        };
+    }, []);
+
+    // Authenticated Petugas Filters
+    const filteredPetugas = petugasList.filter(p => {
+        const matchesSearch = p.nama.toLowerCase().includes(petugasSearch.toLowerCase()) ||
+            (p.noHp && p.noHp.includes(petugasSearch));
+
+        // Show if not assigned to any bank, OR if assigned to the bank currently being edited
+        const isAvailable = !p.bankSampahId || (editingBank && p.bankSampahId === editingBank.id);
+
+        return matchesSearch && isAvailable;
+    });
 
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
@@ -52,13 +95,13 @@ export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBan
         }
 
         if (isEditMode && editingBank) {
-            updateBank(editingBank.id, formData);
+            updateBank(editingBank.id, formData, selectedPetugasId);
         } else {
             addBank({
                 ...formData,
                 wasteTypes: [], // New banks start with no waste types
                 komisiPersen: 20 // Default commission percentage
-            });
+            }, selectedPetugasId);
         }
 
         // Trigger success callback
@@ -74,6 +117,22 @@ export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBan
             ...prev,
             [e.target.name]: e.target.value
         }));
+        // If the user types manually into kontakLayanan, clear selectedPetugasId
+        if (e.target.name === 'kontakLayanan') {
+            setSelectedPetugasId(undefined);
+        }
+    };
+
+    const handlePetugasSelect = (petugas: Petugas) => {
+        // Just use the name as requested
+        const contactName = petugas.nama;
+        setFormData(prev => ({
+            ...prev,
+            kontakLayanan: contactName
+        }));
+        setPetugasSearch(contactName);
+        setSelectedPetugasId(petugas.id);
+        setShowPetugasDropdown(false);
     };
 
     return (
@@ -115,21 +174,58 @@ export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBan
                             />
                         </div>
 
-                        {/* Kontak Layanan */}
-                        <div>
+                        {/* Kontak Layanan / Penanggung Jawab */}
+                        <div className="relative" ref={dropdownRef}>
                             <label className="block text-sm font-bold text-primary mb-2">
-                                Kontak Layanan
+                                Penanggung Jawab
                             </label>
-                            <input
-                                type="text"
-                                name="kontakLayanan"
-                                value={formData.kontakLayanan}
-                                onChange={handleChange}
-                                placeholder="Contoh: 0812-3456-7890"
-                                className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary text-sm"
-                                maxLength={50}
-                            />
-                            <p className="text-xs text-gray-500 mt-1">Nomor telepon atau WhatsApp untuk menghubungi bank sampah (opsional)</p>
+                            <div className="relative">
+                                <input
+                                    type="text"
+                                    name="kontakLayanan"
+                                    value={formData.kontakLayanan}
+                                    onChange={(e) => {
+                                        handleChange(e);
+                                        setPetugasSearch(e.target.value);
+                                        setShowPetugasDropdown(true);
+                                    }}
+                                    onFocus={() => setShowPetugasDropdown(true)}
+                                    placeholder="Cari nama petugas..."
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary text-sm"
+                                    maxLength={100}
+                                    autoComplete="off"
+                                />
+                                <i className="fas fa-search absolute right-4 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+                            </div>
+
+                            {/* Dropdown Results */}
+                            {showPetugasDropdown && (
+                                <div className="absolute z-10 w-full mt-2 bg-white rounded-xl shadow-xl border border-gray-100 max-h-60 overflow-auto">
+                                    {filteredPetugas.length > 0 ? (
+                                        filteredPetugas.map(petugas => (
+                                            <button
+                                                key={petugas.id}
+                                                type="button"
+                                                onClick={() => handlePetugasSelect(petugas)}
+                                                className="w-full text-left px-4 py-3 hover:bg-gray-50 flex items-center gap-3 transition-colors border-b border-gray-50 last:border-0"
+                                            >
+                                                <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs">
+                                                    {petugas.nama.charAt(0)}
+                                                </div>
+                                                <div>
+                                                    <p className="text-sm font-bold text-gray-800">{petugas.nama}</p>
+                                                    <p className="text-xs text-gray-500">{petugas.noHp || 'Tidak ada no HP'}</p>
+                                                </div>
+                                            </button>
+                                        ))
+                                    ) : (
+                                        <div className="p-4 text-center text-gray-500 text-sm">
+                                            Petugas tidak ditemukan
+                                        </div>
+                                    )}
+                                </div>
+                            )}
+                            <p className="text-xs text-gray-500 mt-1">Pilih petugas dari daftar untuk otomatis mengisi kontak.</p>
                         </div>
 
                         {/* Alamat */}

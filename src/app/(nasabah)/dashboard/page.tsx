@@ -14,11 +14,14 @@ import { useBerita } from '@/contexts/BeritaContext';
 import { usePenyetoran } from '@/contexts/PenyetoranContext';
 import { usePencairan } from '@/contexts/PencairanContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePetugas } from '@/contexts/PetugasContext';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { supabase } from '@/lib/supabase';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
+import { showStandaloneToast } from '@/components/Toast'; // Import custom toast
 
 // Helper function to format number with thousand separator (dots)
 const formatNumber = (value: string | number): string => {
@@ -50,7 +53,8 @@ function Dashboard() {
     const { berita } = useBerita(); // Get news from context
     const { fetchPenyetoranByNasabah, getSaldoByNasabah } = usePenyetoran();
     const { fetchPencairanByNasabah, addPencairan } = usePencairan();
-    const { nasabah, isLoading: authLoading, isAuthenticated } = useAuth(); // Get authenticated nasabah
+    const { nasabah, isLoading: authLoading, isAuthenticated, signOut } = useAuth(); // Get authenticated nasabah
+    const { petugasList } = usePetugas(); // Get officer list
     const initialTab = searchParams.get('tab') || 'dashboard';
     const [activeTab, setActiveTab] = useState(initialTab);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -59,7 +63,7 @@ function Dashboard() {
     const [calcJenisSampah, setCalcJenisSampah] = useState<string>('');
     const [calcBerat, setCalcBerat] = useState<string>('');
     const [calcSaldo, setCalcSaldo] = useState<number>(0);
-    // Withdrawal status: 'empty' | 'submitted' | 'processing' | 'completed' | 'failed' | 'ready'
+    // Withdrawal status: 'empty' | 'processing' | 'completed' | 'failed' | 'ready'
     const [withdrawalStatus, setWithdrawalStatus] = useState<string>('empty');
     const [withdrawalId, setWithdrawalId] = useState<string | null>(null);
     const [withdrawalAmount, setWithdrawalAmount] = useState<string>('');
@@ -122,6 +126,24 @@ function Dashboard() {
     };
 
     const [currentTime, setCurrentTime] = useState<Date | null>(null);
+
+    // Logout handler
+    const handleLogout = async () => {
+        try {
+            await signOut();
+        } catch (error) {
+            console.error('Logout failed:', error);
+        }
+        router.push('/login');
+    };
+
+    // Redirect to login if not authenticated
+    useEffect(() => {
+        if (!authLoading && !isAuthenticated) {
+            console.log('❌ Not authenticated, redirecting to login...');
+            router.push('/login');
+        }
+    }, [authLoading, isAuthenticated, router]);
 
     // Effect to load nasabah data from AuthContext
     useEffect(() => {
@@ -211,44 +233,74 @@ function Dashboard() {
             }
         }
 
-        // Check for withdrawal status from pencairan_requests
-        try {
-            const requests = JSON.parse(localStorage.getItem('pencairan_requests') || '[]');
-            const currentUserId = nasabah?.id || sessionStorage.getItem('userProfile') ? JSON.parse(sessionStorage.getItem('userProfile') || '{}').userId : null;
 
-            if (currentUserId) {
-                // Find the most recent request for this user
-                const userRequests = requests.filter((item: any) => item.id_nasabah === currentUserId);
-                const mostRecent = userRequests.sort((a: any, b: any) =>
-                    new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-                )[0];
+        // Fetch withdrawal status from database
+        const fetchWithdrawalStatus = async () => {
+            const currentUserId = nasabah?.id;
+            if (!currentUserId) return;
 
-                if (mostRecent) {
-                    setWithdrawalId(mostRecent.id_pengajuan);
-                    if (mostRecent.status === 'Ditolak') {
-                        setWithdrawalStatus('failed');
-                        setWithdrawalRejectReason(mostRecent.reason || '');
-                    } else if (mostRecent.status === 'Disetujui') {
-                        setWithdrawalStatus('completed');
-                    } else if (mostRecent.status === 'Diproses') {
-                        setWithdrawalStatus('submitted');
+            try {
+                const pencairanList = await fetchPencairanByNasabah(currentUserId);
+
+                if (pencairanList.length > 0) {
+                    // Get the most recent pengajuan
+                    const mostRecent = pencairanList[0]; // Already sorted by date desc
+
+                    setWithdrawalId(mostRecent.id_pengajuan || null);
+
+                    const dbStatus = mostRecent.status;
+                    if (dbStatus === 'pending') {
+                        setWithdrawalStatus('processing'); // Pengajuan Diproses
+                    } else if (dbStatus === 'approved') {
+                        setWithdrawalStatus('approved'); // Pengajuan Disetujui (struk bisa dicetak)
+                    } else {
+                        // For final states (rejected, completed, cancelled), we reset to empty
+                        // so it doesn't look like an active transaction status for a new request
+                        setWithdrawalStatus('empty');
+                        setWithdrawalId(null); // Clear ID as well
                     }
                 }
+            } catch (error) {
+                console.error('Error fetching withdrawal status:', error);
             }
-        } catch (error) {
-            console.error('Error reading withdrawal requests:', error);
-        }
+        };
+
+        fetchWithdrawalStatus();
+
+        // Poll for status changes every 5 seconds
+        const statusInterval = setInterval(fetchWithdrawalStatus, 5000);
 
         const timer = setInterval(() => {
             setCurrentTime(new Date());
         }, 60000);
-        return () => clearInterval(timer);
-    }, [nasabah]);
+        return () => {
+            clearInterval(timer);
+            clearInterval(statusInterval);
+        };
+    }, [nasabah, fetchPencairanByNasabah]);
 
     // Handle profile save
-    const handleSaveProfile = () => {
+    // Handle profile save
+    const handleSaveProfile = async () => {
         try {
-            // Get current userProfile from sessionStorage
+            // Update Supabase
+            if (userId && userId !== '-') {
+                const { error } = await supabase
+                    .from('nasabah')
+                    .update({
+                        name: displayName,
+                        phone: userPhone,
+                        address: userAddress,
+                        rt: userRT,
+                        rw: userRW,
+                        // email is usually read-only or handled via auth
+                    })
+                    .eq('id', userId);
+
+                if (error) throw error;
+            }
+
+            // Get current userProfile from sessionStorage and update it to keep sync
             const userProfileStr = sessionStorage.getItem('userProfile');
             if (userProfileStr) {
                 const userProfile = JSON.parse(userProfileStr);
@@ -263,12 +315,10 @@ function Dashboard() {
             }
 
             // Show success notification
-            setShowProfileSuccess(true);
-            // Hide after 3 seconds
-            setTimeout(() => setShowProfileSuccess(false), 3000);
+            showStandaloneToast('success', 'Berhasil', 'Profil berhasil disimpan ke database');
         } catch (error) {
             console.error('Error saving profile:', error);
-            alert('Gagal menyimpan profil');
+            showStandaloneToast('error', 'Gagal', 'Gagal menyimpan profil');
         }
     };
 
@@ -339,6 +389,138 @@ function Dashboard() {
         return found.harga * amount;
     };
 
+    const [chartWasteData, setChartWasteData] = useState<any[]>([]);
+
+    // 1. Filter History by Selected Year
+    const filteredDepositHistory = useMemo(() => {
+        return depositHistoryData.filter(item => {
+            if (item.type === '-') return false;
+
+            // Parse date
+            let itemYear;
+            if (item.rawDate) {
+                const date = new Date(item.rawDate);
+                itemYear = date.getFullYear();
+            } else {
+                // Fallback for string dates dd/mm/yyyy
+                const parts = item.date.split('/');
+                if (parts.length === 3) {
+                    itemYear = parseInt(parts[2]);
+                }
+            }
+            return itemYear === selectedYear;
+        });
+    }, [depositHistoryData, selectedYear]);
+
+    // 2. Process Stats (Summary & Chart) from Filtered Data
+    useEffect(() => {
+        // --- Summary Calculation ---
+        const summaryMap = new Map<string, { weight: number, unit: string }>();
+
+        // Initialize with all available waste prices (types) from the selected bank
+        // This ensures types with 0 deposits are still shown
+        if (filteredWastePrices.length > 0) {
+            filteredWastePrices.forEach(price => {
+                // Determine unit from 'per' field (Kilogram -> kg, Liter -> ltr)
+                let unit = 'kg'; // default
+                if (price.per === 'Liter') unit = 'ltr';
+                else if (price.per !== 'Kilogram') unit = 'pcs';
+
+                summaryMap.set(price.jenis, { weight: 0, unit: unit });
+            });
+        }
+
+        // Add actual data from history
+        filteredDepositHistory.forEach(item => {
+            // Only count if this type exists in our bank's waste types (or add it if we want to show historical types that might no longer range)
+            // For now, let's assume we match by name. 
+            // If the map doesn't have it (maybe from a different bank?), we can choose to add it or skip.
+            // Let's add it to be safe so we don't lose data.
+
+            const current = summaryMap.get(item.type) || { weight: 0, unit: item.unit || 'kg' };
+            summaryMap.set(item.type, {
+                weight: current.weight + (typeof item.weight === 'number' ? item.weight : parseFloat(item.weight)),
+                unit: current.unit
+            });
+        });
+
+        const summaryArray = Array.from(summaryMap.entries()).map(([label, data]) => ({
+            label: label,
+            value: data.weight % 1 === 0 ? data.weight.toString() : data.weight.toFixed(2),
+            unit: data.unit
+        }));
+        setWasteSummary(summaryArray);
+
+        // --- Chart Calculation ---
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agust', 'Sep', 'Okt', 'Nov', 'Des'];
+        const chartMap = new Map<string, { name: string, unit: string, monthlyData: number[] }>();
+
+        // Also initialize chart map with empty data for all types, if desired. 
+        // For the chart, it might be better to only show active ones OR show all. 
+        // Let's show all to match the summary logic.
+        if (filteredWastePrices.length > 0) {
+            filteredWastePrices.forEach(price => {
+                let unit = 'kg';
+                if (price.per === 'Liter') unit = 'ltr';
+                else if (price.per !== 'Kilogram') unit = 'pcs';
+
+                chartMap.set(price.jenis, {
+                    name: price.jenis,
+                    unit: unit,
+                    monthlyData: new Array(12).fill(0)
+                });
+            });
+        }
+
+        filteredDepositHistory.forEach(item => {
+            // Parse month
+            let itemMonth;
+            if (item.rawDate) {
+                const date = new Date(item.rawDate);
+                itemMonth = date.getMonth();
+            } else {
+                const parts = item.date.split('/');
+                if (parts.length === 3) {
+                    itemMonth = parseInt(parts[1]) - 1;
+                }
+            }
+
+            if (itemMonth !== undefined) {
+                if (!chartMap.has(item.type)) {
+                    chartMap.set(item.type, {
+                        name: item.type,
+                        unit: 'kg', // fallback
+                        monthlyData: new Array(12).fill(0)
+                    });
+                }
+                const entry = chartMap.get(item.type)!;
+                entry.monthlyData[itemMonth] += (typeof item.weight === 'number' ? item.weight : parseFloat(item.weight));
+            }
+        });
+
+        const chartDataArray = Array.from(chartMap.entries()).map(([id, data]) => {
+            const chartItems = months.map((month, idx) => ({
+                label: month,
+                value: data.monthlyData[idx]
+            }));
+
+            const maxVal = Math.max(...data.monthlyData);
+            const maxY = Math.max(50, Math.ceil(maxVal * 1.2));
+
+            // Use name as ID for simplicity in this context
+            return {
+                id: id,
+                name: data.name,
+                unit: data.unit,
+                data: chartItems,
+                maxY: maxY
+            };
+        });
+
+        setChartWasteData(chartDataArray);
+
+    }, [filteredDepositHistory, filteredWastePrices]);
+
     // Load penyetoran and pencairan history from database (with localStorage fallback)
     useEffect(() => {
         const loadData = async () => {
@@ -353,8 +535,9 @@ function Dashboard() {
                         name: item.nasabah_name || '-',
                         type: item.waste_type_name || '-',
                         date: new Date(item.tanggal).toLocaleDateString('id-ID'),
+                        rawDate: item.tanggal, // Keep ISO string for easy parsing
                         weight: item.berat,
-                        unit: 'kg',
+                        unit: item.waste_type?.satuan || 'kg', // Get unit from relation
                         price: item.total_harga / (item.berat || 1),
                         bankSampah: item.bank_sampah_name || '-',
                     }));
@@ -369,6 +552,7 @@ function Dashboard() {
                         const userPenyetoran = parsedData.filter((item: any) =>
                             item.name?.toLowerCase() === displayName?.toLowerCase()
                         );
+                        // Add rawDate for consistency if needed, or rely on date string parsing
                         setDepositHistoryData(userPenyetoran.length > 0 ? userPenyetoran : []);
                         setTotalPenyetoran(userPenyetoran.length);
                     }
@@ -385,7 +569,8 @@ function Dashboard() {
                         status: item.status === 'pending' ? 'Diproses' :
                             item.status === 'approved' ? 'Disetujui' :
                                 item.status === 'rejected' ? 'Ditolak' :
-                                    item.status === 'completed' ? 'Selesai' : item.status,
+                                    item.status === 'completed' ? 'Selesai' :
+                                        item.status === 'cancelled' ? 'Dibatalkan' : item.status,
                         reason: item.alasan || '',
                         tglSelesai: item.tanggal_selesai ? new Date(item.tanggal_selesai).toLocaleDateString('id-ID') : '-',
                     }));
@@ -462,7 +647,7 @@ function Dashboard() {
     }, [userId, displayName, fetchPenyetoranByNasabah, fetchPencairanByNasabah, getSaldoByNasabah]);
 
     // Map depositHistoryData to table format
-    const depositHistory = depositHistoryData.map((item, idx) => ({
+    const depositHistory = filteredDepositHistory.map((item, idx) => ({
         no: idx + 1,
         idSetoran: item.idPenyetoran || '-',
         idNasabah: userId || '-',
@@ -480,7 +665,7 @@ function Dashboard() {
     // Export Histori Penyetoran to CSV
     const exportDepositToCSV = () => {
         if (depositHistory.length === 0) {
-            alert('Tidak ada data penyetoran untuk diekspor.');
+            showStandaloneToast('warning', 'Data Kosong', 'Tidak ada data penyetoran untuk diekspor.');
             return;
         }
 
@@ -514,7 +699,7 @@ function Dashboard() {
     // Export Histori Pencairan to CSV
     const exportWithdrawalToCSV = () => {
         if (withdrawalHistory.length === 0) {
-            alert('Tidak ada data pencairan untuk diekspor.');
+            showStandaloneToast('warning', 'Data Kosong', 'Tidak ada data pencairan untuk diekspor.');
             return;
         }
 
@@ -547,7 +732,7 @@ function Dashboard() {
     // Export Histori Penyetoran to PDF
     const exportDepositToPDF = () => {
         if (depositHistory.length === 0) {
-            alert('Tidak ada data penyetoran untuk diekspor.');
+            showStandaloneToast('warning', 'Data Kosong', 'Tidak ada data penyetoran untuk diekspor.');
             return;
         }
 
@@ -603,7 +788,7 @@ function Dashboard() {
     // Export Histori Pencairan to PDF
     const exportWithdrawalToPDF = () => {
         if (withdrawalHistory.length === 0) {
-            alert('Tidak ada data pencairan untuk diekspor.');
+            showStandaloneToast('warning', 'Data Kosong', 'Tidak ada data pencairan untuk diekspor.');
             return;
         }
 
@@ -842,7 +1027,7 @@ function Dashboard() {
                         {/* Charts Section */}
                         <div className="space-y-6 mb-10">
                             <NasabahWasteChart
-                                wasteTypes={[]}
+                                wasteTypes={chartWasteData}
                                 selectedYear={selectedYear}
                                 onYearChange={setSelectedYear}
                             />
@@ -934,7 +1119,7 @@ function Dashboard() {
                                                     onClick={() => setCurrentPageSetoran(i + 1)}
                                                     className={`w-8 h-8 rounded-md text-xs font-bold shadow-sm transition ${currentPageSetoran === i + 1
                                                         ? 'bg-[#3B8A51] text-white'
-                                                        : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
+                                                        : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
                                                         }`}
                                                 >
                                                     {i + 1}
@@ -1039,7 +1224,7 @@ function Dashboard() {
                                             {currentPagePenarikan > 1 && (
                                                 <button
                                                     onClick={() => setCurrentPagePenarikan(prev => prev - 1)}
-                                                    className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center hover:bg-gray-700 transition shadow-md active:scale-90 cursor-pointer"
+                                                    className="w-10 h-10 rounded-full bg-[#3B8A51] text-white flex items-center justify-center hover:bg-primary-dark transition shadow-md active:scale-90 cursor-pointer"
                                                 >
                                                     <i className="fas fa-chevron-left text-[12px]"></i>
                                                 </button>
@@ -1050,8 +1235,8 @@ function Dashboard() {
                                                     key={i + 1}
                                                     onClick={() => setCurrentPagePenarikan(i + 1)}
                                                     className={`w-10 h-10 rounded-lg text-sm font-bold transition-all shadow-sm cursor-pointer ${currentPagePenarikan === i + 1
-                                                        ? 'bg-gray-600 text-white'
-                                                        : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
+                                                        ? 'bg-[#3B8A51] text-white'
+                                                        : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
                                                         }`}
                                                 >
                                                     {i + 1}
@@ -1061,7 +1246,7 @@ function Dashboard() {
                                             {currentPagePenarikan < Math.ceil(withdrawalHistory.length / itemsPerPage) && (
                                                 <button
                                                     onClick={() => setCurrentPagePenarikan(prev => prev + 1)}
-                                                    className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center hover:bg-gray-700 transition shadow-md active:scale-90 cursor-pointer"
+                                                    className="w-10 h-10 rounded-full bg-[#3B8A51] text-white flex items-center justify-center hover:bg-primary-dark transition shadow-md active:scale-90 cursor-pointer"
                                                 >
                                                     <i className="fas fa-chevron-right text-[12px]"></i>
                                                 </button>
@@ -1472,9 +1657,24 @@ function Dashboard() {
                                                         <button
                                                             onClick={() => {
                                                                 if (userBank.kontakLayanan) {
-                                                                    const phoneNumber = userBank.kontakLayanan.replace(/\D/g, '');
-                                                                    const waNumber = phoneNumber.startsWith('0') ? '62' + phoneNumber.slice(1) : phoneNumber;
-                                                                    window.open(`https://wa.me/${waNumber}?text=Halo, saya ingin menanyakan tentang layanan Bank Sampah ${userBank.nama}`, '_blank');
+                                                                    // Extract number if composite "Name (Number)"
+                                                                    let phoneNumber = userBank.kontakLayanan.replace(/\D/g, '');
+
+                                                                    // If empty (just name), try to find by name in petugas list
+                                                                    if (!phoneNumber && petugasList && petugasList.length > 0) {
+                                                                        const officerName = userBank.kontakLayanan.trim();
+                                                                        const foundOfficer = petugasList.find(p => p.nama.toLowerCase() === officerName.toLowerCase());
+                                                                        if (foundOfficer && foundOfficer.noHp) {
+                                                                            phoneNumber = foundOfficer.noHp.replace(/\D/g, '');
+                                                                        }
+                                                                    }
+
+                                                                    if (phoneNumber) {
+                                                                        const waNumber = phoneNumber.startsWith('0') ? '62' + phoneNumber.slice(1) : phoneNumber;
+                                                                        window.open(`https://wa.me/${waNumber}?text=Halo, saya ingin menanyakan tentang layanan Bank Sampah ${userBank.nama}`, '_blank');
+                                                                    } else {
+                                                                        showStandaloneToast('error', 'Gagal', 'Nomor telepon petugas tidak ditemukan.');
+                                                                    }
                                                                 }
                                                             }}
                                                             className="bg-primary hover:bg-primary-dark text-white font-medium py-2 sm:py-2.5 px-5 sm:px-6 rounded-full transition shadow-sm text-xs sm:text-sm cursor-pointer flex items-center justify-center gap-2 mx-auto sm:mx-0"
@@ -1701,10 +1901,6 @@ function Dashboard() {
                                                 return;
                                             }
 
-                                            // Generate ID
-                                            const newId = Math.floor(100000 + Math.random() * 900000).toString();
-                                            setWithdrawalId(newId);
-
                                             // Set the bank sampah location from selected bank
                                             setWithdrawalBank(selectedBankSampah);
 
@@ -1734,34 +1930,35 @@ function Dashboard() {
                                             });
 
                                             if (result) {
-                                                // Successfully saved to database
-                                                setWithdrawalStatus('submitted');
+                                                // Successfully saved to database - status is 'Diproses'
+                                                setWithdrawalId(result.id_pengajuan || '-');
+                                                setWithdrawalStatus('processing');
+
+                                                // Clear form inputs
+                                                setWithdrawalAmount('');
+                                                setWithdrawalDate('');
+
+                                                showStandaloneToast('success', 'Berhasil', 'Pengajuan pencairan berhasil dikirim. Saldo akan berkurang setelah disetujui petugas.');
                                             } else {
-                                                // Fallback to localStorage if database fails
-                                                const withdrawalRequest = {
-                                                    id: Date.now().toString(),
-                                                    id_pengajuan: newId,
-                                                    id_nasabah: userId,
-                                                    name: displayName,
-                                                    amount: amount,
-                                                    date: formatDate(withdrawalDate),
-                                                    bankSampahId: userBank?.id || null,
-                                                    bankSampahName: selectedBankSampah,
-                                                    status: 'Diproses',
-                                                    created_at: new Date().toISOString()
-                                                };
-
-                                                const existingRequests = JSON.parse(localStorage.getItem('pencairan_requests') || '[]');
-                                                existingRequests.push(withdrawalRequest);
-                                                localStorage.setItem('pencairan_requests', JSON.stringify(existingRequests));
-
-                                                setWithdrawalStatus('submitted');
+                                                // Error handling without localStorage fallback
+                                                // We can infer it failed likely due to insufficient balance or network
+                                                showStandaloneToast('error', 'Gagal Mengirim Pengajuan', 'Pastikan saldo mencukupi.');
                                             }
                                         }}
                                         disabled={!withdrawalAmount || !withdrawalDate}
                                         className="bg-[#3D7A4D] hover:bg-[#2F5E3B] text-white font-medium py-3 px-16 rounded-full transition shadow-lg w-full sm:w-auto text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Kirim
+                                    </button>
+
+                                    <button
+                                        onClick={() => {
+                                            setWithdrawalAmount('');
+                                            setWithdrawalDate('');
+                                        }}
+                                        className="bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-3 px-8 rounded-full transition shadow-sm w-full sm:w-auto text-sm cursor-pointer ml-3"
+                                    >
+                                        Reset
                                     </button>
                                 </div>
                             </div>
@@ -1775,29 +1972,29 @@ function Dashboard() {
                                 {/* Status Info */}
                                 <div className="text-center mb-8">
                                     {withdrawalStatus === 'empty' ? (
-                                        <p className="text-gray-500 text-sm">Belum ada pengajuan</p>
+                                        <p className="text-gray-500 text-sm">Tidak ada pengajuan aktif</p>
                                     ) : (
                                         <div className="flex flex-col items-center">
                                             {withdrawalId && (
                                                 <p className="text-gray-500 text-sm mb-2">ID Pengajuan : {withdrawalId}</p>
                                             )}
 
-                                            {withdrawalStatus === 'submitted' && (
-                                                <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
-                                                    <i className="fas fa-check-circle"></i>
-                                                    <span className="font-medium text-sm">Pengajuan Dibuat</span>
-                                                </div>
-                                            )}
                                             {withdrawalStatus === 'processing' && (
-                                                <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
+                                                <div className="inline-flex items-center gap-2 bg-yellow-100 text-yellow-800 px-4 py-2 rounded-full">
                                                     <i className="fas fa-spinner fa-spin"></i>
                                                     <span className="font-medium text-sm">Pengajuan Diproses</span>
                                                 </div>
                                             )}
-                                            {withdrawalStatus === 'completed' && (
+                                            {withdrawalStatus === 'approved' && (
                                                 <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
                                                     <i className="fas fa-check"></i>
                                                     <span className="font-medium text-sm">Pengajuan Disetujui</span>
+                                                </div>
+                                            )}
+                                            {withdrawalStatus === 'completed' && (
+                                                <div className="inline-flex items-center gap-2 bg-green-200 text-green-900 px-4 py-2 rounded-full">
+                                                    <i className="fas fa-check-circle"></i>
+                                                    <span className="font-medium text-sm">Transaksi Selesai</span>
                                                 </div>
                                             )}
                                             {withdrawalStatus === 'failed' && (
@@ -1819,11 +2016,25 @@ function Dashboard() {
                                                     )}
                                                 </>
                                             )}
-                                            {withdrawalStatus === 'ready' && (
-                                                <div className="inline-flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-full">
-                                                    <i className="fas fa-check-circle"></i>
-                                                    <span className="font-medium text-sm">Struk Pencairan Tersedia</span>
-                                                </div>
+                                            {withdrawalStatus === 'cancelled' && (
+                                                <>
+                                                    <div className="inline-flex items-center gap-2 bg-orange-100 text-orange-800 px-4 py-2 rounded-full">
+                                                        <i className="fas fa-ban"></i>
+                                                        <span className="font-medium text-sm">Pengajuan Dibatalkan</span>
+                                                    </div>
+                                                    {withdrawalRejectReason && (
+                                                        <div className="mt-4 bg-orange-50 border border-orange-200 rounded-xl p-4 max-w-md">
+                                                            <div className="flex items-start gap-3">
+                                                                <i className="fas fa-info-circle text-orange-500 mt-0.5"></i>
+                                                                <div>
+                                                                    <p className="text-sm font-bold text-orange-700 mb-1">Alasan Pembatalan:</p>
+                                                                    <p className="text-sm text-orange-600">{withdrawalRejectReason}</p>
+                                                                    <p className="text-xs text-orange-500 mt-2">Saldo Anda telah dikembalikan.</p>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+                                                </>
                                             )}
 
                                         </div>
@@ -1837,84 +2048,94 @@ function Dashboard() {
                                         {/* Connecting Lines */}
                                         <div className="absolute top-10 left-0 right-0 h-1 bg-gray-300" style={{ left: '12.5%', right: '12.5%' }}></div>
 
-                                        {/* Steps */}
-                                        {[
-                                            { id: 1, label: "Pengajuan Dibuat", status: 'submitted' },
-                                            { id: 2, label: "Pengajuan Diproses", status: 'processing' },
-                                            { id: 3, label: "Pengajuan Selesai", status: 'completed' },
-                                            { id: 4, label: "Struk Pencairan Tersedia", status: 'ready' }
-                                        ].map((step, idx) => {
-                                            const statusOrder = ['empty', 'submitted', 'processing', 'completed', 'ready', 'failed'];
-                                            const currentIndex = statusOrder.indexOf(withdrawalStatus);
-                                            const stepIndex = statusOrder.indexOf(step.status);
-
-                                            let isActive = false;
-                                            let isError = false;
-
+                                        {/* Steps - Dynamic based on status */}
+                                        {(() => {
+                                            // Define steps based on current status
+                                            let steps = [];
                                             if (withdrawalStatus === 'failed') {
-                                                if (step.status !== 'ready') {
-                                                    isActive = true;
-                                                    if (step.status === 'completed') isError = true;
-                                                }
-                                            } else if (currentIndex >= stepIndex) {
-                                                isActive = true;
+                                                steps = [
+                                                    { id: 1, label: "Pengajuan Diproses", status: 'processing', active: true, error: false },
+                                                    { id: 2, label: "Pengajuan Ditolak", status: 'failed', active: true, error: true }
+                                                ];
+                                            } else if (withdrawalStatus === 'cancelled') {
+                                                steps = [
+                                                    { id: 1, label: "Pengajuan Diproses", status: 'processing', active: true, error: false },
+                                                    { id: 2, label: "Pengajuan Disetujui", status: 'approved', active: true, error: false },
+                                                    { id: 3, label: "Dibatalkan", status: 'cancelled', active: true, error: true }
+                                                ];
+                                            } else {
+                                                // Normal flow: processing -> approved -> completed
+                                                const statusOrder = ['empty', 'processing', 'approved', 'completed'];
+                                                const currentIndex = statusOrder.indexOf(withdrawalStatus);
+                                                steps = [
+                                                    { id: 1, label: "Pengajuan Diproses", status: 'processing', active: currentIndex >= 1, error: false },
+                                                    { id: 2, label: "Pengajuan Disetujui", status: 'approved', active: currentIndex >= 2, error: false },
+                                                    { id: 3, label: "Transaksi Selesai", status: 'completed', active: currentIndex >= 3, error: false }
+                                                ];
                                             }
 
-                                            return (
+                                            return steps.map((step) => (
                                                 <div key={step.id} className="flex flex-col items-center text-center flex-1 relative z-10">
-                                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 shadow-lg ${isError ? 'bg-red-500' : isActive ? 'bg-primary' : 'bg-gray-300'
+                                                    <div className={`w-20 h-20 rounded-full flex items-center justify-center text-white text-2xl font-bold mb-3 shadow-lg ${step.error ? 'bg-red-500' :
+                                                        step.status === 'cancelled' ? 'bg-orange-500' :
+                                                            step.active ? 'bg-primary' : 'bg-gray-300'
                                                         }`}>
                                                         {step.id}
                                                     </div>
-                                                    <p className={`text-xs font-medium max-w-[100px] ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+                                                    <p className={`text-xs font-medium max-w-[100px] ${step.active ? 'text-gray-700' : 'text-gray-400'}`}>
                                                         {step.label}
                                                     </p>
                                                 </div>
-                                            );
-                                        })}
+                                            ));
+                                        })()}
                                     </div>
 
-                                    {/* Mobile Timeline */}
+                                    {/* Mobile Timeline - Dynamic based on status */}
                                     <div className="md:hidden space-y-6">
-                                        {[
-                                            { id: 1, label: "Pengajuan Dibuat", status: 'submitted' },
-                                            { id: 2, label: "Pengajuan Diproses", status: 'processing' },
-                                            { id: 3, label: "Pengajuan Selesai", status: 'completed' },
-                                            { id: 4, label: "Struk Pencairan Tersedia", status: 'ready' }
-                                        ].map((step) => {
-                                            const statusOrder = ['empty', 'submitted', 'processing', 'completed', 'ready', 'failed'];
-                                            const currentIndex = statusOrder.indexOf(withdrawalStatus);
-                                            const stepIndex = statusOrder.indexOf(step.status);
-
-                                            let isActive = false;
-                                            let isError = false;
-
+                                        {(() => {
+                                            // Define steps based on current status
+                                            let steps = [];
                                             if (withdrawalStatus === 'failed') {
-                                                if (step.status !== 'ready') {
-                                                    isActive = true;
-                                                    if (step.status === 'completed') isError = true;
-                                                }
-                                            } else if (currentIndex >= stepIndex) {
-                                                isActive = true;
+                                                steps = [
+                                                    { id: 1, label: "Pengajuan Diproses", status: 'processing', active: true, error: false },
+                                                    { id: 2, label: "Pengajuan Ditolak", status: 'failed', active: true, error: true }
+                                                ];
+                                            } else if (withdrawalStatus === 'cancelled') {
+                                                steps = [
+                                                    { id: 1, label: "Pengajuan Diproses", status: 'processing', active: true, error: false },
+                                                    { id: 2, label: "Pengajuan Disetujui", status: 'approved', active: true, error: false },
+                                                    { id: 3, label: "Dibatalkan", status: 'cancelled', active: true, error: true }
+                                                ];
+                                            } else {
+                                                // Normal flow: processing -> approved -> completed
+                                                const statusOrder = ['empty', 'processing', 'approved', 'completed'];
+                                                const currentIndex = statusOrder.indexOf(withdrawalStatus);
+                                                steps = [
+                                                    { id: 1, label: "Pengajuan Diproses", status: 'processing', active: currentIndex >= 1, error: false },
+                                                    { id: 2, label: "Pengajuan Disetujui", status: 'approved', active: currentIndex >= 2, error: false },
+                                                    { id: 3, label: "Transaksi Selesai", status: 'completed', active: currentIndex >= 3, error: false }
+                                                ];
                                             }
 
-                                            return (
+                                            return steps.map((step) => (
                                                 <div key={step.id} className="flex items-start gap-4">
-                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 shadow-lg ${isError ? 'bg-red-500' : isActive ? 'bg-primary' : 'bg-gray-300'
+                                                    <div className={`w-16 h-16 rounded-full flex items-center justify-center text-white text-xl font-bold flex-shrink-0 shadow-lg ${step.error ? 'bg-red-500' :
+                                                        step.status === 'cancelled' ? 'bg-orange-500' :
+                                                            step.active ? 'bg-primary' : 'bg-gray-300'
                                                         }`}>
                                                         {step.id}
                                                     </div>
-                                                    <p className={`text-sm font-medium pt-4 ${isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+                                                    <p className={`text-sm font-medium pt-4 ${step.active ? 'text-gray-700' : 'text-gray-400'}`}>
                                                         {step.label}
                                                     </p>
                                                 </div>
-                                            );
-                                        })}
+                                            ));
+                                        })()}
                                     </div>
                                 </div>
 
-                                {/* Withdrawal Receipt Section */}
-                                {withdrawalStatus === 'ready' && (
+                                {/* Withdrawal Receipt Section - show when approved or completed */}
+                                {(withdrawalStatus === 'approved' || withdrawalStatus === 'completed') && (
                                     <div className="mt-8 flex flex-col items-center animate-fadeIn w-full">
                                         {/* Title outside card */}
                                         <p className="text-gray-500 text-sm font-medium mb-6">Bukti Pengajuan</p>
@@ -2178,18 +2399,7 @@ function Dashboard() {
                                     </div>
                                 )}
 
-                                {/* End of Status Pengajuan section */}
 
-                                {/* Testing Buttons (for demo purposes) - Fixed to not override user data */}
-                                <div className="mt-16 flex flex-wrap gap-2 justify-center border-t pt-4">
-                                    <p className="w-full text-center text-xs text-gray-400 mb-2">Testing Controls (Status Only)</p>
-                                    <button onClick={() => { setWithdrawalStatus('empty'); setWithdrawalId(null); }} className="text-xs px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50">Empty</button>
-                                    <button onClick={() => { setWithdrawalStatus('submitted'); if (!withdrawalId) setWithdrawalId('12345678'); }} className="text-xs px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50">Submitted</button>
-                                    <button onClick={() => { setWithdrawalStatus('processing'); if (!withdrawalId) setWithdrawalId('12345678'); }} className="text-xs px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50">Processing</button>
-                                    <button onClick={() => { setWithdrawalStatus('completed'); if (!withdrawalId) setWithdrawalId('12345678'); }} className="text-xs px-3 py-1 border border-gray-300 rounded-full hover:bg-gray-50">Completed</button>
-                                    <button onClick={() => { setWithdrawalStatus('failed'); if (!withdrawalId) setWithdrawalId('12345678'); }} className="text-xs px-3 py-1 border border-red-300 rounded-full hover:bg-red-50 text-red-600">Failed</button>
-                                    <button onClick={() => { setWithdrawalStatus('ready'); if (!withdrawalId) setWithdrawalId('786892'); }} className="text-xs px-3 py-1 border border-green-300 rounded-full hover:bg-green-50 text-green-600">Ready (Show Receipt)</button>
-                                </div>
                             </div>
                         </div>
                     </>
@@ -2202,7 +2412,10 @@ function Dashboard() {
             {/* Logout Confirmation Full Screen View */}
             {
                 showLogoutModal && (
-                    <KonfirmasiLogout onCancel={() => setShowLogoutModal(false)} />
+                    <KonfirmasiLogout
+                        onCancel={() => setShowLogoutModal(false)}
+                        onConfirm={handleLogout}
+                    />
                 )
             }
 

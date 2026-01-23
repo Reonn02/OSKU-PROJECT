@@ -12,6 +12,14 @@ export default function PrediksiPage() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const router = useRouter();
 
+    const handleLogout = () => {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('adminData');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        router.push('/');
+    };
+
     const handleTabChange = (tab: string) => {
         if (tab === 'dashboard') {
             router.push('/admin/dashboard');
@@ -59,6 +67,7 @@ export default function PrediksiPage() {
             {showLogoutModal && (
                 <KonfirmasiLogout
                     onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
                 />
             )}
         </div>

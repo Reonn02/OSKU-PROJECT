@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import SidebarPetugas from '@/components/SidebarPetugas';
 import NavbarPetugas from '@/components/NavbarPetugas';
@@ -16,20 +17,68 @@ import KonfirmasiPetugas from '@/components/Konfirmasi';
 import BantuanContent from '@/components/BantuanContent';
 import YearPicker from '@/components/YearPicker';
 import { useBankSampah } from '@/contexts/BankSampahContext';
-import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo } from '@/data/nasabahData';
+import { usePenyetoran } from '@/contexts/PenyetoranContext';
+import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo, getNasabahByBankSampah } from '@/data/nasabahData';
+import { supabase } from '@/lib/supabase';
 
 export default function PetugasDashboard() {
-    const [activeTab, setActiveTab] = useState('dashboard');
+    const searchParams = useSearchParams();
+    const initialTab = searchParams.get('tab') || 'dashboard';
+    const [activeTab, setActiveTab] = useState(initialTab);
+    const router = useRouter();
+
+    // Sync tab with URL parameter changes
+    useEffect(() => {
+        const tab = searchParams.get('tab');
+        if (tab && tab !== activeTab) {
+            setActiveTab(tab);
+        }
+    }, [searchParams]);
+
     const [showLogoutModal, setShowLogoutModal] = useState(false);
+
+    const handleLogout = () => {
+        localStorage.removeItem('petugasLoggedIn');
+        localStorage.removeItem('petugasData');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        router.push('/');
+    };
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [priceSortField, setPriceSortField] = useState<'type' | 'per' | 'price'>('type');
     const [priceSortOrder, setPriceSortOrder] = useState<'asc' | 'desc'>('asc');
     const [filterWasteType, setFilterWasteType] = useState<string>('Semua');
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const [showAllWasteTypes, setShowAllWasteTypes] = useState(false);
+    const [petugasBankId, setPetugasBankId] = useState<string | null>(null);
+    const [selectedWasteFilter, setSelectedWasteFilter] = useState('');
 
     // Get banks from context
     const { banks } = useBankSampah();
+
+    // Get penyetoran from context
+    const { penyetoranList, fetchPenyetoranByBank } = usePenyetoran();
+
+    // Load petugas bank ID from localStorage
+    useEffect(() => {
+        const savedData = localStorage.getItem('petugasData');
+        if (savedData) {
+            try {
+                const petugasData = JSON.parse(savedData);
+                setPetugasBankId(petugasData.bankSampahId);
+                setPetugasBankName(petugasData.bankSampahNama);
+            } catch (error) {
+                console.error('Error loading petugas data:', error);
+            }
+        }
+    }, []);
+
+    // Fetch penyetoran when bank ID is available
+    useEffect(() => {
+        if (petugasBankId) {
+            fetchPenyetoranByBank(petugasBankId);
+        }
+    }, [petugasBankId, fetchPenyetoranByBank]);
 
     // Generate dynamic colors for chart segments using HSL for infinite scalability
     const generateColors = (count: number): string[] => {
@@ -69,16 +118,15 @@ export default function PetugasDashboard() {
         { label: 'Total Penyetoran', value: '0', icon: '/icon/LogoPenyetoran.svg' },
     ]);
 
-    // Penyetoran values from localStorage (amount per waste type)
-    const [penyetoranValues, setPenyetoranValues] = useState<Record<string, { value: number; unit: string }>>({});
+    const [petugasBankName, setPetugasBankName] = useState<string | null>(null);
 
-    // The current petugas's bank ID (hardcoded for now - in production would come from auth)
-    const CURRENT_PETUGAS_BANK_ID = '1'; // Bank Sampah PPSU Kelurahan Ciracas
+    // Penyetoran values from database (amount per waste type)
+    const [penyetoranValues, setPenyetoranValues] = useState<Record<string, { value: number; unit: string }>>({});
 
     // Derive wasteTypes dynamically from BankSampahContext - ONLY from current petugas's bank
     const wasteTypes = useMemo(() => {
         // Get only the current petugas's bank
-        const currentBank = banks.find(bank => bank.id === CURRENT_PETUGAS_BANK_ID);
+        const currentBank = banks.find(bank => bank.id === petugasBankId);
 
         if (!currentBank) return [];
 
@@ -88,42 +136,77 @@ export default function PetugasDashboard() {
             value: penyetoranValues[wt.nama]?.value?.toString() || '0',
             unit: wt.satuan
         }));
-    }, [banks, penyetoranValues]);
+    }, [banks, penyetoranValues, petugasBankId]);
 
-    // Load penyetoran data from localStorage and nasabah data
+    // Load penyetoran data from database and nasabah data
     useEffect(() => {
         const loadSummaryData = async () => {
             try {
-                // Get dynamic nasabah data (now async)
-                const totalNasabah = await getTotalNasabah();
-                const totalSaldo = await getTotalSaldo();
-                const formattedSaldo = formatSaldo(totalSaldo);
+                // Get dynamic nasabah data filtered by bank name
+                let totalNasabah = 0;
+                let totalSaldo = 0;
 
-                const summary = localStorage.getItem('penyetoran_summary');
-                let totalPenyetoran = 0;
-
-                if (summary) {
-                    const data = JSON.parse(summary);
-
-                    // Extract penyetoran values for each waste type
-                    const values: Record<string, { value: number; unit: string }> = {};
-                    Object.keys(data).forEach(key => {
-                        if (key !== 'totalPenyetoran' && key !== 'totalPemasukan' && data[key]?.value !== undefined) {
-                            values[key] = {
-                                value: data[key].value,
-                                unit: data[key].unit || 'kg'
-                            };
-                        }
-                    });
-                    setPenyetoranValues(values);
-                    totalPenyetoran = data.totalPenyetoran || 0;
+                if (petugasBankName) {
+                    const nasabahList = await getNasabahByBankSampah(petugasBankName);
+                    totalNasabah = nasabahList.length;
+                    totalSaldo = nasabahList.reduce((acc, curr) => acc + curr.saldo, 0);
+                } else {
+                    // Fallback if no bank name (though ideally shouldn't happen for logged in petugas with bank)
+                    totalNasabah = await getTotalNasabah();
+                    totalSaldo = await getTotalSaldo();
                 }
+
+                // Filter penyetoran by year
+                const penyetoranFiltered = penyetoranList.filter(item => {
+                    if (!item.tanggal) return false;
+                    const d = new Date(item.tanggal);
+                    return d.getFullYear() === selectedYear;
+                });
+
+                // Calculate total penyetoran from filtered list
+                const totalPenyetoran = penyetoranFiltered.length;
+
+                // Also calculate Total Saldo from FILTERED transactions (Revenue for the year)
+                // instead of total user balance (which is static/current).
+                // This makes the Dashboard consistent with the year filter.
+                const totalSaldoFiltered = penyetoranFiltered.reduce((acc, curr) => acc + (Number(curr.total_harga) || 0), 0);
+                const formattedSaldo = formatSaldo(totalSaldoFiltered);
+
+                // Calculate Total Pencairan dynamically for the SELECTED YEAR
+                let totalPencairanValue = 0;
+                if (petugasBankId) {
+                    const startOfYear = `${selectedYear}-01-01`;
+                    const endOfYear = `${selectedYear}-12-31T23:59:59`;
+
+                    const { data: pencairanData } = await supabase
+                        .from('pencairan')
+                        .select('jumlah')
+                        .eq('bank_sampah_id', petugasBankId)
+                        .eq('status', 'completed')
+                        .gte('tanggal_selesai', startOfYear)
+                        .lte('tanggal_selesai', endOfYear);
+
+                    if (pencairanData) {
+                        totalPencairanValue = pencairanData.reduce((sum, item) => sum + (Number(item.jumlah) || 0), 0);
+                    }
+                }
+
+                // Calculate penyetoran values per waste type (using filtered list)
+                const values: Record<string, { value: number; unit: string }> = {};
+                penyetoranFiltered.forEach((item) => {
+                    const wasteType = item.waste_type_name || 'Unknown';
+                    if (!values[wasteType]) {
+                        values[wasteType] = { value: 0, unit: 'kg' };
+                    }
+                    values[wasteType].value += item.berat || 0;
+                });
+                setPenyetoranValues(values);
 
                 // Update summary stats with dynamic values
                 setSummaryStats([
                     { label: 'Jumlah Nasabah', value: totalNasabah.toString(), icon: '/icon/nasabah.svg' },
                     { label: 'Total Saldo', value: formattedSaldo, icon: '/icon/miniMoney.svg' },
-                    { label: 'Total Pencairan', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
+                    { label: 'Total Pencairan', value: formatSaldo(totalPencairanValue), icon: '/icon/Pencairan.svg' },
                     { label: 'Total Penyetoran', value: totalPenyetoran.toString(), icon: '/icon/LogoPenyetoran.svg' },
                 ]);
             } catch (error) {
@@ -132,14 +215,12 @@ export default function PetugasDashboard() {
         };
 
         loadSummaryData();
-        const interval = setInterval(loadSummaryData, 2000);
-        return () => clearInterval(interval);
-    }, []);
+    }, [penyetoranList, petugasBankName, petugasBankId, selectedYear]);
 
     // Derive priceList dynamically from BankSampahContext - ONLY from current petugas's bank
     const priceList = useMemo(() => {
         // Get only the current petugas's bank
-        const currentBank = banks.find(bank => bank.id === CURRENT_PETUGAS_BANK_ID);
+        const currentBank = banks.find(bank => bank.id === petugasBankId);
 
         if (!currentBank) return [];
 
@@ -149,7 +230,7 @@ export default function PetugasDashboard() {
             price: `Rp. ${wt.hargaPerSatuan.toLocaleString('id-ID')}`,
             priceNum: wt.hargaPerSatuan
         }));
-    }, [banks]);
+    }, [banks, petugasBankId]);
 
     const sortedPriceList = [...priceList].sort((a, b) => {
         if (priceSortField === 'price') {
@@ -170,7 +251,7 @@ export default function PetugasDashboard() {
         }
     };
 
-    const barChartData = [
+    const defaultChartData = [
         { label: 'JAN', value: 0 },
         { label: 'FEB', value: 0 },
         { label: 'MAR', value: 0 },
@@ -184,6 +265,76 @@ export default function PetugasDashboard() {
         { label: 'NOV', value: 0 },
         { label: 'DEC', value: 0 },
     ];
+
+    const [penyetoranChartData, setPenyetoranChartData] = useState(defaultChartData);
+    const [saldoChartData, setSaldoChartData] = useState(defaultChartData);
+    const [pencairanChartData, setPencairanChartData] = useState(defaultChartData);
+
+    useEffect(() => {
+        const processCharts = async () => {
+            // Clone default structure deeply
+            const newPenyetoranData = JSON.parse(JSON.stringify(defaultChartData));
+            const newSaldoData = JSON.parse(JSON.stringify(defaultChartData));
+            const newPencairanData = JSON.parse(JSON.stringify(defaultChartData));
+
+            // 1. Process Penyetoran (Weight & Money In)
+            if (penyetoranList && penyetoranList.length > 0) {
+                penyetoranList.forEach(item => {
+                    if (!item.tanggal) return;
+                    const date = new Date(item.tanggal);
+                    if (date.getFullYear() === selectedYear) {
+                        const monthIdx = date.getMonth();
+
+                        // Filter logic for Weight Chart
+                        if (!selectedWasteFilter || item.waste_type_name === selectedWasteFilter) {
+                            newPenyetoranData[monthIdx].value += Number(item.berat) || 0;
+                        }
+
+                        // Total Money includes all unless we want to filter that too. 
+                        // Usually "Total Saldo" implies everything, but let's keep it consistent:
+                        // If we filter weight, we arguably should filter money too IF the chart had a filter.
+                        // But the second chart has showWasteFilter={false}, so it should probably show TOTAL.
+                        // So we ONLY filter newPenyetoranData.
+                        newSaldoData[monthIdx].value += Number(item.total_harga) || 0;
+                    }
+                });
+            }
+
+            // 2. Fetch and Process Pencairan (Withdrawals)
+            if (petugasBankId) {
+                try {
+                    const { data: pencairanData } = await supabase
+                        .from('pencairan')
+                        .select('jumlah, tanggal_selesai, status')
+                        .eq('bank_sampah_id', petugasBankId)
+                        .eq('status', 'completed');
+
+                    if (pencairanData) {
+                        pencairanData.forEach((item: any) => {
+                            if (!item.tanggal_selesai) return;
+                            const date = new Date(item.tanggal_selesai);
+                            if (date.getFullYear() === selectedYear) {
+                                const monthIdx = date.getMonth();
+                                newPencairanData[monthIdx].value += Number(item.jumlah) || 0;
+                            }
+                        });
+                    }
+                } catch (err) {
+                    console.error("Error fetching pencairan chart data", err);
+                }
+            }
+
+            // Scale Money Values to Millions (jt)
+            newSaldoData.forEach((d: any) => d.value = d.value / 1000000);
+            newPencairanData.forEach((d: any) => d.value = d.value / 1000000);
+
+            setPenyetoranChartData(newPenyetoranData);
+            setSaldoChartData(newSaldoData);
+            setPencairanChartData(newPencairanData);
+        };
+
+        processCharts();
+    }, [penyetoranList, selectedYear, petugasBankId, selectedWasteFilter]);
 
     return (
         <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex">
@@ -423,8 +574,9 @@ export default function PetugasDashboard() {
                                 <WasteChart
                                     title="Total Penyetoran Sampah"
                                     unit="kg"
-                                    initialData={barChartData}
+                                    initialData={penyetoranChartData}
                                     showWasteFilter={true}
+                                    onWasteTypeChange={setSelectedWasteFilter}
                                     maxY={125}
                                     yAxisSteps={[
                                         { label: '125kg', value: 125 },
@@ -439,7 +591,7 @@ export default function PetugasDashboard() {
                                 <WasteChart
                                     title="Total Saldo Terkumpul"
                                     unit="jt"
-                                    initialData={barChartData}
+                                    initialData={saldoChartData}
                                     showWasteFilter={false}
                                     maxY={150}
                                     yAxisSteps={[
@@ -455,7 +607,7 @@ export default function PetugasDashboard() {
                                 <WasteChart
                                     title="Total Saldo Cair"
                                     unit="jt"
-                                    initialData={barChartData}
+                                    initialData={pencairanChartData}
                                     showWasteFilter={false}
                                     maxY={50}
                                     yAxisSteps={[
@@ -537,6 +689,7 @@ export default function PetugasDashboard() {
             {showLogoutModal && (
                 <KonfirmasiLogout
                     onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
                 />
             )}
 

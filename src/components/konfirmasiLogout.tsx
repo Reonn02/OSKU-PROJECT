@@ -6,9 +6,10 @@ import Link from 'next/link';
 
 interface KonfirmasiLogoutProps {
     onCancel: () => void;
+    onConfirm: () => void;
 }
 
-export default function KonfirmasiLogout({ onCancel }: KonfirmasiLogoutProps) {
+export default function KonfirmasiLogout({ onCancel, onConfirm }: KonfirmasiLogoutProps) {
     useEffect(() => {
         // Lock scroll
         document.body.style.overflow = 'hidden';
@@ -36,12 +37,12 @@ export default function KonfirmasiLogout({ onCancel }: KonfirmasiLogoutProps) {
                 <h2 className="text-2xl md:text-4xl font-bold text-primary mb-12">Apakah anda ingin keluar?</h2>
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
-                    <Link
-                        href="/"
-                        className="flex-1 bg-[#E8F5E9] hover:bg-[#C8E6C9] text-primary font-bold py-4 rounded-full transition-all duration-300 text-sm flex items-center justify-center shadow-sm cursor-pointer"
+                    <button
+                        onClick={onConfirm}
+                        className="flex-1 bg-[#E8F5E9] hover:bg-[#C8E6C9] text-primary font-bold py-4 rounded-full transition-all duration-300 text-sm flex items-center justify-center shadow-sm cursor-pointer border-none"
                     >
                         Ya
-                    </Link>
+                    </button>
                     <button
                         onClick={onCancel}
                         className="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-full transition-all duration-300 text-sm cursor-pointer border-none shadow-md hover:shadow-lg"

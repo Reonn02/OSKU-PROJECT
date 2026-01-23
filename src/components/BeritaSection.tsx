@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import Image from 'next/image';
 import { useBeritaKegiatan } from '@/contexts/BeritaKegiatanContext';
 
@@ -71,10 +72,13 @@ export default function BeritaSection() {
                                     </p>
 
                                     {/* View More Link */}
-                                    <button className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:text-primary-dark transition-colors">
+                                    <Link
+                                        href={`/pusat-informasi/berita/${item.id}`}
+                                        className="inline-flex items-center gap-2 text-primary font-bold text-sm hover:text-primary-dark transition-colors"
+                                    >
                                         LIHAT SELENGKAPNYA
                                         <i className="fas fa-arrow-right text-xs"></i>
-                                    </button>
+                                    </Link>
                                 </div>
                             </div>
                         ))}

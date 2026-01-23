@@ -159,15 +159,15 @@ export default function Home() {
                     </div>
                     <div className="bg-primary-light p-12 rounded-xl text-white relative overflow-hidden h-full">
                         <div className="relative z-10">
-                            <h3 className="text-3xl font-bold mb-6">Visi</h3>
-                            <p className="mb-6 text-white text-opacity-90">Menjadi platform digital terdepan dalam pengelolaan bank sampah yang memberikan manfaat berkelanjutan bagi masyarakat dan lingkungan.</p>
+                            <h3 className="text-3xl font-bold mb-6">Target</h3>
+                            <p className="mb-6 text-white text-opacity-90">Menjadi platform digital terdepan dalam pengelolaan bank sampah yang memberikan manfaat bagi masyarakat dan lingkungan.</p>
                             <div className="grid grid-cols-2 gap-6">
                                 <div>
-                                    <div className="text-3xl font-bold mb-2">200+</div>
+                                    <div className="text-3xl font-bold mb-2">2000+</div>
                                     <p className="text-sm text-white text-opacity-80">Pengguna Aktif</p>
                                 </div>
                                 <div>
-                                    <div className="text-3xl font-bold mb-2">4+</div>
+                                    <div className="text-3xl font-bold mb-2">20+</div>
                                     <p className="text-sm text-white text-opacity-80">Bank Sampah</p>
                                 </div>
                                 <div>

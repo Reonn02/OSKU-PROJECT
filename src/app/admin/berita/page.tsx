@@ -13,6 +13,14 @@ export default function AdminBeritaPage() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const router = useRouter();
 
+    const handleLogout = () => {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('adminData');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        router.push('/');
+    };
+
     // TEMPORARY: Commented for dev access
     /*
     useEffect(() => {
@@ -76,6 +84,7 @@ export default function AdminBeritaPage() {
             {showLogoutModal && (
                 <KonfirmasiLogout
                     onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
                 />
             )}
         </div>

@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { showStandaloneToast } from './Toast';
+import { supabase } from '@/lib/supabase';
 
 interface PetugasData {
     id: string;
@@ -43,21 +44,37 @@ export default function ProfilePetugas() {
         }
     }, []);
 
-    const handleSave = () => {
+    const handleSave = async () => {
         if (petugasData) {
-            // Update petugasData di localStorage
-            const updatedData = {
-                ...petugasData,
-                nama: formData.namaTampilan || petugasData.nama,
-                noHp: formData.nomorHP
-            };
-            localStorage.setItem('petugasData', JSON.stringify(updatedData));
-            setPetugasData(updatedData);
+            try {
+                // Update Supabase
+                const { error } = await supabase
+                    .from('petugas')
+                    .update({
+                        nama: formData.namaTampilan,
+                        no_hp: formData.nomorHP
+                    })
+                    .eq('id', petugasData.id);
 
-            // Trigger event untuk update sidebar
-            window.dispatchEvent(new Event('profileUpdated'));
+                if (error) throw error;
 
-            showStandaloneToast('success', 'Berhasil Disimpan!', 'Perubahan profil berhasil disimpan.');
+                // Update petugasData di localStorage
+                const updatedData = {
+                    ...petugasData,
+                    nama: formData.namaTampilan || petugasData.nama,
+                    noHp: formData.nomorHP
+                };
+                localStorage.setItem('petugasData', JSON.stringify(updatedData));
+                setPetugasData(updatedData);
+
+                // Trigger event untuk update sidebar
+                window.dispatchEvent(new Event('profileUpdated'));
+
+                showStandaloneToast('success', 'Berhasil Disimpan!', 'Perubahan profil berhasil disimpan ke database.');
+            } catch (error) {
+                console.error('Error updating petugas:', error);
+                showStandaloneToast('error', 'Gagal', 'Gagal menyimpan perubahan profil.');
+            }
         }
     };
 
@@ -142,13 +159,13 @@ export default function ProfilePetugas() {
                         {/* Static Info (Non-editable) */}
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 opacity-60">
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 ml-1">ID Petugas (Read Only)</label>
+                                <label className="text-xs font-bold text-gray-400 ml-1">ID Petugas</label>
                                 <div className="w-full px-6 py-3.5 rounded-full border border-gray-100 bg-gray-50 text-sm font-medium text-gray-500">
                                     {petugasData?.id || '-'}
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <label className="text-xs font-bold text-gray-400 ml-1">Email (Read Only)</label>
+                                <label className="text-xs font-bold text-gray-400 ml-1">Email</label>
                                 <div className="w-full px-6 py-3.5 rounded-full border border-gray-100 bg-gray-50 text-sm font-medium text-gray-500">
                                     {petugasData?.email || '-'}
                                 </div>

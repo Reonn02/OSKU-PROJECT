@@ -100,10 +100,28 @@ export default function ForgotPasswordVerifyOTP() {
         setError('');
 
         try {
-            const isValid = verifyOTP(otpCode);
+            // Get stored OTP and expiry
+            const storedOTP = sessionStorage.getItem('otpCode');
+            const otpExpiry = sessionStorage.getItem('otpExpiry');
 
-            if (isValid) {
-                // Keep the email in session for the reset page but mark OTP as verified
+            if (!storedOTP || !otpExpiry) {
+                setError('Kode OTP tidak ditemukan. Silakan kirim ulang.');
+                setIsVerifying(false);
+                return;
+            }
+
+            // Check if OTP is expired
+            if (Date.now() > parseInt(otpExpiry)) {
+                setError('Kode OTP sudah kadaluarsa. Silakan kirim ulang.');
+                setOtp(new Array(6).fill(''));
+                inputRefs.current[0]?.focus();
+                setIsVerifying(false);
+                return;
+            }
+
+            // Verify OTP
+            if (otpCode === storedOTP) {
+                // Mark OTP as verified
                 sessionStorage.setItem('otpVerified', 'true');
 
                 // Show success animation briefly
@@ -112,7 +130,7 @@ export default function ForgotPasswordVerifyOTP() {
                 // Redirect to reset password page
                 router.push('/forgot-password/reset');
             } else {
-                setError('Kode OTP tidak valid atau sudah kadaluarsa');
+                setError('Kode OTP tidak valid');
                 setOtp(new Array(6).fill(''));
                 inputRefs.current[0]?.focus();
             }
@@ -133,8 +151,32 @@ export default function ForgotPasswordVerifyOTP() {
         setOtp(new Array(6).fill(''));
 
         try {
-            await resendOTP();
-            console.log('OTP berhasil dikirim ulang');
+            // Generate new OTP
+            const newOTP = (Math.floor(100000 + Math.random() * 900000)).toString();
+
+            // Send OTP via API
+            const response = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    otp: newOTP,
+                    type: 'forgot-password'
+                }),
+            });
+
+            const data = await response.json();
+
+            if (response.ok && data.success) {
+                // Update stored OTP
+                sessionStorage.setItem('otpCode', newOTP);
+                sessionStorage.setItem('otpExpiry', (Date.now() + 5 * 60 * 1000).toString());
+                console.log('✅ OTP berhasil dikirim ulang');
+            } else {
+                setError('Gagal mengirim ulang OTP. Silakan coba lagi.');
+            }
         } catch (err) {
             setError('Gagal mengirim ulang OTP. Silakan coba lagi.');
             console.error('Resend OTP error:', err);

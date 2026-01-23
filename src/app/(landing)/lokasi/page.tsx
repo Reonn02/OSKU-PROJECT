@@ -113,7 +113,7 @@ export default function LokasiPage() {
                                                 <div className="mt-auto">
                                                     <div className="flex items-center text-xs text-gray-500 mb-4">
                                                         <i className="far fa-clock mr-2 text-primary"></i>
-                                                        <span>Senin - Sabtu : {loc.openTime} - {loc.closeTime}</span>
+                                                        <span>{loc.openDay} - {loc.closeDay} : {loc.openTime} - {loc.closeTime}</span>
                                                     </div>
                                                     <button
                                                         onClick={() => handleKontakLayanan(loc.kontakLayanan)}

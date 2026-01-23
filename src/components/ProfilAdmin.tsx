@@ -1,9 +1,39 @@
-'use client';
-
+import { useState, useEffect } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
+import { showStandaloneToast } from './Toast';
 
 export default function ProfilAdmin() {
-    const { admin, isLoading } = useAdmin();
+    const { admin, isLoading, updateAdmin } = useAdmin();
+    const [formData, setFormData] = useState({
+        nama: '',
+        noHp: '',
+        kelurahan: ''
+    });
+
+    useEffect(() => {
+        if (admin) {
+            setFormData({
+                nama: admin.nama || '',
+                noHp: admin.noHp || '',
+                kelurahan: admin.kelurahan || ''
+            });
+        }
+    }, [admin]);
+
+    const handleSave = async () => {
+        if (admin) {
+            try {
+                await updateAdmin({
+                    nama: formData.nama,
+                    noHp: formData.noHp,
+                    kelurahan: formData.kelurahan
+                });
+                showStandaloneToast('success', 'Berhasil', 'Profil admin berhasil diperbarui');
+            } catch (error) {
+                showStandaloneToast('error', 'Gagal', 'Terjadi kesalahan saat menyimpan profil');
+            }
+        }
+    };
 
     if (isLoading) {
         return (
@@ -22,17 +52,8 @@ export default function ProfilAdmin() {
         );
     }
 
-    const profileFields = [
-        { label: 'ID Admin', value: admin.id, icon: 'fa-id-badge' },
-        { label: 'Nama Tampilan', value: admin.nama, icon: 'fa-user' },
-        { label: 'Nomor HP', value: admin.noHp, icon: 'fa-phone' },
-        { label: 'Email', value: admin.email, icon: 'fa-envelope' },
-        { label: 'Kelurahan', value: admin.kelurahan, icon: 'fa-map-marker-alt' },
-        { label: 'Role', value: admin.role === 'superadmin' ? 'Super Admin' : 'Admin', icon: 'fa-shield-alt' },
-    ];
-
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto">
+        <div className="space-y-6 animate-in fade-in duration-500 max-w-4xl mx-auto pb-10">
             {/* Page Header */}
             <div className="flex items-center gap-3 mb-8">
                 <div className="w-10 h-10 bg-primary rounded-xl flex items-center justify-center text-white">
@@ -48,7 +69,7 @@ export default function ProfilAdmin() {
             <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex flex-col md:flex-row gap-10 items-center md:items-start">
                 {/* Avatar Section */}
                 <div className="flex flex-col items-center gap-4">
-                    <div className="w-32 h-32 rounded-3xl bg-tertiary flex items-center justify-center border-2 border-primary/10 relative overflow-hidden group">
+                    <div className="w-32 h-32   rounded-3xl bg-tertiary flex items-center justify-center border-2 border-primary/10 relative overflow-hidden group">
                         {admin.avatar ? (
                             <img src={admin.avatar} alt={admin.nama} className="w-full h-full object-cover" />
                         ) : (
@@ -56,31 +77,65 @@ export default function ProfilAdmin() {
                         )}
                     </div>
                     <span className="px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
-                        {admin.role === 'superadmin' ? 'Super Administrator' : 'Administrator'}
+                        {admin.role === 'superadmin' ? 'Super Admin' : 'Admin'}
                     </span>
+                    <p className="text-xs text-gray-400">ID: {admin.id}</p>
                 </div>
 
-                {/* Info Section */}
-                <div className="flex-grow w-full grid grid-cols-1 md:grid-cols-2 gap-4">
-                    {profileFields.map((field) => (
-                        <div key={field.label} className="space-y-1.5 p-4 rounded-2xl bg-tertiary/50 border border-gray-100 hover:border-primary/20 transition-colors">
-                            <div className="flex items-center gap-2 text-primary/60">
-                                <i className={`fas ${field.icon} text-xs`}></i>
-                                <label className="text-[10px] font-bold uppercase tracking-wider">{field.label}</label>
-                            </div>
-                            <p className="text-base font-bold text-primary">{field.value}</p>
+                {/* Edit Form Section */}
+                <div className="flex-grow w-full space-y-6">
+                    <h3 className="text-lg font-bold text-primary mb-4">Pengaturan Profil</h3>
+
+                    <div className="space-y-4">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Nama Tampilan</label>
+                            <input
+                                type="text"
+                                value={formData.nama}
+                                onChange={(e) => setFormData({ ...formData, nama: e.target.value })}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                            />
                         </div>
-                    ))}
-                </div>
-            </div>
 
-            {/* Note for Database */}
-            <div className="bg-white rounded-xl p-4">
-                <div className="flex gap-3">
-                    <i className="fas fa-database text-primary mt-0.5"></i>
-                    <div className="text-sm text-primary">
-                        <p className="font-bold mb-1">Catatan untuk Pengembangan</p>
-                        <p>Data profil admin ini menggunakan data default. Pada implementasi production, data akan diambil dari database melalui Supabase setelah proses seeding.</p>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">Email</label>
+                            <input
+                                type="text"
+                                value={admin.email}
+                                disabled
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-400 text-sm cursor-not-allowed"
+                            />
+                        </div>
+
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Nomor HP</label>
+                                <input
+                                    type="text"
+                                    value={formData.noHp}
+                                    onChange={(e) => setFormData({ ...formData, noHp: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                />
+                            </div>
+                            <div>
+                                <label className="block text-xs font-bold text-gray-500 mb-1">Kelurahan (Area)</label>
+                                <input
+                                    type="text"
+                                    value={formData.kelurahan}
+                                    onChange={(e) => setFormData({ ...formData, kelurahan: e.target.value })}
+                                    className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                />
+                            </div>
+                        </div>
+
+                        <div className="pt-4">
+                            <button
+                                onClick={handleSave}
+                                className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 cursor-pointer w-full md:w-auto"
+                            >
+                                Simpan Perubahan
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>

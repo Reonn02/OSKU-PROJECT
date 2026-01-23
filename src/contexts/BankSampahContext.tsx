@@ -6,7 +6,7 @@ import { supabase, DbBankSampah, DbWasteType } from '@/lib/supabase';
 export interface WasteType {
     id: string;
     nama: string;
-    satuan: 'kg' | 'ltr' | 'pcs';
+    satuan: string;
     hargaPerSatuan: number;
 }
 
@@ -29,8 +29,8 @@ export interface BankSampah {
 interface BankSampahContextType {
     banks: BankSampah[];
     isLoading: boolean;
-    addBank: (bank: Omit<BankSampah, 'id'>) => Promise<void>;
-    updateBank: (id: string, updates: Partial<BankSampah>) => Promise<void>;
+    addBank: (bank: Omit<BankSampah, 'id'>, petugasId?: string) => Promise<void>;
+    updateBank: (id: string, updates: Partial<BankSampah>, petugasId?: string) => Promise<void>;
     deleteBank: (id: string) => Promise<void>;
     getBankById: (id: string) => BankSampah | undefined;
     refreshBanks: () => Promise<void>;
@@ -114,7 +114,7 @@ export function BankSampahProvider({ children }: { children: ReactNode }) {
         fetchBanks();
     }, []);
 
-    const addBank = async (bank: Omit<BankSampah, 'id'>) => {
+    const addBank = async (bank: Omit<BankSampah, 'id'>, petugasId?: string) => {
         try {
             const newId = Date.now().toString();
             const { error } = await supabase.from('bank_sampah').insert({
@@ -132,6 +132,19 @@ export function BankSampahProvider({ children }: { children: ReactNode }) {
             if (error) {
                 console.error('Failed to add bank:', error);
                 return;
+            }
+
+            // If a petugasId is provided, update the petugas record to link to this bank
+            if (petugasId) {
+                const { error: petugasError } = await supabase
+                    .from('petugas')
+                    .update({ bank_sampah_id: newId })
+                    .eq('id', petugasId);
+
+                if (petugasError) {
+                    console.error('Failed to update petugas bank linkage:', petugasError);
+                    // Optionally show a warning toast here if we had access to toast function
+                }
             }
 
             // Add waste types if any
@@ -153,7 +166,7 @@ export function BankSampahProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const updateBank = async (id: string, updates: Partial<BankSampah>) => {
+    const updateBank = async (id: string, updates: Partial<BankSampah>, petugasId?: string) => {
         try {
             const dbUpdates: Partial<DbBankSampah> = {};
             if (updates.nama !== undefined) dbUpdates.nama = updates.nama;
@@ -175,6 +188,18 @@ export function BankSampahProvider({ children }: { children: ReactNode }) {
             if (error) {
                 console.error('Failed to update bank:', error);
                 return;
+            }
+
+            // If a petugasId is provided, update the petugas record to link to this bank
+            if (petugasId) {
+                const { error: petugasError } = await supabase
+                    .from('petugas')
+                    .update({ bank_sampah_id: id })
+                    .eq('id', petugasId);
+
+                if (petugasError) {
+                    console.error('Failed to update petugas bank linkage:', petugasError);
+                }
             }
 
             await fetchBanks(); // Refresh data
@@ -237,7 +262,7 @@ export function BankSampahProvider({ children }: { children: ReactNode }) {
         try {
             const dbUpdates: Partial<DbWasteType> = {};
             if (updates.nama !== undefined) dbUpdates.nama = updates.nama;
-            if (updates.satuan !== undefined) dbUpdates.satuan = updates.satuan;
+            if (updates.satuan !== undefined) dbUpdates.satuan = updates.satuan as any;
             if (updates.hargaPerSatuan !== undefined) dbUpdates.harga_per_satuan = updates.hargaPerSatuan;
 
             const { error } = await supabase

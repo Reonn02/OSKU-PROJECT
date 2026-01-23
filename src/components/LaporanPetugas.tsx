@@ -124,23 +124,43 @@ export default function LaporanPetugas() {
 
         setIsSubmitting(true);
 
-        // Simulate sending email (for demo purposes)
-        // In real implementation, integrate with EmailJS or backend API
-        await new Promise(resolve => setTimeout(resolve, 1500));
+        try {
+            const data = new FormData();
+            data.append('emailPengirim', formData.emailPengirim);
+            data.append('emailPenerima', formData.emailPenerima);
+            data.append('pesan', formData.pesan);
 
-        setIsSubmitting(false);
+            // Append all files
+            formData.lampiran.forEach((file) => {
+                data.append('lampiran', file);
+            });
 
-        // Show success toast
-        showStandaloneToast('success', 'Laporan Berhasil Dikirim!', `Email telah dikirim ke ${formData.emailPenerima}`);
+            const response = await fetch('/api/send-report', {
+                method: 'POST',
+                body: data,
+            });
 
-        // Reset form
-        setFormData({
-            emailPengirim: '',
-            emailPenerima: '',
-            pesan: '',
-            lampiran: [],
-            lampiranPreviews: []
-        });
+            const result = await response.json();
+
+            if (result.success) {
+                showStandaloneToast('success', 'Laporan Berhasil Terkirim!', `Email telah dikirim ke ${formData.emailPenerima}`);
+                // Reset form
+                setFormData({
+                    emailPengirim: '',
+                    emailPenerima: '',
+                    pesan: '',
+                    lampiran: [],
+                    lampiranPreviews: []
+                });
+            } else {
+                throw new Error(result.message || 'Gagal mengirim email');
+            }
+        } catch (error) {
+            console.error('Submission error:', error);
+            showStandaloneToast('error', 'Gagal Mengirim', String(error));
+        } finally {
+            setIsSubmitting(false);
+        }
     };
 
     return (
@@ -156,14 +176,13 @@ export default function LaporanPetugas() {
             {/* Info Card */}
             <div className="bg-white border border-blue-100 rounded-2xl p-5">
                 <div className="flex gap-4">
-                    <div className="flex-shrink-0">
+                    <div className="flex-shrink-0 mt-3">
                         <i className="fas fa-info-circle text-primary text-xl"></i>
                     </div>
                     <div>
                         <h4 className="font-bold text-primary text-sm mb-1">Cara Mengirim Laporan</h4>
                         <p className="text-primary text-xs">
                             Isi form di bawah untuk mengirim laporan via email. Laporan akan dikirim ke email penerima yang ditentukan.
-                            <span className="font-semibold"> (Demo: email tidak benar-benar terkirim)</span>
                         </p>
                     </div>
                 </div>

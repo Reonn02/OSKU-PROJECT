@@ -3,6 +3,8 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { supabase } from '@/lib/supabase';
+// ... rest of imports
 import { useRouter } from 'next/navigation';
 
 interface NavbarPetugasProps {
@@ -12,7 +14,7 @@ interface NavbarPetugasProps {
 
 interface Notification {
     id: string;
-    type: 'persetujuan' | 'konfirmasi';
+    type: string;
     title: string;
     message: string;
     time: string;
@@ -27,77 +29,86 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
-    // Load notifikasi dari localStorage
+    // Load notifikasi dari Supabase
     useEffect(() => {
-        const loadNotifications = () => {
-            const notifs: Notification[] = [];
-
+        const fetchNotifications = async () => {
             try {
-                // Load saved read status
-                const savedNotifs = localStorage.getItem('petugas_notifications');
-                let savedNotifData: Notification[] = savedNotifs ? JSON.parse(savedNotifs) : [];
+                const { data, error } = await supabase
+                    .from('notifications')
+                    .select('*')
+                    .eq('recipient_role', 'petugas')
+                    .order('created_at', { ascending: false })
+                    .limit(20);
 
-                // Load dari Persetujuan (yang Diproses)
-                const persetujuanData = localStorage.getItem('persetujuan_data');
-                if (persetujuanData) {
-                    const allData = JSON.parse(persetujuanData);
-                    const diprosesData = allData.filter((item: any) => item.status === 'Diproses');
+                if (error) throw error;
 
-                    diprosesData.forEach((item: any) => {
-                        const notifId = `persetujuan-${item.id}`;
-                        const isRead = savedNotifData.some(n => n.id === notifId && n.isRead);
-                        notifs.push({
-                            id: notifId,
-                            type: 'persetujuan',
-                            title: 'Pengajuan Perlu Diproses',
-                            message: `${item.name} mengajukan pencairan Rp ${item.amount.toLocaleString('id-ID')}`,
-                            time: item.date,
-                            icon: 'fa-clock',
-                            color: 'text-yellow-600',
-                            isRead,
-                            link: '/petugas/dashboard?tab=persetujuan'
-                        });
-                    });
+                const notifs: Notification[] = (data || []).map((item: any) => ({
+                    id: item.id,
+                    type: item.type,
+                    title: item.title,
+                    message: item.message,
+                    time: new Date(item.created_at).toLocaleDateString('id-ID'),
+                    icon: item.type === 'konfirmasi' ? 'fa-thumbs-up' : 'fa-clock',
+                    color: item.type === 'konfirmasi' ? 'text-primary' : 'text-yellow-600',
+                    isRead: item.is_read,
+                    link: item.link
+                }));
 
-                    // Load yang Disetujui (perlu konfirmasi)
-                    const disetujuiData = allData.filter((item: any) => item.status === 'Disetujui');
-                    disetujuiData.forEach((item: any) => {
-                        const notifId = `konfirmasi-${item.id}`;
-                        const isRead = savedNotifData.some(n => n.id === notifId && n.isRead);
-                        notifs.push({
-                            id: notifId,
-                            type: 'konfirmasi',
-                            title: 'Perlu Konfirmasi Pencairan',
-                            message: `${item.name} menunggu konfirmasi pencairan Rp ${item.amount.toLocaleString('id-ID')}`,
-                            time: item.date,
-                            icon: 'fa-thumbs-up',
-                            color: 'text-primary',
-                            isRead,
-                            link: '/petugas/dashboard?tab=konfirmasi'
-                        });
-                    });
-                }
-            } catch (error) {
-                console.error('Error loading notifications:', error);
+                setNotifications(notifs);
+
+            } catch (error: any) {
+                console.error('Error loading notifications:', error.message || error);
             }
-
-            setNotifications(notifs);
         };
 
-        loadNotifications();
-        const interval = setInterval(loadNotifications, 2000);
-        return () => clearInterval(interval);
+        fetchNotifications();
+
+        // Realtime subscription
+        const subscription = supabase
+            .channel('public:notifications:petugas')
+            .on('postgres_changes', {
+                event: 'INSERT',
+                schema: 'public',
+                table: 'notifications',
+                filter: `recipient_role=eq.petugas`
+            }, (payload) => {
+                const item = payload.new as any;
+                const newNotif: Notification = {
+                    id: item.id,
+                    type: item.type,
+                    title: item.title,
+                    message: item.message,
+                    time: 'Baru saja',
+                    icon: item.type === 'konfirmasi' ? 'fa-thumbs-up' : 'fa-clock',
+                    color: item.type === 'konfirmasi' ? 'text-primary' : 'text-yellow-600',
+                    isRead: item.is_read,
+                    link: item.link
+                };
+                setNotifications(prev => [newNotif, ...prev]);
+                // Play sound optional
+            })
+            .subscribe();
+
+        return () => {
+            supabase.removeChannel(subscription);
+        };
     }, []);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
-    const handleNotificationClick = (notification: Notification) => {
-        // Mark as read
-        const updatedNotifs = notifications.map(n =>
-            n.id === notification.id ? { ...n, isRead: true } : n
-        );
-        setNotifications(updatedNotifs);
-        localStorage.setItem('petugas_notifications', JSON.stringify(updatedNotifs));
+    const handleNotificationClick = async (notification: Notification) => {
+        // Mark as read in DB
+        if (!notification.isRead) {
+            await supabase
+                .from('notifications')
+                .update({ is_read: true })
+                .eq('id', notification.id);
+
+            // Optimistic update
+            setNotifications(prev => prev.map(n =>
+                n.id === notification.id ? { ...n, isRead: true } : n
+            ));
+        }
 
         // Navigate to link
         if (notification.link) {

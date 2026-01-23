@@ -11,6 +11,7 @@ import ProfilAdmin from '@/components/ProfilAdmin';
 import BantuanContent from '@/components/BantuanContent';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/contexts/AdminContext';
+import { supabase } from '@/lib/supabase';
 
 // Summary stats - akan diambil dari database
 const SUMMARY_STATS = [
@@ -33,6 +34,14 @@ export default function AdminDashboard() {
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const router = useRouter();
+
+    const handleLogout = () => {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('adminData');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        router.push('/');
+    };
 
     // Read tab from URL query parameter
     useEffect(() => {
@@ -76,7 +85,8 @@ export default function AdminDashboard() {
     };
 
     // Chart data - akan diambil dari database
-    const barChartData = [
+    // Chart data handling
+    const defaultChartData = [
         { label: 'JAN', value: 0 },
         { label: 'FEB', value: 0 },
         { label: 'MAR', value: 0 },
@@ -90,6 +100,125 @@ export default function AdminDashboard() {
         { label: 'NOV', value: 0 },
         { label: 'DEC', value: 0 },
     ];
+
+    const [saldoChartData, setSaldoChartData] = useState(defaultChartData);
+    const [pencairanChartData, setPencairanChartData] = useState(defaultChartData);
+
+    // Summary Stats State
+    const [stats, setStats] = useState([
+        { label: 'Jumlah Nasabah', value: '0', icon: '/icon/nasabah.svg' },
+        { label: 'Total Petugas', value: '0', icon: '/icon/Petugas.svg' },
+        { label: 'Total Pemasukan', value: 'Rp. 0', icon: '/icon/miniMoney.svg' },
+        { label: 'Total Pencairan', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
+    ]);
+
+    useEffect(() => {
+        const fetchDashboardData = async () => {
+            const startOfYear = `${selectedYear}-01-01`;
+            const endOfYear = `${selectedYear}-12-31T23:59:59`;
+
+            try {
+                // 1. Fetch Counts (Filtered by Year)
+                const { count: nasabahCount } = await supabase
+                    .from('nasabah')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('created_at', startOfYear)
+                    .lte('created_at', endOfYear);
+
+                const { count: petugasCount } = await supabase
+                    .from('petugas')
+                    .select('*', { count: 'exact', head: true })
+                    .gte('created_at', startOfYear)
+                    .lte('created_at', endOfYear);
+
+                // 2. Fetch Total Pemasukan (Sum of Penyetoran) - Filtered by Year
+                const { data: penyetoranData } = await supabase
+                    .from('penyetoran')
+                    .select('total_harga')
+                    .gte('tanggal', startOfYear)
+                    .lte('tanggal', endOfYear);
+
+                const totalPemasukan = penyetoranData?.reduce((sum, item) => sum + (item.total_harga || 0), 0) || 0;
+
+                // 3. Fetch Total Pencairan (Sum of Completed Withdrawals) - Filtered by Year
+                const { data: pencairanData } = await supabase
+                    .from('pencairan')
+                    .select('jumlah')
+                    .eq('status', 'completed')
+                    .gte('tanggal_selesai', startOfYear)
+                    .lte('tanggal_selesai', endOfYear);
+
+                const totalPencairan = pencairanData?.reduce((sum, item) => sum + (item.jumlah || 0), 0) || 0;
+
+                // Update Stats
+                setStats([
+                    { label: 'Jumlah Nasabah Baru', value: nasabahCount?.toString() || '0', icon: '/icon/nasabah.svg' },
+                    { label: 'Total Petugas Baru', value: petugasCount?.toString() || '0', icon: '/icon/Petugas.svg' },
+                    { label: 'Total Pemasukan', value: `Rp. ${totalPemasukan.toLocaleString('id-ID')}`, icon: '/icon/miniMoney.svg' },
+                    { label: 'Total Pencairan', value: `Rp. ${totalPencairan.toLocaleString('id-ID')}`, icon: '/icon/Pencairan.svg' },
+                ]);
+
+                // 4. Chart Data (Filtered by Year)
+                fetchChartData(startOfYear, endOfYear);
+
+            } catch (error) {
+                console.error('Error fetching dashboard stats:', error);
+            }
+        };
+
+        const fetchChartData = async (start: string, end: string) => {
+            const newSaldoData = JSON.parse(JSON.stringify(defaultChartData));
+            const newPencairanData = JSON.parse(JSON.stringify(defaultChartData));
+
+            try {
+                // 1. Fetch Total Saldo (Penyetoran) - Global
+                const { data: penyetoranData } = await supabase
+                    .from('penyetoran')
+                    .select('total_harga, tanggal')
+                    .gte('tanggal', start)
+                    .lte('tanggal', end);
+
+                if (penyetoranData) {
+                    penyetoranData.forEach(item => {
+                        if (!item.tanggal) return;
+                        const date = new Date(item.tanggal);
+                        newSaldoData[date.getMonth()].value += Number(item.total_harga) || 0;
+                    });
+                }
+
+                // 2. Fetch Total Cair (Pencairan) - Global
+                const { data: pencairanData } = await supabase
+                    .from('pencairan')
+                    .select('jumlah, tanggal_selesai')
+                    .eq('status', 'completed')
+                    .gte('tanggal_selesai', start)
+                    .lte('tanggal_selesai', end);
+
+                if (pencairanData) {
+                    pencairanData.forEach(item => {
+                        if (!item.tanggal_selesai) return;
+                        const date = new Date(item.tanggal_selesai);
+                        newPencairanData[date.getMonth()].value += Number(item.jumlah) || 0;
+                    });
+                }
+
+                // Scale to Millions
+                newSaldoData.forEach((d: any) => d.value = d.value / 1000000);
+                newPencairanData.forEach((d: any) => d.value = d.value / 1000000);
+
+                setSaldoChartData(newSaldoData);
+                setPencairanChartData(newPencairanData);
+
+            } catch (error) {
+                console.error('Error fetching admin chart data:', error);
+            }
+        };
+
+        fetchDashboardData();
+    }, [selectedYear]);
+
+
+
 
     return (
         <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex">
@@ -126,7 +255,7 @@ export default function AdminDashboard() {
 
                             {/* Summary Cards */}
                             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                                {SUMMARY_STATS.map((stat) => (
+                                {stats.map((stat) => (
                                     <div key={stat.label} className="bg-white rounded-[20px] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex items-center gap-4 group hover:shadow-md transition-all cursor-pointer">
                                         <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center group-hover:scale-110 transition-transform">
                                             <Image src={stat.icon} alt={stat.label} width={20} height={20} />
@@ -148,7 +277,7 @@ export default function AdminDashboard() {
                                 <WasteChart
                                     title="Total Saldo Bank Sampah"
                                     unit="jt"
-                                    initialData={barChartData}
+                                    initialData={saldoChartData}
                                     showWasteFilter={false}
                                     showBankSampahFilter={false}
                                     showExportButton={true}
@@ -166,7 +295,7 @@ export default function AdminDashboard() {
                                 <WasteChart
                                     title="Total Saldo Cair"
                                     unit="jt"
-                                    initialData={barChartData}
+                                    initialData={pencairanChartData}
                                     showWasteFilter={false}
                                     showBankSampahFilter={false}
                                     maxY={50}
@@ -200,6 +329,7 @@ export default function AdminDashboard() {
             {showLogoutModal && (
                 <KonfirmasiLogout
                     onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
                 />
             )}
         </div>

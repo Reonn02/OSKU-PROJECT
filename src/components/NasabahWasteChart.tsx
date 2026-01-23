@@ -26,13 +26,26 @@ export default function NasabahWasteChart({
     selectedYear,
     onYearChange
 }: NasabahWasteChartProps) {
-    const [selectedWasteType, setSelectedWasteType] = useState<string>(wasteTypes[0]?.id || '');
+    const [selectedWasteType, setSelectedWasteType] = useState<string>('');
+
+    // Auto-select first waste type when data changes
+    useEffect(() => {
+        if (wasteTypes.length > 0) {
+            // If currently selected is not in the new list, or nothing selected, pick first
+            const exists = wasteTypes.find(w => w.id === selectedWasteType);
+            if (!exists) {
+                setSelectedWasteType(wasteTypes[0].id);
+            }
+        } else {
+            setSelectedWasteType('');
+        }
+    }, [wasteTypes, selectedWasteType]);
 
     // Get current waste type data
     const currentWasteType = wasteTypes.find(w => w.id === selectedWasteType) || wasteTypes[0];
     const displayData = currentWasteType?.data || [];
     const unit = currentWasteType?.unit || 'kg';
-    const maxValue = currentWasteType?.maxY || 125;
+    const maxValue = currentWasteType?.maxY || 10;
 
     // Generate Y-axis steps dynamically based on maxY
     const generateSteps = (max: number) => {
@@ -41,7 +54,7 @@ export default function NasabahWasteChart({
         const steps = [];
         for (let i = stepCount; i >= 0; i--) {
             const value = stepValue * i;
-            steps.push({ label: `${value}${unit}`, value });
+            steps.push({ label: `${value}`, value });
         }
         return steps;
     };
@@ -94,7 +107,7 @@ export default function NasabahWasteChart({
 
                 {/* Scrollable chart area */}
                 <div className="overflow-x-auto scrollbar-hide pl-12 sm:pl-16">
-                    <div className="h-[280px] sm:h-[300px] relative flex items-end pt-4 pb-4 min-w-[500px] sm:min-w-full">
+                    <div className="h-[280px] sm:h-[300px] relative flex items-end pt-12 pb-4 min-w-[500px] sm:min-w-full">
                         {/* Grid Lines */}
                         <div className="absolute inset-0 flex flex-col justify-between py-0 mb-8 pointer-events-none">
                             {steps.map((step, idx) => (
@@ -114,7 +127,7 @@ export default function NasabahWasteChart({
                                     >
                                         {/* Tooltip */}
                                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-lg font-bold">
-                                            {item.value}{unit}
+                                            {item.value}
                                         </div>
                                     </div>
                                     <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold mt-4 sm:mt-6 tracking-tight">{item.label}</span>

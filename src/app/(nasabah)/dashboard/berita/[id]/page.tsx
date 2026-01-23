@@ -3,30 +3,42 @@
 import Link from 'next/link';
 import Image from 'next/image';
 import BackToTop from '@/components/BackToTop';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
 import KonfirmasiLogout from '@/components/konfirmasiLogout';
 import NavbarNasabah from '@/components/NavbarNasabah';
 import { useBerita } from '@/contexts/BeritaContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function DetailBeritaPage() {
     const params = useParams();
+    const router = useRouter();
     const { berita } = useBerita();
+    const { nasabah, signOut } = useAuth();
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [displayName, setDisplayName] = useState<string>('-');
 
     useEffect(() => {
-        try {
-            const userProfileStr = sessionStorage.getItem('userProfile');
-            if (userProfileStr) {
-                const userProfile = JSON.parse(userProfileStr);
-                setDisplayName(userProfile.fullName || '-');
+        if (nasabah?.name) {
+            setDisplayName(nasabah.name);
+        } else {
+            try {
+                const userProfileStr = sessionStorage.getItem('userProfile');
+                if (userProfileStr) {
+                    const userProfile = JSON.parse(userProfileStr);
+                    setDisplayName(userProfile.fullName || '-');
+                }
+            } catch (error) {
+                console.error('Error reading user profile:', error);
+                setDisplayName('-');
             }
-        } catch (error) {
-            console.error('Error reading user profile:', error);
-            setDisplayName('-');
         }
-    }, []);
+    }, [nasabah]);
+
+    const handleLogout = async () => {
+        await signOut();
+        router.push('/login');
+    };
 
     // Find the specific news item by ID
     const newsItem = berita.find(item => item.id === params.id);
@@ -97,7 +109,7 @@ export default function DetailBeritaPage() {
 
 
             {showLogoutModal && (
-                <KonfirmasiLogout onCancel={() => setShowLogoutModal(false)} />
+                <KonfirmasiLogout onCancel={() => setShowLogoutModal(false)} onConfirm={handleLogout} />
             )}
 
             {/* Dark Support Footer */}

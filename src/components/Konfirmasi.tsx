@@ -60,7 +60,7 @@ export default function KonfirmasiPetugas() {
     }));
 
     const historyData = historyList
-        .filter(item => item.status === 'completed' || item.status === 'rejected')
+        .filter(item => item.status === 'completed' || item.status === 'cancelled')
         .map(item => ({
             id: item.id,
             withdrawal_id: item.id_pengajuan || '-',
@@ -481,7 +481,7 @@ export default function KonfirmasiPetugas() {
                                 {historyPage > 1 && (
                                     <button
                                         onClick={() => setHistoryPage(prev => prev - 1)}
-                                        className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center hover:bg-gray-700 transition shadow-md active:scale-90 cursor-pointer"
+                                        className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition shadow-md active:scale-90 cursor-pointer"
                                     >
                                         <i className="fas fa-chevron-left text-[12px]"></i>
                                     </button>
@@ -492,8 +492,8 @@ export default function KonfirmasiPetugas() {
                                         key={i + 1}
                                         onClick={() => setHistoryPage(i + 1)}
                                         className={`w-10 h-10 rounded-lg text-sm font-bold transition-all shadow-sm cursor-pointer ${historyPage === i + 1
-                                            ? 'bg-gray-600 text-white'
-                                            : 'border border-gray-200 text-gray-400 hover:bg-gray-50'
+                                            ? 'bg-primary text-white'
+                                            : 'bg-white border border-gray-200 text-gray-400 hover:bg-gray-50'
                                             }`}
                                     >
                                         {i + 1}
@@ -503,7 +503,7 @@ export default function KonfirmasiPetugas() {
                                 {historyPage < totalHistoryPages && (
                                     <button
                                         onClick={() => setHistoryPage(prev => prev + 1)}
-                                        className="w-10 h-10 rounded-full bg-gray-600 text-white flex items-center justify-center hover:bg-gray-700 transition shadow-md active:scale-90 cursor-pointer"
+                                        className="w-10 h-10 rounded-full bg-primary text-white flex items-center justify-center hover:bg-primary-dark transition shadow-md active:scale-90 cursor-pointer"
                                     >
                                         <i className="fas fa-chevron-right text-[12px]"></i>
                                     </button>

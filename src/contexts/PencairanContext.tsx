@@ -22,6 +22,7 @@ interface PencairanContextType {
     addPencairan: (data: Omit<DbPencairan, 'id'>) => Promise<DbPencairan | null>;
     approvePencairan: (id: string, petugasId: string) => Promise<boolean>;
     rejectPencairan: (id: string, reason: string, petugasId: string) => Promise<boolean>;
+    readyPencairan: (id: string) => Promise<boolean>;
     completePencairan: (id: string) => Promise<boolean>;
     cancelPencairan: (id: string, reason: string) => Promise<boolean>;
     refreshPencairan: () => Promise<void>;
@@ -66,7 +67,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
 
             setPencairanList(mappedPending);
 
-            // Fetch history (approved, rejected, completed)
+            // Fetch history (approved, rejected, completed, cancelled)
             const { data: historyData, error: historyError } = await supabase
                 .from('pencairan')
                 .select(`
@@ -74,7 +75,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                     nasabah:nasabah_id (name, username)
                 `)
                 .eq('bank_sampah_id', bankId)
-                .in('status', ['approved', 'rejected', 'completed'])
+                .in('status', ['approved', 'rejected', 'completed', 'cancelled'])
                 .order('tanggal_pengajuan', { ascending: false });
 
             if (historyError) throw historyError;
@@ -147,18 +148,39 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // Add new pencairan request (from nasabah)
+    // Add new pencairan request (from nasabah) - CHECK ONLY, consume saldo on APPROVAL
     const addPencairan = useCallback(async (data: Omit<DbPencairan, 'id'>): Promise<DbPencairan | null> => {
         try {
-            // Generate sequential ID for id_pengajuan
+            // Check if nasabah exists and has enough balance (Validation Only)
+            const { data: nasabah, error: nasabahError } = await supabase
+                .from('nasabah')
+                .select('saldo')
+                .eq('id', data.nasabah_id)
+                .single();
+
+            if (nasabahError || !nasabah) {
+                throw new Error('Nasabah tidak ditemukan');
+            }
+
+            if ((nasabah.saldo || 0) < data.jumlah) {
+                throw new Error('Saldo tidak mencukupi');
+            }
+
+            // Generate sequential ID for id_pengajuan (format: O + 7 digits, e.g., O0000001)
             const { data: lastRecord } = await supabase
                 .from('pencairan')
                 .select('id_pengajuan')
                 .order('id_pengajuan', { ascending: false })
                 .limit(1);
 
-            const lastId = lastRecord?.[0]?.id_pengajuan ? parseInt(lastRecord[0].id_pengajuan) : 0;
-            const newIdPengajuan = (lastId + 1).toString().padStart(8, '0');
+            let newIdPengajuan = 'O0000001'; // Default first ID
+            if (lastRecord?.[0]?.id_pengajuan) {
+                // Extract numeric part (remove 'O' prefix)
+                const lastIdNumeric = parseInt(lastRecord[0].id_pengajuan.substring(1)) || 0;
+                const nextIdNumeric = lastIdNumeric + 1;
+                // Format: O + 7 digits
+                newIdPengajuan = 'O' + nextIdNumeric.toString().padStart(7, '0');
+            }
 
             const { data: inserted, error: insertError } = await supabase
                 .from('pencairan')
@@ -171,7 +193,22 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 .select()
                 .single();
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                throw insertError;
+            }
+
+
+            // NOTIFICATION: Notify Petugas
+            await supabase.from('notifications').insert({
+                recipient_role: 'petugas',
+                recipient_id: null, // Broadcast to all petugas
+                type: 'persetujuan',
+                title: 'Pengajuan Baru',
+                message: `Nasabah mengajukan pencairan sebesar Rp ${data.jumlah.toLocaleString('id-ID')}`,
+                link: '/petugas/dashboard?tab=persetujuan',
+                reference_id: inserted.id, // Use UUID for reliable reference
+                reference_type: 'pencairan'
+            });
 
             return inserted;
         } catch (err: any) {
@@ -181,21 +218,52 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
         }
     }, []);
 
-    // Approve pencairan (petugas)
+    // Approve pencairan (petugas) - DEDUCT SALDO HERE
     const approvePencairan = useCallback(async (id: string, petugasId: string): Promise<boolean> => {
         try {
-            // First check if record exists in database
-            const { data: existing } = await supabase
+            // First get pencairan details 
+            const { data: pencairan } = await supabase
                 .from('pencairan')
-                .select('id')
+                .select('id, nasabah_id, jumlah, status')
                 .eq('id', id)
                 .single();
 
-            // If record doesn't exist in database, return false to trigger localStorage fallback
-            if (!existing) {
+            if (!pencairan) {
                 return false;
             }
 
+            // Prevent multiple deductions if already approved
+            if (pencairan.status === 'approved') {
+                console.warn('Pencairan already approved.');
+                return true;
+            }
+
+            // Fetch nasabah current saldo
+            const { data: nasabah } = await supabase
+                .from('nasabah')
+                .select('saldo')
+                .eq('id', pencairan.nasabah_id)
+                .single();
+
+            if (!nasabah) {
+                throw new Error('Nasabah not found');
+            }
+
+            // Check sufficiency again (Race condition safety)
+            if ((nasabah.saldo || 0) < pencairan.jumlah) {
+                throw new Error('Saldo nasabah tidak mencukupi saat ini');
+            }
+
+            // Deduct saldo
+            const newSaldo = (nasabah.saldo || 0) - pencairan.jumlah;
+            const { error: saldoError } = await supabase
+                .from('nasabah')
+                .update({ saldo: newSaldo })
+                .eq('id', pencairan.nasabah_id);
+
+            if (saldoError) throw new Error('Gagal memotong saldo nasabah');
+
+            // Update pencairan status to approved
             const { error: updateError } = await supabase
                 .from('pencairan')
                 .update({
@@ -204,13 +272,40 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 })
                 .eq('id', id);
 
-            if (updateError) throw updateError;
+            if (updateError) {
+                // Rollback deduction if update fails
+                await supabase
+                    .from('nasabah')
+                    .update({ saldo: nasabah.saldo })
+                    .eq('id', pencairan.nasabah_id);
+                throw updateError;
+            }
 
             // Refresh lists
             if (currentBankId) {
                 await fetchPencairanByBank(currentBankId);
                 await fetchApprovedByBank(currentBankId);
             }
+
+            // AUTO-RESOLVE: Delete the "New Request" notification for Petugas
+            await supabase.from('notifications')
+                .delete()
+                .eq('reference_id', id)
+                .eq('recipient_role', 'petugas');
+
+            // NOTIFICATION: Notify Nasabah
+            await supabase.from('notifications').insert({
+                recipient_role: 'nasabah',
+                recipient_id: pencairan.nasabah_id,
+                type: 'success',
+                title: 'Pengajuan Disetujui',
+                message: `Pengajuan pencairan Anda sebesar Rp ${pencairan.jumlah.toLocaleString('id-ID')} telah disetujui. Silakan ambil tunai di bank sampah.`,
+                link: '/dashboard?tab=pencairan',
+                reference_id: id,
+                reference_type: 'pencairan',
+                status: 'Disetujui',
+                amount: `Rp ${pencairan.jumlah.toLocaleString('id-ID')}`
+            });
 
             return true;
         } catch (err: any) {
@@ -220,18 +315,22 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
         }
     }, [currentBankId, fetchPencairanByBank, fetchApprovedByBank]);
 
-    // Reject pencairan (petugas)
+    // Reject pencairan (petugas) - NO REFUND (Since not deducted yet)
     const rejectPencairan = useCallback(async (id: string, reason: string, petugasId: string): Promise<boolean> => {
         try {
-            // First check if record exists in database
-            const { data: existing } = await supabase
+            // First check status
+            const { data: pencairan } = await supabase
                 .from('pencairan')
-                .select('id')
+                .select('status')
                 .eq('id', id)
                 .single();
 
-            // If record doesn't exist in database, return false to trigger localStorage fallback
-            if (!existing) {
+            if (!pencairan) return false;
+
+            // If it was somehow approved/deducted, we can't simple reject without refunding. 
+            // But rejectPencairan is intended for Pending items.
+            if (pencairan.status !== 'pending') {
+                console.warn('Cannot reject non-pending pencairan via rejectPencairan');
                 return false;
             }
 
@@ -250,6 +349,29 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             // Refresh lists
             if (currentBankId) {
                 await fetchPencairanByBank(currentBankId);
+            }
+
+            // AUTO-RESOLVE: Delete the "New Request" notification for Petugas
+            await supabase.from('notifications')
+                .delete()
+                .eq('reference_id', id)
+                .eq('recipient_role', 'petugas');
+
+            // NOTIFICATION: Notify Nasabah
+            // Get amount for message
+            const { data: pencairanData } = await supabase.from('pencairan').select('jumlah, nasabah_id').eq('id', id).single();
+            if (pencairanData) {
+                await supabase.from('notifications').insert({
+                    recipient_role: 'nasabah',
+                    recipient_id: pencairanData.nasabah_id,
+                    type: 'error',
+                    title: 'Pengajuan Ditolak',
+                    message: `Pengajuan pencairan Anda sebesar Rp ${pencairanData.jumlah.toLocaleString('id-ID')} ditolak. Alasan: ${reason}`,
+                    link: '/dashboard?tab=pencairan',
+                    reference_id: id,
+                    reference_type: 'pencairan',
+                    status: 'Ditolak'
+                });
             }
 
             return true;
@@ -260,19 +382,12 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
         }
     }, [currentBankId, fetchPencairanByBank]);
 
-    // Complete pencairan (konfirmasi petugas)
+    // Complete pencairan - mark as completed after nasabah picks up cash (konfirmasi petugas)
     const completePencairan = useCallback(async (id: string): Promise<boolean> => {
         try {
-            // Get pencairan details first
-            const { data: pencairan } = await supabase
-                .from('pencairan')
-                .select('nasabah_id, jumlah')
-                .eq('id', id)
-                .single();
+            console.log('Completing pencairan with ID:', id);
 
-            if (!pencairan) throw new Error('Pencairan not found');
-
-            // Update pencairan status
+            // Update pencairan status to completed
             const { error: updateError } = await supabase
                 .from('pencairan')
                 .update({
@@ -281,50 +396,119 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 })
                 .eq('id', id);
 
-            if (updateError) throw updateError;
-
-            // Deduct saldo from nasabah
-            const { data: nasabah } = await supabase
-                .from('nasabah')
-                .select('saldo')
-                .eq('id', pencairan.nasabah_id)
-                .single();
-
-            if (nasabah) {
-                const newSaldo = Math.max(0, (nasabah.saldo || 0) - pencairan.jumlah);
-                await supabase
-                    .from('nasabah')
-                    .update({ saldo: newSaldo })
-                    .eq('id', pencairan.nasabah_id);
+            if (updateError) {
+                console.error('Update error:', updateError);
+                throw updateError;
             }
+
+            console.log('Pencairan completed successfully');
 
             // Refresh lists
             if (currentBankId) {
                 await fetchApprovedByBank(currentBankId);
                 await fetchPencairanByBank(currentBankId);
+            }
+
+            // NOTIFICATION: Notify Nasabah
+            const { data: pencairanData } = await supabase.from('pencairan').select('jumlah, nasabah_id').eq('id', id).single();
+            if (pencairanData) {
+                await supabase.from('notifications').insert({
+                    recipient_role: 'nasabah',
+                    recipient_id: pencairanData.nasabah_id,
+                    type: 'success',
+                    title: 'Pencairan Selesai',
+                    message: `Pencairan tunai sebesar Rp ${pencairanData.jumlah.toLocaleString('id-ID')} telah selesai.`,
+                    link: '/dashboard?tab=pencairan',
+                    status: 'Selesai'
+                });
             }
 
             return true;
         } catch (err: any) {
             console.error('Error completing pencairan:', err);
+            console.error('Error details:', JSON.stringify(err, null, 2));
             setError(err.message || 'Failed to complete pencairan');
             return false;
         }
     }, [currentBankId, fetchApprovedByBank, fetchPencairanByBank]);
 
-    // Cancel pencairan (from konfirmasi page)
+    // Ready pencairan - deprecated, use completePencairan instead
+    const readyPencairan = useCallback(async (id: string): Promise<boolean> => {
+        return await completePencairan(id);
+    }, [completePencairan]);
+
+
+
+    // Cancel pencairan (from konfirmasi page) - REFUND SALDO (Since it was approved/deducted)
     const cancelPencairan = useCallback(async (id: string, reason: string): Promise<boolean> => {
         try {
+            console.log('Cancelling pencairan with ID:', id, 'Reason:', reason);
+
+            // Get pencairan details first
+            const { data: pencairan, error: fetchError } = await supabase
+                .from('pencairan')
+                .select('nasabah_id, jumlah, status')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) {
+                console.error('Fetch pencairan error:', fetchError);
+                throw fetchError;
+            }
+
+            if (!pencairan) throw new Error('Pencairan not found');
+
+            // Prevent double refund if already cancelled
+            if (pencairan.status === 'cancelled' || pencairan.status === 'rejected') {
+                console.warn('Pencairan already cancelled/rejected, skipping refund.');
+                return false;
+            }
+
+            // Refund IS required here because we are cancelling an 'approved' request which has triggered a deduction
+
+            // Refund saldo to nasabah
+            const { data: nasabah, error: nasabahError } = await supabase
+                .from('nasabah')
+                .select('saldo')
+                .eq('id', pencairan.nasabah_id)
+                .single();
+
+            if (nasabahError) {
+                console.error('Fetch nasabah error:', nasabahError);
+                throw nasabahError;
+            }
+
+            if (nasabah) {
+                const newSaldo = (nasabah.saldo || 0) + pencairan.jumlah;
+                console.log('Refunding saldo:', { oldSaldo: nasabah.saldo, refundAmount: pencairan.jumlah, newSaldo });
+
+                const { error: saldoError } = await supabase
+                    .from('nasabah')
+                    .update({ saldo: newSaldo })
+                    .eq('id', pencairan.nasabah_id);
+
+                if (saldoError) {
+                    console.error('Saldo update error:', saldoError);
+                    throw saldoError;
+                }
+            }
+
+            // Update pencairan status to cancelled
             const { error: updateError } = await supabase
                 .from('pencairan')
                 .update({
-                    status: 'rejected',
+                    status: 'cancelled',
                     alasan: reason,
                     tanggal_selesai: new Date().toISOString(),
                 })
                 .eq('id', id);
 
-            if (updateError) throw updateError;
+            if (updateError) {
+                console.error('Update pencairan error:', updateError);
+                throw updateError;
+            }
+
+            console.log('Pencairan cancelled successfully');
 
             // Refresh lists
             if (currentBankId) {
@@ -332,9 +516,23 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 await fetchPencairanByBank(currentBankId);
             }
 
+            // NOTIFICATION: Notify Nasabah
+            await supabase.from('notifications').insert({
+                recipient_role: 'nasabah',
+                recipient_id: pencairan.nasabah_id,
+                type: 'warning',
+                title: 'Pengajuan Dibatalkan',
+                message: `Pengajuan pencairan Anda sebesar Rp ${pencairan.jumlah.toLocaleString('id-ID')} dibatalkan oleh petugas. Alasan: ${reason}. Saldo telah dikembalikan.`,
+                link: '/dashboard?tab=pencairan',
+                reference_id: id,
+                reference_type: 'pencairan',
+                status: 'Dibatalkan'
+            });
+
             return true;
         } catch (err: any) {
             console.error('Error canceling pencairan:', err);
+            console.error('Error details:', JSON.stringify(err, null, 2));
             setError(err.message || 'Failed to cancel pencairan');
             return false;
         }
@@ -377,6 +575,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
         addPencairan,
         approvePencairan,
         rejectPencairan,
+        readyPencairan,
         completePencairan,
         cancelPencairan,
         refreshPencairan,

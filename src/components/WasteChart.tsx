@@ -25,31 +25,10 @@ interface WasteChartProps {
     selectedYear?: number;
     chartFilter?: 'tahun' | 'bulan';
     showExportButton?: boolean; // New prop for export button
+    onWasteTypeChange?: (type: string) => void;
 }
 
-// Historical data - akan diambil dari database
-// Empty for fresh database start
-const HISTORICAL_DATA: { tahun: number; bulan: string; bulan_num: number; saldo: number }[] = [];
 
-const generateHistoricalData = () => {
-    return HISTORICAL_DATA;
-};
-
-
-// Get chart data for specific year
-const getYearData = (year: number): ChartItem[] => {
-    const allData = generateHistoricalData();
-    const monthLabels = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN',
-        'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
-
-    return monthLabels.map((label, idx) => {
-        const monthData = allData.find(d => d.tahun === year && d.bulan_num === idx + 1);
-        return {
-            label,
-            value: monthData ? Math.round(monthData.saldo / 1000000) : 0 // Convert back to juta for chart
-        };
-    });
-};
 
 export default function WasteChart({
     title,
@@ -62,7 +41,8 @@ export default function WasteChart({
     maxY = 60,
     selectedYear = 2026,
     chartFilter = 'tahun',
-    showExportButton = false
+    showExportButton = false,
+    onWasteTypeChange
 }: WasteChartProps) {
     const { banks } = useBankSampah();
 
@@ -100,25 +80,19 @@ export default function WasteChart({
         }
     }, [wasteType, showWasteFilter, banks]);
 
-    // Update data based on selected year for saldo charts
+    // Sync displayData with initialData
     useEffect(() => {
-        if (title.includes('Saldo Bank Sampah') || showExportButton) {
-            // Use generated historical data for saldo charts
-            const yearData = getYearData(selectedYear);
-            setDisplayData(yearData);
-        } else {
-            // Original behavior for other charts
-            const seed = wasteType.length + selectedYear + (chartFilter === 'tahun' ? 1 : 2);
-            const multiplier = 0.5 + (seed % 10) / 10;
+        setDisplayData(initialData);
+    }, [initialData]);
 
-            const newData = initialData.map(item => ({
-                ...item,
-                value: Math.round(item.value * (maxY / 60) * multiplier)
-            }));
-
-            setDisplayData(newData);
+    // Handle waste type change
+    const handleWasteTypeChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+        const newValue = e.target.value;
+        setWasteType(newValue);
+        if (onWasteTypeChange) {
+            onWasteTypeChange(newValue);
         }
-    }, [wasteType, selectedYear, chartFilter, initialData, maxY, title, showExportButton]);
+    };
 
     // Export CSV function - exports current displayData with title
     const handleExportCSV = () => {
@@ -201,10 +175,10 @@ export default function WasteChart({
                         <div className="relative">
                             <select
                                 value={wasteType}
-                                onChange={(e) => setWasteType(e.target.value)}
+                                onChange={handleWasteTypeChange}
                                 className="appearance-none bg-tertiary text-primary text-[9px] sm:text-[10px] font-bold py-2 px-4 sm:px-6 pr-8 sm:pr-10 rounded-full focus:outline-none cursor-pointer"
                             >
-                                <option value="">Jenis Sampah</option>
+                                <option value="">Semua Jenis Sampah</option>
                                 {allWasteTypes.map(type => (
                                     <option key={type} value={type}>{type}</option>
                                 ))}

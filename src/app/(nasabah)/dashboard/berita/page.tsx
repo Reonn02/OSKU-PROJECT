@@ -7,25 +7,38 @@ import { useState, useEffect } from 'react';
 import KonfirmasiLogout from '@/components/konfirmasiLogout';
 import NavbarNasabah from '@/components/NavbarNasabah';
 import { useBerita } from '@/contexts/BeritaContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 
 export default function BeritaPage() {
     const { berita } = useBerita();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [displayName, setDisplayName] = useState<string>('-');
+    const { nasabah, signOut } = useAuth();
+    const router = useRouter();
 
     useEffect(() => {
-        try {
-            const userProfileStr = sessionStorage.getItem('userProfile');
-            if (userProfileStr) {
-                const userProfile = JSON.parse(userProfileStr);
-                setDisplayName(userProfile.fullName || '-');
+        if (nasabah?.name) {
+            setDisplayName(nasabah.name);
+        } else {
+            try {
+                const userProfileStr = sessionStorage.getItem('userProfile');
+                if (userProfileStr) {
+                    const userProfile = JSON.parse(userProfileStr);
+                    setDisplayName(userProfile.fullName || '-');
+                }
+            } catch (error) {
+                console.error('Error reading user profile:', error);
+                setDisplayName('-');
             }
-        } catch (error) {
-            console.error('Error reading user profile:', error);
-            setDisplayName('-');
         }
-    }, []);
+    }, [nasabah]);
+
+    const handleLogout = async () => {
+        await signOut();
+        router.push('/login');
+    };
 
     return (
         <div className="min-h-screen bg-gray-50 font-sans text-gray-900">
@@ -107,7 +120,7 @@ export default function BeritaPage() {
 
             {
                 showLogoutModal && (
-                    <KonfirmasiLogout onCancel={() => setShowLogoutModal(false)} />
+                    <KonfirmasiLogout onCancel={() => setShowLogoutModal(false)} onConfirm={handleLogout} />
                 )
             }
 

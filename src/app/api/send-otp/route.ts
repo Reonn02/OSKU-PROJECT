@@ -7,7 +7,7 @@ import nodemailer from 'nodemailer';
  */
 export async function POST(request: NextRequest) {
     try {
-        const { email, otp } = await request.json();
+        const { email, otp, type } = await request.json();
 
         if (!email || !otp) {
             return NextResponse.json(
@@ -24,6 +24,21 @@ export async function POST(request: NextRequest) {
                 { status: 400 }
             );
         }
+
+        // Determine email content based on type
+        const isForgotPassword = type === 'forgot-password';
+
+        const emailSubject = isForgotPassword
+            ? 'Reset Password OTP - OSKU'
+            : 'Kode Verifikasi OTP - OSKU';
+
+        const emailHeading = isForgotPassword
+            ? 'Reset Password Anda'
+            : 'Verifikasi Email Anda';
+
+        const emailBodyText = isForgotPassword
+            ? 'Kami menerima permintaan untuk mereset password akun OSKU Anda. Gunakan kode OTP berikut untuk melanjutkan proses reset password:'
+            : 'Terima kasih telah mendaftar di OSKU. Gunakan kode OTP berikut untuk memverifikasi email Anda:';
 
         // Check if SMTP credentials are configured
         if (!process.env.SMTP_USER || !process.env.SMTP_PASS) {
@@ -55,18 +70,18 @@ export async function POST(request: NextRequest) {
         // Email options
         const mailOptions = {
             from: {
-                name: 'OSKU - Omah Simpan Kaum Unggul',
+                name: 'OSKU - Olah Sampah Ku',
                 address: process.env.SMTP_USER || 'noreply@osku.id',
             },
             to: email,
-            subject: 'Kode Verifikasi OTP - OSKU',
+            subject: emailSubject,
             html: `
                 <!DOCTYPE html>
                 <html>
                 <head>
                     <meta charset="utf-8">
                     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-                    <title>Kode Verifikasi OTP</title>
+                    <title>${emailSubject}</title>
                     <style>
                         body {
                             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -131,12 +146,12 @@ export async function POST(request: NextRequest) {
                     <div class="container">
                         <div class="header">
                             <h1 class="logo">OSKU</h1>
-                            <p style="color: #666; margin: 5px 0;">Omah Simpan Kaum Unggul</p>
+                            <p style="color: #666; margin: 5px 0;">Olah Sampah Ku</p>
                         </div>
                         
                         <div class="content">
-                            <h2 style="color: #378142;">Verifikasi Email Anda</h2>
-                            <p>Terima kasih telah mendaftar di OSKU. Gunakan kode OTP berikut untuk memverifikasi email Anda:</p>
+                            <h2 style="color: #378142;">${emailHeading}</h2>
+                            <p>${emailBodyText}</p>
                             
                             <div class="otp-box">${otp}</div>
                             
@@ -145,7 +160,7 @@ export async function POST(request: NextRequest) {
                                 <p style="margin: 5px 0 0 0;">Jangan bagikan kode ini kepada siapa pun.</p>
                             </div>
                             
-                            <p>Jika Anda tidak melakukan pendaftaran di OSKU, abaikan email ini.</p>
+                            <p>Jika Anda tidak melakukan permintaan ini, abaikan email ini.</p>
                             
                             <p class="warning">
                                 <strong>Peringatan:</strong> OSKU tidak akan pernah meminta kode OTP Anda melalui telepon atau pesan.
@@ -153,7 +168,7 @@ export async function POST(request: NextRequest) {
                         </div>
                         
                         <div class="footer">
-                            <p>© 2025 OSKU - Omah Simpan Kaum Unggul. All rights reserved.</p>
+                            <p>© 2025 OSKU - Olah Sampah Ku. All rights reserved.</p>
                             <p>Email ini dikirim secara otomatis, mohon tidak membalas.</p>
                         </div>
                     </div>
@@ -161,19 +176,19 @@ export async function POST(request: NextRequest) {
                 </html>
             `,
             text: `
-Verifikasi Email Anda - OSKU
+${emailSubject}
 
-Terima kasih telah mendaftar di OSKU. Gunakan kode OTP berikut untuk memverifikasi email Anda:
+${emailBodyText}
 
 Kode OTP: ${otp}
 
 Kode ini berlaku selama 5 menit. Jangan bagikan kode ini kepada siapa pun.
 
-Jika Anda tidak melakukan pendaftaran di OSKU, abaikan email ini.
+Jika Anda tidak melakukan permintaan ini, abaikan email ini.
 
 PERINGATAN: OSKU tidak akan pernah meminta kode OTP Anda melalui telepon atau pesan.
 
-© 2025 OSKU - Omah Simpan Kaum Unggul
+© 2025 OSKU - Olah Sampah Ku
             `.trim(),
         };
 

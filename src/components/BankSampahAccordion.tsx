@@ -14,6 +14,14 @@ interface BankSampahData {
     jumlahJenis: number;      // Number of different waste types from transactions
     totalPenyetoran: number;   // Total number of transactions
     totalSaldo: number;        // Total money from all transactions
+    openDay?: string;
+    closeDay?: string;
+    openTime?: string;
+    closeTime?: string;
+    kontakLayanan?: string;
+    image?: string;
+    wasteTypes?: WasteType[];
+    transactions?: any[];
 }
 
 interface BankSampahAccordionProps {
@@ -146,22 +154,22 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                                 </p>
                                                 <p className="text-xs text-gray-500 mb-2 truncate">
                                                     <i className="fas fa-calendar-alt mr-1"></i>
-                                                    {(bank as any).openDay || 'Senin'} - {(bank as any).closeDay || 'Jumat'} | {(bank as any).openTime || '08:00'} - {(bank as any).closeTime || '16:30'}
+                                                    {bank.openDay || 'Senin'} - {bank.closeDay || 'Jumat'} | {bank.openTime || '08:00'} - {bank.closeTime || '16:30'}
                                                 </p>
 
                                                 {/* Stats Pills */}
                                                 <div className="flex flex-wrap gap-2">
                                                     <span className="inline-flex items-center gap-1 text-xs bg-tertiary text-primary px-3 py-1 rounded-full font-bold">
                                                         <i className="fas fa-recycle"></i>
-                                                        {bank.jumlahJenis} Jenis
+                                                        {bank.jumlahJenis || 0} Jenis
                                                     </span>
                                                     <span className="inline-flex items-center gap-1 text-xs bg-tertiary text-primary px-3 py-1 rounded-full font-bold">
                                                         <i className="fas fa-box"></i>
-                                                        {bank.totalPenyetoran} Transaksi
+                                                        {bank.totalPenyetoran || 0} Transaksi
                                                     </span>
                                                     <span className="inline-flex items-center gap-1 text-xs bg-yellow-light text-dark-yellow px-3 py-1 rounded-full font-bold">
                                                         <i className="fas fa-coins"></i>
-                                                        {formatCurrency(bank.totalSaldo)}
+                                                        {formatCurrency(bank.totalSaldo || 0)}
                                                     </span>
                                                 </div>
                                             </div>
@@ -199,8 +207,41 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                     className={`transition-all duration-300 ease-in-out ${isExpanded ? 'max-h-[1000px] opacity-100' : 'max-h-0 opacity-0'
                                         }`}
                                 >
-                                    <div className="px-6 pb-6">
+                                    <div className="px-6 pb-6 space-y-6">
+                                        {/* Accepted Waste List Section */}
                                         <div className="pt-4 border-t border-gray-100">
+                                            <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                <i className="fas fa-list-ul text-primary"></i>
+                                                Daftar Sampah Diterima
+                                            </h4>
+
+                                            {(!bank.wasteTypes || bank.wasteTypes.length === 0) ? (
+                                                <div className="bg-gray-50 rounded-xl p-4 text-center">
+                                                    <p className="text-xs text-gray-500">Belum ada daftar sampah yang diterima</p>
+                                                </div>
+                                            ) : (
+                                                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                                                    {bank.wasteTypes.map((waste) => (
+                                                        <div key={waste.id} className="bg-white border border-gray-100 rounded-xl p-3 flex justify-between items-center shadow-sm">
+                                                            <div>
+                                                                <p className="font-bold text-primary text-sm">{waste.nama}</p>
+                                                                <p className="text-xs text-gray-400">per {waste.satuan}</p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p className="font-bold text-gray-700 text-sm">{formatCurrency(waste.hargaPerSatuan)}</p>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        <div className="pt-4 border-t border-gray-100">
+                                            <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
+                                                <i className="fas fa-history text-primary"></i>
+                                                Riwayat Transaksi
+                                            </h4>
+
                                             {/* Transaction Aggregates Table - Dynamic from localStorage */}
                                             <div className="overflow-x-auto">
                                                 <table className="w-full text-sm">
@@ -225,7 +266,7 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                                     </thead>
                                                     <tbody className="divide-y divide-gray-100">
                                                         {(() => {
-                                                            const transactions = (bank as any).transactions || [];
+                                                            const transactions = bank.transactions || [];
                                                             if (transactions.length === 0) {
                                                                 return (
                                                                     <tr>
@@ -245,8 +286,10 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                                                 if (!typeAggregates[t.type]) {
                                                                     typeAggregates[t.type] = { total: 0, unit: t.unit, price: t.price, saldo: 0 };
                                                                 }
-                                                                typeAggregates[t.type].total += t.weight;
-                                                                typeAggregates[t.type].saldo += t.weight * t.price;
+                                                                const weight = Number(t.weight) || 0;
+                                                                const price = Number(t.price) || 0;
+                                                                typeAggregates[t.type].total += weight;
+                                                                typeAggregates[t.type].saldo += weight * price;
                                                             });
 
                                                             return Object.entries(typeAggregates).map(([type, data]) => (
@@ -257,7 +300,7 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                                                             {type}
                                                                         </div>
                                                                     </td>
-                                                                    <td className="px-4 py-3 text-center text-gray-600 font-bold">{data.total}</td>
+                                                                    <td className="px-4 py-3 text-center text-gray-600 font-bold">{data.total || 0}</td>
                                                                     <td className="px-4 py-3 text-center text-gray-600 font-medium">{data.unit}</td>
                                                                     <td className="px-4 py-3 text-right text-gray-600 font-bold">{formatCurrency(data.price)}</td>
                                                                     <td className="px-4 py-3 text-right text-primary font-bold">{formatCurrency(data.saldo)}</td>

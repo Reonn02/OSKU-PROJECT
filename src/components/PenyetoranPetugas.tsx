@@ -7,7 +7,7 @@ import { usePenyetoran } from '@/contexts/PenyetoranContext';
 import ImageViewerModal from './ImageViewerModal';
 import YearPicker from './YearPicker';
 import { showStandaloneToast } from './Toast';
-import { getAllNasabah, getNasabahByName, addSaldoToNasabah, NasabahData } from '@/data/nasabahData';
+import { getAllNasabah, getNasabahByName, getNasabahByBankSampah, addSaldoToNasabah, NasabahData } from '@/data/nasabahData';
 
 export default function PenyetoranPetugas() {
     const { banks, getBankById } = useBankSampah();
@@ -35,6 +35,7 @@ export default function PenyetoranPetugas() {
 
     // Delete confirmation modal state
     const [deleteModal, setDeleteModal] = useState<{ isOpen: boolean; itemId: number | null; itemName: string }>({ isOpen: false, itemId: null, itemName: '' });
+    const [isDeleting, setIsDeleting] = useState(false);
 
     // Form state - refactored
     const [formData, setFormData] = useState({
@@ -67,12 +68,7 @@ export default function PenyetoranPetugas() {
     } | null>(null);
 
     // Available waste types based on selected bank
-    const [availableWasteTypes, setAvailableWasteTypes] = useState<any[]>([
-        { id: '1-1', nama: 'Botol Plastik', satuan: 'kg', hargaPerSatuan: 2000 },
-        { id: '1-2', nama: 'Kardus', satuan: 'kg', hargaPerSatuan: 4000 },
-        { id: '1-3', nama: 'Minyak Jelantah', satuan: 'ltr', hargaPerSatuan: 5000 },
-        { id: '1-4', nama: 'Jerigen', satuan: 'pcs', hargaPerSatuan: 5000 }
-    ]);
+    const [availableWasteTypes, setAvailableWasteTypes] = useState<any[]>([]);
 
     // Nasabah list from localStorage (dynamic data)
     const [nasabahList, setNasabahList] = useState<NasabahData[]>([]);
@@ -84,6 +80,19 @@ export default function PenyetoranPetugas() {
             try {
                 const petugasData = JSON.parse(savedData);
                 setPetugasBankId(petugasData.bankSampahId);
+
+                // Auto-fill petugas name and bank sampah
+                const petugasName = petugasData.name || petugasData.nama || '-';
+                const bankSampahName = petugasData.bankSampahNama || petugasData.bankSampahName || petugasData.bank_sampah_name || '-';
+
+                setFormData(prev => ({
+                    ...prev,
+                    petugasName: petugasName,
+                    bankSampah: bankSampahName
+                }));
+
+                console.log('✅ Auto-filled petugas:', petugasName, 'Bank:', bankSampahName);
+
                 if (petugasData.bankSampahId) {
                     fetchPenyetoranByBank(petugasData.bankSampahId);
                 }
@@ -103,7 +112,12 @@ export default function PenyetoranPetugas() {
             type: item.waste_type_name || '-',
             date: new Date(item.tanggal).toLocaleDateString('id-ID'),
             weight: item.berat,
-            unit: 'Kg',
+            unit: (item.waste_type_satuan ?
+                (item.waste_type_satuan === 'kg' ? 'Kg' :
+                    item.waste_type_satuan === 'ltr' ? 'Liter' :
+                        item.waste_type_satuan === 'pcs' ? 'Pcs' :
+                            item.waste_type_satuan.charAt(0).toUpperCase() + item.waste_type_satuan.slice(1))
+                : 'Kg'), // Default fallback
             price: item.total_harga / (item.berat || 1),
             bankSampah: item.bank_sampah_name || '-',
             buktiPreviews: item.bukti_foto || [],
@@ -114,20 +128,27 @@ export default function PenyetoranPetugas() {
         setHistoryData(mappedData);
     }, [penyetoranList]);
 
-    // Load nasabah data on mount
+    // Load nasabah data filtered by bank sampah
     useEffect(() => {
         const loadData = async () => {
-            const data = await getAllNasabah();
-            setNasabahList(data);
+            if (formData.bankSampah && formData.bankSampah !== '-') {
+                // Fetch only nasabah for this bank
+                const data = await getNasabahByBankSampah(formData.bankSampah);
+                setNasabahList(data);
+            } else {
+                setNasabahList([]);
+            }
         };
         loadData();
-    }, []);
+    }, [formData.bankSampah]);
 
     // Load waste types when bank sampah changes
     useEffect(() => {
         const bank = banks.find(b => b.nama === formData.bankSampah);
         if (bank && bank.wasteTypes) {
             setAvailableWasteTypes(bank.wasteTypes);
+        } else {
+            setAvailableWasteTypes([]);
         }
     }, [formData.bankSampah, banks]);
 
@@ -230,11 +251,12 @@ export default function PenyetoranPetugas() {
 
     // Clear form
     const clearForm = () => {
-        setFormData({
+        // Preserve petugas name and bank sampah
+        setFormData(prev => ({
             namaNasabah: '',
             noWhatsapp: '',
-            petugasName: '-',
-            bankSampah: '-',
+            petugasName: prev.petugasName, // Keep petugas name
+            bankSampah: prev.bankSampah, // Keep bank sampah
             jenisSampah: '',
             satuan: '',
             hargaPerSatuan: 0,
@@ -243,7 +265,7 @@ export default function PenyetoranPetugas() {
             tanggalSetor: new Date().toISOString().split('T')[0],
             buktiFotos: [],
             buktiPreviews: []
-        });
+        }));
         setNasabahSearchQuery(''); // Reset autocomplete search
         setIsEditMode(false);
         setEditingId(null);
@@ -350,18 +372,34 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                 }
             }
         } else {
+            if (!selectedNasabah) {
+                showStandaloneToast('error', 'Nasabah Tidak Ditemukan', 'Mohon pilih nasabah dari daftar yang tersedia.');
+                return;
+            }
+
+            if (!selectedWasteType) {
+                showStandaloneToast('error', 'Jenis Sampah Invalid', 'Mohon pilih jenis sampah yang valid.');
+                return;
+            }
+
+            console.log('🚀 Saving penyetoran:', {
+                nasabah: selectedNasabah.name,
+                wasteType: selectedWasteType.nama,
+                data: formData
+            });
+
             // Create new transaction in database
             const result = await addPenyetoran({
                 id_penyetoran: null,
-                nasabah_id: selectedNasabah?.id || '',
+                nasabah_id: selectedNasabah.id,
                 petugas_id: localStorage.getItem('petugasData') ? JSON.parse(localStorage.getItem('petugasData')!).id : null,
                 bank_sampah_id: petugasBankId || null,
-                waste_type_id: selectedWasteType?.id || null,
+                waste_type_id: selectedWasteType.id,
                 berat: parseFloat(formData.beratSampah),
                 total_harga: formData.totalSaldo,
                 tanggal: new Date(formData.tanggalSetor).toISOString(),
                 catatan: null,
-                bukti_foto: null,
+                bukti_foto: formData.buktiPreviews.length > 0 ? formData.buktiPreviews : null,
             });
 
             if (result) {
@@ -440,19 +478,31 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
     };
 
     // Confirm delete - actually deletes the item from database
+    // Confirm delete - actually deletes the item from database
     const confirmDelete = async () => {
+        if (isDeleting) return; // Prevent double click
+
         if (deleteModal.itemId !== null) {
-            const itemToDelete = historyData.find(item => item.no === deleteModal.itemId);
-            if (itemToDelete?.id) {
-                const success = await deletePenyetoran(itemToDelete.id);
-                if (success) {
-                    showStandaloneToast('success', 'Berhasil Dihapus', 'Data penyetoran berhasil dihapus.');
-                } else {
-                    showStandaloneToast('error', 'Gagal Hapus', 'Terjadi kesalahan saat menghapus data.');
+            setIsDeleting(true);
+            try {
+                const itemToDelete = historyData.find(item => item.no === deleteModal.itemId);
+                if (itemToDelete?.id) {
+                    const success = await deletePenyetoran(itemToDelete.id);
+                    if (success) {
+                        showStandaloneToast('success', 'Berhasil Dihapus', 'Data penyetoran berhasil dihapus.');
+                    } else {
+                        showStandaloneToast('error', 'Gagal Hapus', 'Terjadi kesalahan saat menghapus data.');
+                    }
                 }
+            } catch (error) {
+                showStandaloneToast('error', 'Error', 'Terjadi kesalahan sistem.');
+            } finally {
+                setIsDeleting(false);
+                setDeleteModal({ isOpen: false, itemId: null, itemName: '' });
             }
+        } else {
+            setDeleteModal({ isOpen: false, itemId: null, itemName: '' });
         }
-        setDeleteModal({ isOpen: false, itemId: null, itemName: '' });
     };
 
     // Filter and search logic
@@ -492,28 +542,27 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
     };
 
     // Hitung highlights untuk carousel
-    const wasteHighlights = [
-        {
-            type: 'Botol Plastik',
-            value: historyData.filter(h => h.type === 'Botol Plastik').reduce((sum, h) => sum + h.weight, 0),
-            unit: 'kg'
-        },
-        {
-            type: 'Kardus',
-            value: historyData.filter(h => h.type === 'Kardus').reduce((sum, h) => sum + h.weight, 0),
-            unit: 'kg'
-        },
-        {
-            type: 'Minyak Jelantah',
-            value: historyData.filter(h => h.type === 'Minyak Jelantah').reduce((sum, h) => sum + h.weight, 0),
-            unit: 'ltr'
-        },
-        {
-            type: 'Jerigen',
-            value: historyData.filter(h => h.type === 'Jerigen').reduce((sum, h) => sum + h.weight, 0),
-            unit: 'pcs'
-        },
-    ];
+    // Hitung highlights untuk carousel (Dynamic based on bank waste types)
+    const wasteHighlights = availableWasteTypes.length > 0
+        ? availableWasteTypes.map(wt => {
+            // Normalize unit display to match HargaSampahPetugas
+            const rawUnit = wt.satuan;
+            const displayUnit = rawUnit === 'kg' ? 'Kg' : rawUnit === 'ltr' ? 'Liter' : rawUnit === 'pcs' ? 'Pcs' : 'Satuan';
+
+            const totalWeight = historyData
+                .filter(h => h.type === wt.nama)
+                .reduce((sum, h) => sum + (typeof h.weight === 'number' ? h.weight : parseFloat(h.weight)), 0);
+
+            return {
+                type: wt.nama,
+                value: totalWeight,
+                unit: displayUnit
+            };
+        })
+        : [
+            // Fallback only if no waste types loaded (shouldn't happen typically)
+            { type: 'Belum ada jenis sampah', value: 0, unit: '-' }
+        ];
 
     const totalPemasukan = historyData.reduce((sum, item) => sum + (item.weight * item.price), 0);
 
@@ -692,7 +741,7 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                         </button>
                         <div className="flex items-center gap-2">
                             <button className="w-8 h-8 rounded-lg bg-primary text-white text-xs font-bold flex items-center justify-center">1</button>
-                            <button className="w-8 h-8 rounded-lg border border-gray-200 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 cursor-pointer">2</button>
+                            <button className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 cursor-pointer">2</button>
                         </div>
                         <button className="w-8 h-8 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center shadow-sm active:scale-90 cursor-pointer">
                             <i className="fas fa-chevron-right text-[10px]"></i>
@@ -901,21 +950,11 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                                     style={{ backgroundImage: "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3E%3Cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3E%3C/svg%3E\")", backgroundPosition: 'right 1rem center', backgroundRepeat: 'no-repeat', backgroundSize: '1.5em 1.5em' }}
                                 >
                                     <option value="">Pilih jenis sampah</option>
-                                    {availableWasteTypes.length > 0 ? (
-                                        availableWasteTypes.map((wt) => (
-                                            <option key={wt.id} value={wt.nama}>
-                                                {wt.nama} (Rp {wt.hargaPerSatuan.toLocaleString('id-ID')} / {wt.satuan})
-                                            </option>
-                                        ))
-                                    ) : (
-                                        // Temporary hardcoded fallback
-                                        <>
-                                            <option value="Botol Plastik">Botol Plastik (Rp 2.000 / kg)</option>
-                                            <option value="Kardus">Kardus (Rp 4.000 / kg)</option>
-                                            <option value="Minyak Jelantah">Minyak Jelantah (Rp 5.000 / ltr)</option>
-                                            <option value="Jerigen">Jerigen (Rp 5.000 / pcs)</option>
-                                        </>
-                                    )}
+                                    {availableWasteTypes.map((wt) => (
+                                        <option key={wt.id} value={wt.nama}>
+                                            {wt.nama} (Rp {wt.hargaPerSatuan.toLocaleString('id-ID')} / {wt.satuan})
+                                        </option>
+                                    ))}
                                 </select>
                             </div>
                         </div>
@@ -1160,13 +1199,15 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                         <div className="flex items-center justify-center gap-4">
                             <button
                                 onClick={confirmDelete}
-                                className="px-10 py-3 border-2 border-primary text-primary font-bold rounded-full hover:bg-tertiary transition-all"
+                                disabled={isDeleting}
+                                className="px-10 py-3 border-2 border-primary text-primary font-bold rounded-full hover:bg-tertiary transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                Hapus
+                                {isDeleting ? <i className="fas fa-spinner fa-spin"></i> : 'Hapus'}
                             </button>
                             <button
                                 onClick={() => setDeleteModal({ isOpen: false, itemId: null, itemName: '' })}
-                                className="px-10 py-3 bg-primary text-white font-bold rounded-full hover:bg-primary-dark transition-all"
+                                disabled={isDeleting}
+                                className="px-10 py-3 bg-primary text-white font-bold rounded-full hover:bg-primary-dark transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                             >
                                 Tidak
                             </button>

@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import NavbarNasabah from '@/components/NavbarNasabah';
-import { useBerita } from '@/contexts/BeritaContext';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
+import { useAuth } from '@/contexts/AuthContext';
+import KonfirmasiLogout from '@/components/konfirmasiLogout';
 
 interface Notification {
     id: string;
@@ -16,224 +18,169 @@ interface Notification {
     link?: string;
     status?: 'Disetujui' | 'Ditolak' | 'Menunggu';
     amount?: string;
+    created_at: string;
 }
 
 export default function NotifikasiPage() {
     const router = useRouter();
-    const { berita } = useBerita();
+    const { nasabah, isLoading, signOut } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [loading, setLoading] = useState(true);
     const [showLogoutModal, setShowLogoutModal] = useState(false);
-    const [displayName, setDisplayName] = useState<string>('-');
 
-    // Read user profile
-    useEffect(() => {
-        try {
-            const userProfileStr = sessionStorage.getItem('userProfile');
-            if (userProfileStr) {
-                const userProfile = JSON.parse(userProfileStr);
-                setDisplayName(userProfile.fullName || '-');
-            }
-        } catch (error) {
-            console.error('Error reading user profile:', error);
-            setDisplayName('-');
-        }
-    }, []);
-
-    // Load notifications from localStorage and generate from berita
-    useEffect(() => {
-        const loadNotifications = () => {
-            try {
-                // Load existing notifications
-                const savedNotifs = localStorage.getItem('nasabah_notifications');
-                let notifs: Notification[] = savedNotifs ? JSON.parse(savedNotifs) : [];
-
-                // Generate berita notifications (latest 3)
-                const beritaNotifs: Notification[] = berita.slice(0, 3).map((item) => ({
-                    id: `berita-${item.id}`,
-                    type: 'berita' as const,
-                    title: 'Berita Baru',
-                    message: item.judul,
-                    time: item.tanggal,
-                    isRead: notifs.some(n => n.id === `berita-${item.id}` && n.isRead),
-                    link: `/dashboard/berita/${item.id}`
-                }));
-
-                // Sample pencairan notifications (simulated)
-                const pencairanNotifs: Notification[] = [
-                    {
-                        id: 'pencairan-1',
-                        type: 'pencairan',
-                        title: 'Pencairan Disetujui',
-                        message: 'Pencairan berhasil disetujui',
-                        time: '1 hari lalu',
-                        isRead: notifs.some(n => n.id === 'pencairan-1' && n.isRead),
-                        status: 'Disetujui',
-                        amount: 'Rp 150.000',
-                        link: '/dashboard?tab=pencairan'
-                    },
-                    {
-                        id: 'pencairan-2',
-                        type: 'pencairan',
-                        title: 'Pencairan Ditolak',
-                        message: 'Pencairan ditolak, saldo kurang',
-                        time: '3 hari lalu',
-                        isRead: notifs.some(n => n.id === 'pencairan-2' && n.isRead),
-                        status: 'Ditolak',
-                        amount: 'Rp 200.000',
-                        link: '/dashboard?tab=pencairan'
-                    }
-                ];
-
-                // Combine all notifications
-                const allNotifs = [...beritaNotifs, ...pencairanNotifs];
-                setNotifications(allNotifs);
-            } catch (error) {
-                console.error('Error loading notifications:', error);
-            }
-        };
-
-        loadNotifications();
-    }, [berita]);
-
-    const handleNotificationClick = (notification: Notification) => {
-        // Mark as read
-        const updatedNotifs = notifications.map(n =>
-            n.id === notification.id ? { ...n, isRead: true } : n
-        );
-        setNotifications(updatedNotifs);
-        localStorage.setItem('nasabah_notifications', JSON.stringify(updatedNotifs));
-
-        // Navigate to link
-        if (notification.link) {
-            router.push(notification.link);
-        }
-    };
-
-    const handleLogout = () => {
-        localStorage.removeItem('userLoggedIn');
-        localStorage.removeItem('userName');
+    const handleLogout = async () => {
+        await signOut();
         router.push('/login');
     };
 
+    useEffect(() => {
+        if (!nasabah?.id) return;
+
+        const fetchNotifications = async () => {
+            try {
+                setLoading(true);
+                const { data, error } = await supabase
+                    .from('notifications')
+                    .select('*')
+                    .eq('recipient_id', nasabah.id)
+                    .order('created_at', { ascending: false });
+
+                if (error) throw error;
+
+                const mappedNotifs: Notification[] = (data || []).map((item: any) => ({
+                    id: item.id,
+                    type: item.type === 'berita' ? 'berita' : 'pencairan',
+                    title: item.title,
+                    message: item.message,
+                    time: new Date(item.created_at).toLocaleDateString('id-ID', {
+                        day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+                    }),
+                    isRead: item.is_read,
+                    link: item.link,
+                    status: item.status,
+                    amount: item.amount,
+                    created_at: item.created_at
+                }));
+
+                setNotifications(mappedNotifs);
+            } catch (error) {
+                console.error('Error fetching notifications:', error);
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNotifications();
+    }, [nasabah]);
+
     return (
-        <div className="min-h-screen bg-gray-50 pb-24 md:pb-8">
-            {/* Navbar */}
+        <div className="min-h-screen bg-[#FDFBF7] font-outfit">
             <NavbarNasabah
-                activeTab="dashboard"
-                userName={displayName}
+                activeTab="dashboard" // Default active tab
+                userName={nasabah?.name || "Nasabah"}
                 setShowLogoutModal={setShowLogoutModal}
             />
 
-            {/* Main Content */}
-            <div className="container mx-auto px-4 py-8 max-w-3xl">
-                {/* Page Header */}
-                <div className="mb-6">
-                    <h1 className="text-2xl md:text-3xl font-bold text-primary">Notifikasi</h1>
-                    <p className="text-sm text-primary-light mt-1">Semua notifikasi Anda</p>
-                </div>
+            {showLogoutModal && (
+                <KonfirmasiLogout
+                    onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
+                />
+            )}
 
-                {/* Notification List */}
-                <div className="space-y-3">
-                    {notifications.length === 0 ? (
-                        <div className="bg-white rounded-2xl p-12 text-center shadow-sm">
-                            <div className="flex flex-col items-center">
-                                <i className="fas fa-bell-slash text-5xl text-gray-300 mb-4"></i>
-                                <p className="text-gray-400 font-medium">Tidak ada notifikasi</p>
-                            </div>
+            <main className="container mx-auto px-4 pt-32 pb-24">
+                <div className="max-w-2xl mx-auto">
+                    <div className="bg-white rounded-[32px] p-6 sm:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100">
+                        <div className="flex items-center justify-between mb-8">
+                            <h1 className="text-2xl font-bold text-[#3B8A51]">Semua Notifikasi</h1>
+                            <Link href="/dashboard" className="text-sm font-bold text-gray-400 hover:text-[#3B8A51] transition">
+                                <i className="fas fa-arrow-left mr-2"></i>
+                                Kembali
+                            </Link>
                         </div>
-                    ) : (
-                        notifications.map((notif) => (
-                            <div
-                                key={notif.id}
-                                onClick={() => handleNotificationClick(notif)}
-                                className={`bg-white rounded-2xl p-5 shadow-sm hover:shadow-md transition-all cursor-pointer border ${!notif.isRead ? 'border-primary/20 bg-tertiary/20' : 'border-transparent'}`}
-                            >
-                                <div className="flex gap-4">
-                                    {/* Icon */}
-                                    <div className={`flex-shrink-0 w-12 h-12 rounded-full flex items-center justify-center ${notif.type === 'berita'
-                                        ? 'bg-tertiary text-primary'
-                                        : notif.status === 'Disetujui'
-                                            ? 'bg-tertiary text-primary'
-                                            : 'bg-red-50 text-warning'
-                                        }`}>
-                                        {notif.type === 'berita' ? (
-                                            <img src="/icon/Newspaper.svg" alt="Newspaper" className="w-6 h-6" />
-                                        ) : (
-                                            <i className={`fas ${notif.status === 'Disetujui'
-                                                ? 'fa-check-circle'
-                                                : 'fa-times-circle'
-                                                } text-xl`}></i>
-                                        )}
-                                    </div>
 
-                                    {/* Content */}
-                                    <div className="flex-1 min-w-0">
-                                        <div className="flex items-start justify-between gap-3">
+                        {loading ? (
+                            <div className="space-y-4">
+                                {[1, 2, 3].map((i) => (
+                                    <div key={i} className="animate-pulse flex gap-4 p-4 border-b border-gray-100">
+                                        <div className="w-12 h-12 bg-gray-200 rounded-full"></div>
+                                        <div className="flex-1">
+                                            <div className="h-4 bg-gray-200 rounded w-1/4 mb-2"></div>
+                                            <div className="h-3 bg-gray-200 rounded w-3/4"></div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        ) : notifications.length === 0 ? (
+                            <div className="text-center py-16">
+                                <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-6">
+                                    <i className="fas fa-bell-slash text-3xl text-gray-400"></i>
+                                </div>
+                                <h3 className="text-lg font-bold text-gray-800 mb-2">Tidak ada notifikasi</h3>
+                                <p className="text-gray-500">Anda belum memiliki notifikasi apapun saat ini.</p>
+                            </div>
+                        ) : (
+                            <div className="space-y-2">
+                                {notifications.map((notif) => (
+                                    <div
+                                        key={notif.id}
+                                        className={`group p-4 rounded-2xl transition-all hover:bg-gray-50 border border-transparent hover:border-gray-100 ${!notif.isRead ? 'bg-[#3B8A51]/5 border-[#3B8A51]/10' : ''
+                                            }`}
+                                    >
+                                        <div className="flex gap-4">
+                                            {/* Icon */}
+                                            <div className={`w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${notif.type === 'berita'
+                                                ? 'bg-[#E2F2E7] text-[#3B8A51]'
+                                                : notif.status === 'Disetujui'
+                                                    ? 'bg-[#E2F2E7] text-[#3B8A51]'
+                                                    : 'bg-red-50 text-[#DB524D]'
+                                                }`}>
+                                                {notif.type === 'berita' ? (
+                                                    <i className="far fa-newspaper text-xl"></i>
+                                                ) : (
+                                                    <i className={`fas ${notif.status === 'Disetujui'
+                                                        ? 'fa-check-circle'
+                                                        : 'fa-times-circle'
+                                                        } text-xl`}></i>
+                                                )}
+                                            </div>
+
+                                            {/* Content */}
                                             <div className="flex-1">
-                                                <p className={`text-base font-bold mb-1 ${notif.type === 'berita'
-                                                    ? 'text-primary'
-                                                    : notif.status === 'Disetujui'
-                                                        ? 'text-primary'
-                                                        : 'text-warning'
-                                                    }`}>
-                                                    {notif.title}
-                                                </p>
-                                                <p className="text-sm text-gray-600 mb-2">
+                                                <div className="flex items-start justify-between mb-1">
+                                                    <h3 className={`font-bold ${!notif.isRead ? 'text-[#3B8A51]' : 'text-gray-800'
+                                                        }`}>
+                                                        {notif.title}
+                                                    </h3>
+                                                    <span className="text-xs text-gray-400 whitespace-nowrap ml-4">
+                                                        {notif.time}
+                                                    </span>
+                                                </div>
+                                                <p className="text-sm text-gray-600 leading-relaxed mb-2">
                                                     {notif.message}
                                                 </p>
                                                 {notif.amount && (
-                                                    <p className="text-sm font-bold text-gray-700 mb-2">
+                                                    <div className="inline-block bg-white border border-gray-200 rounded-lg px-3 py-1 text-xs font-bold text-gray-700 shadow-sm">
                                                         {notif.amount}
-                                                    </p>
+                                                    </div>
                                                 )}
-                                                <p className="text-xs text-gray-400">
-                                                    {notif.time}
-                                                </p>
-                                            </div>
 
-                                            {/* Unread Indicator */}
-                                            {!notif.isRead && (
-                                                <div className="flex-shrink-0 mt-1">
-                                                    <div className="w-3 h-3 bg-warning rounded-full"></div>
-                                                </div>
-                                            )}
+                                                {notif.link && (
+                                                    <div className="mt-3">
+                                                        <Link href={notif.link} className="text-xs font-bold text-[#3B8A51] hover:underline flex items-center gap-1">
+                                                            Cek halaman <i className="fas fa-arrow-right"></i>
+                                                        </Link>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
+                                ))}
                             </div>
-                        ))
-                    )}
-                </div>
-            </div>
-
-            {/* Logout Modal */}
-            {showLogoutModal && (
-                <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[200] p-4">
-                    <div className="bg-white rounded-2xl p-6 max-w-sm w-full shadow-2xl">
-                        <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i className="fas fa-sign-out-alt text-warning text-2xl"></i>
-                            </div>
-                            <h3 className="text-xl font-bold text-primary mb-2">Keluar dari Akun?</h3>
-                            <p className="text-gray-600 text-sm">Anda yakin ingin keluar dari akun Anda?</p>
-                        </div>
-                        <div className="flex gap-3">
-                            <button
-                                onClick={() => setShowLogoutModal(false)}
-                                className="flex-1 px-4 py-3 border-2 border-gray-200 text-gray-700 rounded-full font-bold hover:bg-gray-50 transition"
-                            >
-                                Batal
-                            </button>
-                            <button
-                                onClick={handleLogout}
-                                className="flex-1 px-4 py-3 bg-warning text-white rounded-full font-bold hover:bg-red-600 transition shadow-md"
-                            >
-                                Keluar
-                            </button>
-                        </div>
+                        )}
                     </div>
                 </div>
-            )}
+            </main>
         </div>
     );
 }

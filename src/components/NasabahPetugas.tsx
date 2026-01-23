@@ -2,21 +2,88 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { getAllNasabah, formatSaldo, NasabahData } from '@/data/nasabahData';
+import { supabase } from '@/lib/supabase';
+import { formatSaldo, NasabahData } from '@/data/nasabahData';
 import { showStandaloneToast } from './Toast';
+
+interface PetugasData {
+    id: string;
+    nama: string;
+    email: string;
+    noHp: string | null;
+    bankSampahId: string | null;
+    bankSampahNama: string | null;
+    avatar: string | null;
+}
 
 export default function NasabahPetugas() {
     const [searchQuery, setSearchQuery] = useState('');
     const [nasabahList, setNasabahList] = useState<NasabahData[]>([]);
+    const [petugasBankId, setPetugasBankId] = useState<string | null>(null);
+    const [petugasBankName, setPetugasBankName] = useState<string>('');
 
-    // Load nasabah data on mount
+    // Load petugas's bank ID from localStorage
+    useEffect(() => {
+        const savedData = localStorage.getItem('petugasData');
+        if (savedData) {
+            try {
+                const petugasData = JSON.parse(savedData) as PetugasData;
+                setPetugasBankId(petugasData.bankSampahId);
+                setPetugasBankName(petugasData.bankSampahNama || '');
+            } catch (error) {
+                console.error('Error loading petugas data:', error);
+            }
+        }
+    }, []);
+
+    // Load nasabah data filtered by bank sampah (Using Name based on DB check)
     useEffect(() => {
         const loadData = async () => {
-            const data = await getAllNasabah();
-            setNasabahList(data);
+            if (!petugasBankName) return;
+
+            try {
+                // Fetch nasabah from database filtered by bank_sampah (NAME)
+                // Using ilike for case-insensitive matching
+                const { data, error } = await supabase
+                    .from('nasabah')
+                    .select('*')
+                    .ilike('bank_sampah', petugasBankName)
+                    .order('name');
+
+                if (error) {
+                    console.error('Error fetching nasabah:', error);
+                    return;
+                }
+
+                // Convert to NasabahData format
+                const nasabahData: NasabahData[] = (data || []).map(db => ({
+                    id: db.id,
+                    authUserId: db.auth_user_id || undefined,
+                    username: db.username,
+                    name: db.name,
+                    email: db.email,
+                    phone: db.phone || '',
+                    nik: db.nik || undefined,
+                    saldo: db.saldo,
+                    bankSampah: db.bank_sampah || '',
+                    address: db.address || undefined,
+                    rt: db.rt || undefined,
+                    rw: db.rw || undefined,
+                    kelurahan: db.kelurahan || undefined,
+                    kecamatan: db.kecamatan || undefined,
+                    kota: db.kota || undefined,
+                    provinsi: db.provinsi || undefined,
+                    kodepos: db.kodepos || undefined,
+                    createdAt: db.created_at
+                }));
+
+                setNasabahList(nasabahData);
+            } catch (error) {
+                console.error('Failed to fetch nasabah:', error);
+            }
         };
         loadData();
-    }, []);
+    }, [petugasBankName]); // Depend on name now
 
     const filteredNasabah = nasabahList.filter(n =>
         n.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -33,7 +100,7 @@ export default function NasabahPetugas() {
 
         const headers = ['No', 'ID Nasabah', 'Nama Nasabah', 'Email', 'Nomor HP', 'Saldo'];
         const csvRows = [
-            'Daftar Nasabah - Bank Sampah',
+            `Daftar Nasabah - ${petugasBankName || 'Bank Sampah'}`,
             `Diekspor pada: ${new Date().toLocaleDateString('id-ID')}`,
             '',
             headers.join(','),
@@ -118,7 +185,7 @@ export default function NasabahPetugas() {
             {filteredNasabah.length > 10 && (
                 <div className="flex justify-center items-center gap-2 mt-4">
                     <button className="w-8 h-8 rounded-lg bg-primary text-white text-xs font-bold flex items-center justify-center cursor-pointer">1</button>
-                    <button className="w-8 h-8 rounded-lg border border-gray-200 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 cursor-pointer">2</button>
+                    <button className="w-8 h-8 rounded-lg bg-white border border-gray-200 text-gray-400 text-xs font-bold flex items-center justify-center hover:bg-gray-50 cursor-pointer">2</button>
                     <button className="w-8 h-8 rounded-full bg-primary text-white text-xs font-bold flex items-center justify-center hover:bg-primary-dark transition-colors shadow-sm active:scale-90 cursor-pointer">
                         <i className="fas fa-chevron-right text-[10px]"></i>
                     </button>

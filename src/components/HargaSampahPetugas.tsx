@@ -45,7 +45,8 @@ export default function HargaSampahPetugas() {
         return (selectedBank?.wasteTypes || []).map(wt => ({
             id: wt.id,
             jenis: wt.nama,
-            per: wt.satuan === 'kg' ? 'Kilogram' : wt.satuan === 'ltr' ? 'Liter' : 'Satuan',
+            rawSatuan: wt.satuan,
+            per: wt.satuan.charAt(0).toUpperCase() + wt.satuan.slice(1), // Capitalize first letter
             harga: wt.hargaPerSatuan
         }));
     }, [selectedBank]);
@@ -92,7 +93,13 @@ export default function HargaSampahPetugas() {
     const handleEdit = (item: any) => {
         setSelectedItem(item);
         setEditJenis(item.jenis);
-        setEditPer(item.per);
+
+        // Map display text back to value for select
+        const unitValue = item.per === 'Kg' ? 'kg' :
+            item.per === 'Liter' ? 'ltr' :
+                item.per === 'Pcs' ? 'pcs' : 'pcs'; // default
+
+        setEditPer(unitValue);
         setEditHarga(item.harga.toString());
         setShowEditModal(true);
     };
@@ -101,15 +108,10 @@ export default function HargaSampahPetugas() {
         if (!editJenis.trim() || !editPer.trim() || !editHarga.trim()) return;
         if (!selectedBank || !selectedItem) return;
 
-        // Convert per to satuan format
-        const satuan: 'kg' | 'ltr' | 'pcs' =
-            editPer.toLowerCase().includes('kilogram') || editPer.toLowerCase() === 'kg' ? 'kg' :
-                editPer.toLowerCase().includes('liter') || editPer.toLowerCase() === 'ltr' ? 'ltr' : 'pcs';
-
         updateWasteType(selectedBank.id, selectedItem.id, {
             nama: editJenis,
-            satuan: satuan,
-            hargaPerSatuan: parseInt(editHarga)
+            satuan: editPer.trim(),
+            hargaPerSatuan: parseInt(editHarga.replace(/\D/g, ''))
         });
 
         showStandaloneToast('success', 'Berhasil!', `Jenis sampah "${editJenis}" berhasil diupdate`);
@@ -131,14 +133,9 @@ export default function HargaSampahPetugas() {
             return;
         }
 
-        // Convert per to satuan format
-        const satuan: 'kg' | 'ltr' | 'pcs' =
-            perInput.toLowerCase().includes('kilogram') || perInput.toLowerCase() === 'kg' ? 'kg' :
-                perInput.toLowerCase().includes('liter') || perInput.toLowerCase() === 'ltr' ? 'ltr' : 'pcs';
-
         const newWasteType: Omit<WasteType, 'id'> = {
             nama: jenisInput,
-            satuan: satuan,
+            satuan: perInput.trim(),
             hargaPerSatuan: parseInt(hargaInput.replace(/\D/g, ''))
         };
 
@@ -364,9 +361,9 @@ export default function HargaSampahPetugas() {
                                 <div className="w-16 h-16 bg-warning-light rounded-full flex items-center justify-center mx-auto mb-4">
                                     <i className="fas fa-trash text-warning text-2xl"></i>
                                 </div>
-                                <h3 className="text-xl font-bold text-primary mb-2">Hapus Jenis Sampah?</h3>
+                                <h3 className="text-xl font-bold text-warning mb-2">Hapus Jenis Sampah?</h3>
                                 <p className="text-gray-500 text-sm mb-6">
-                                    Apakah Anda yakin ingin menghapus <span className="font-bold text-primary">{selectedItem?.jenis}</span> dari daftar harga?
+                                    Apakah Anda yakin ingin menghapus <span className="font-bold text-warning">{selectedItem?.jenis}</span> dari daftar harga?
                                 </p>
                                 <div className="flex gap-3">
                                     <button
@@ -415,11 +412,12 @@ export default function HargaSampahPetugas() {
                                         />
                                     </div>
                                     <div>
-                                        <label className="block text-sm font-bold text-primary mb-2">Per</label>
+                                        <label className="block text-sm font-bold text-primary mb-2">Per (Satuan)</label>
                                         <input
                                             type="text"
                                             value={editPer}
                                             onChange={(e) => setEditPer(e.target.value)}
+                                            placeholder="Contoh: Pcs, Butir, Meter"
                                             className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
                                         />
                                     </div>

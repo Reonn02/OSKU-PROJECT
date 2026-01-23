@@ -148,7 +148,7 @@ CREATE TABLE IF NOT EXISTS pencairan (
     petugas_id TEXT REFERENCES petugas(id) ON DELETE SET NULL,
     bank_sampah_id TEXT REFERENCES bank_sampah(id) ON DELETE SET NULL,
     jumlah INTEGER NOT NULL,
-    status TEXT CHECK (status IN ('pending', 'approved', 'rejected', 'completed')) DEFAULT 'pending',
+    status TEXT CHECK (status IN ('pending', 'approved', 'rejected', 'completed', 'cancelled')) DEFAULT 'pending',
     alasan TEXT,
     tanggal_pengajuan TIMESTAMPTZ DEFAULT NOW(),
     tanggal_selesai TIMESTAMPTZ,

@@ -7,6 +7,7 @@ import { supabase, DbPenyetoran } from '@/lib/supabase';
 interface PenyetoranWithDetails extends DbPenyetoran {
     nasabah_name?: string;
     waste_type_name?: string;
+    waste_type_satuan?: string;
     bank_sampah_name?: string;
 }
 
@@ -44,7 +45,7 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
                 .select(`
                     *,
                     nasabah:nasabah_id (name),
-                    waste_type:waste_type_id (nama),
+                    waste_type:waste_type_id (nama, satuan),
                     bank_sampah:bank_sampah_id (nama)
                 `)
                 .eq('bank_sampah_id', bankId)
@@ -56,6 +57,7 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
                 ...item,
                 nasabah_name: item.nasabah?.name || '-',
                 waste_type_name: item.waste_type?.nama || '-',
+                waste_type_satuan: item.waste_type?.satuan || 'kg',
                 bank_sampah_name: item.bank_sampah?.nama || '-',
             }));
 
@@ -107,6 +109,8 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
             const lastId = lastRecord?.[0]?.id_penyetoran ? parseInt(lastRecord[0].id_penyetoran) : 0;
             const newIdPenyetoran = (lastId + 1).toString().padStart(8, '0');
 
+            console.log('📝 Adding penyetoran with data:', data);
+
             const { data: inserted, error: insertError } = await supabase
                 .from('penyetoran')
                 .insert({
@@ -116,7 +120,10 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
                 .select()
                 .single();
 
-            if (insertError) throw insertError;
+            if (insertError) {
+                console.error('❌ Supabase insert error:', insertError);
+                throw insertError;
+            }
 
             // Update nasabah saldo
             if (data.nasabah_id && data.total_harga) {
@@ -141,7 +148,8 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
 
             return inserted;
         } catch (err: any) {
-            console.error('Error adding penyetoran:', err);
+            console.error('Error adding penyetoran (Full):', err);
+            console.error('Error details:', JSON.stringify(err, null, 2));
             setError(err.message || 'Failed to add penyetoran');
             return null;
         }
@@ -173,12 +181,39 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
     // Delete penyetoran
     const deletePenyetoran = useCallback(async (id: string): Promise<boolean> => {
         try {
+            // First, fetch the penyetoran data to get nasabah_id and total_harga
+            const { data: penyetoranData, error: fetchError } = await supabase
+                .from('penyetoran')
+                .select('nasabah_id, total_harga')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Delete the penyetoran
             const { error: deleteError } = await supabase
                 .from('penyetoran')
                 .delete()
                 .eq('id', id);
 
             if (deleteError) throw deleteError;
+
+            // Update nasabah saldo (subtract the deleted amount)
+            if (penyetoranData?.nasabah_id && penyetoranData?.total_harga) {
+                const { data: nasabah } = await supabase
+                    .from('nasabah')
+                    .select('saldo')
+                    .eq('id', penyetoranData.nasabah_id)
+                    .single();
+
+                if (nasabah) {
+                    const newSaldo = Math.max(0, (nasabah.saldo || 0) - penyetoranData.total_harga);
+                    await supabase
+                        .from('nasabah')
+                        .update({ saldo: newSaldo })
+                        .eq('id', penyetoranData.nasabah_id);
+                }
+            }
 
             // Refresh list
             if (currentBankId) {

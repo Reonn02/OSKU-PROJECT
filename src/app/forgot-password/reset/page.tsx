@@ -21,6 +21,7 @@ export default function ResetPassword() {
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
+    const [userType, setUserType] = useState<'nasabah' | 'petugas' | null>(null);
     const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
     const [touched, setTouched] = useState<{ password?: boolean; confirmPassword?: boolean }>({});
 
@@ -82,18 +83,54 @@ export default function ResetPassword() {
         setIsSubmitting(true);
 
         try {
-            // Simulate API call to reset password
-            await new Promise(resolve => setTimeout(resolve, 1500));
+            // Get email from session
+            const email = sessionStorage.getItem('otpEmail');
+
+            if (!email) {
+                setErrors({ password: 'Session expired. Silakan ulangi proses reset password.' });
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Update password via API
+            const response = await fetch('/api/reset-password', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    newPassword: password,
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                setErrors({ password: data.error || 'Gagal mereset password. Silakan coba lagi.' });
+                setIsSubmitting(false);
+                return;
+            }
 
             // Success
             setSuccess(true);
+            const type = data.userType || 'nasabah';
+            setUserType(type);
+
             clearOTP();
             sessionStorage.removeItem('otpVerified');
             sessionStorage.removeItem('otpFlow');
+            sessionStorage.removeItem('otpEmail');
+            sessionStorage.removeItem('otpCode');
+            sessionStorage.removeItem('otpExpiry');
 
             // Redirect to login after 3 seconds
             setTimeout(() => {
-                router.push('/login');
+                if (type === 'petugas') {
+                    router.push('/petugas/login');
+                } else {
+                    router.push('/login');
+                }
             }, 3000);
         } catch (err) {
             console.error('Error resetting password:', err);
@@ -117,10 +154,10 @@ export default function ResetPassword() {
                         Password anda telah berhasil diperbarui. Anda akan segera dialihkan ke halaman login.
                     </p>
                     <Link
-                        href="/login"
+                        href={userType === 'petugas' ? "/petugas/login" : "/login"}
                         className="inline-block bg-primary hover:bg-primary-dark text-white font-medium px-8 py-3 rounded-full transition shadow-md"
                     >
-                        Ke Halaman Login
+                        {userType === 'petugas' ? "Ke Login Petugas" : "Ke Halaman Login"}
                     </Link>
                 </div>
             </div>

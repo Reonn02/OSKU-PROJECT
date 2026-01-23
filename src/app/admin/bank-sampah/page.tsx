@@ -10,23 +10,35 @@ import KonfirmasiLogout from '@/components/konfirmasiLogout';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { useRouter } from 'next/navigation';
 
+import { supabase } from '@/lib/supabase';
+
 // Utility function to aggregate transaction data by bank
 function aggregateTransactionsByBank(transactions: any[], banks: any[]) {
     return banks.map(bank => {
-        // Filter transactions for this bank
-        const bankTransactions = transactions.filter(t => t.bankSampah === bank.nama);
+        // Filter transactions for this bank using ID comparison (more reliable)
+        const bankTransactions = transactions.filter(t =>
+            t.bank_sampah_id === bank.id ||
+            // Fallback for old data or if joined
+            t.bank_sampah?.id === bank.id
+        );
 
-        // Get unique waste types
-        const uniqueTypes = [...new Set(bankTransactions.map(t => t.type))];
-
-        // Calculate total saldo
-        const totalSaldo = bankTransactions.reduce((sum, t) => sum + (t.weight * t.price), 0);
+        // Calculate total saldo from DB field total_harga
+        const totalSaldo = bankTransactions.reduce((sum, t) => sum + (t.total_harga || 0), 0);
 
         return {
             id: bank.id,
             nama: bank.nama,
             alamat: bank.alamat,
-            jumlahJenis: uniqueTypes.length,
+            // Pass through operational details
+            openDay: bank.openDay,
+            closeDay: bank.closeDay,
+            openTime: bank.openTime,
+            closeTime: bank.closeTime,
+            kontakLayanan: bank.kontakLayanan,
+            image: bank.image,
+            // Use actual waste types count from bank definition
+            wasteTypes: bank.wasteTypes || [],
+            jumlahJenis: (bank.wasteTypes || []).length,
             totalPenyetoran: bankTransactions.length,
             totalSaldo: totalSaldo,
             transactions: bankTransactions // Store for detail table
@@ -46,26 +58,31 @@ export default function AdminBankSampahPage() {
     const { banks } = useBankSampah();
     const router = useRouter();
 
-    // Load and aggregate transaction data
+    const handleLogout = () => {
+        localStorage.removeItem('adminLoggedIn');
+        localStorage.removeItem('adminData');
+        localStorage.removeItem('isLoggedIn');
+        localStorage.removeItem('userRole');
+        router.push('/');
+    };
+
+    // Load and aggregate transaction data from Supabase
     useEffect(() => {
-        const loadTransactionData = () => {
+        const loadTransactionData = async () => {
             try {
-                const storedData = localStorage.getItem('penyetoran_data');
-                if (storedData) {
-                    const transactions = JSON.parse(storedData);
+                // Fetch real data from database
+                const { data: transactions, error } = await supabase
+                    .from('penyetoran')
+                    .select('*');
+
+                if (error) {
+                    console.error('Error fetching transactions:', error);
+                    return;
+                }
+
+                if (transactions && banks.length > 0) {
                     const aggregated = aggregateTransactionsByBank(transactions, banks);
                     setAggregatedData(aggregated);
-                } else {
-                    // If no data, initialize with empty values
-                    setAggregatedData(banks.map(bank => ({
-                        id: bank.id,
-                        nama: bank.nama,
-                        alamat: bank.alamat,
-                        jumlahJenis: 0,
-                        totalPenyetoran: 0,
-                        totalSaldo: 0,
-                        transactions: []
-                    })));
                 }
             } catch (error) {
                 console.error('Error loading transaction data:', error);
@@ -188,6 +205,7 @@ export default function AdminBankSampahPage() {
             {showLogoutModal && (
                 <KonfirmasiLogout
                     onCancel={() => setShowLogoutModal(false)}
+                    onConfirm={handleLogout}
                 />
             )}
 

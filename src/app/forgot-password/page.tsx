@@ -50,25 +50,38 @@ export default function ForgotPassword() {
         setIsSubmitting(true);
 
         try {
-            // OTP BYPASS FOR TESTING
-            /*
+            // Generate OTP
             const otp = generateOTP();
-            const emailSent = await sendOTPEmail(email, otp);
 
-            if (!emailSent) {
-                setError('Gagal mengirim OTP. Silakan coba lagi.');
+            // Send OTP via API endpoint
+            const response = await fetch('/api/send-otp', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    email: email,
+                    otp: otp,
+                    type: 'forgot-password'
+                }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok || !data.success) {
+                setError(data.error || 'Gagal mengirim OTP. Silakan coba lagi.');
                 setIsSubmitting(false);
                 return;
             }
-            */
 
-            // Store the context and pre-verify for reset page
+            // Store OTP and email for verification
             sessionStorage.setItem('otpFlow', 'forgot-password');
             sessionStorage.setItem('otpEmail', email);
-            sessionStorage.setItem('otpVerified', 'true');
+            sessionStorage.setItem('otpCode', otp);
+            sessionStorage.setItem('otpExpiry', (Date.now() + 5 * 60 * 1000).toString()); // 5 minutes
 
-            // Redirect directly to reset password page (Skipping OTP)
-            router.push('/forgot-password/reset');
+            // Redirect to OTP verification page
+            router.push('/forgot-password/verify');
         } catch (err) {
             console.error('Error sending OTP:', err);
             setError('Gagal mengirim OTP. Silakan coba lagi.');

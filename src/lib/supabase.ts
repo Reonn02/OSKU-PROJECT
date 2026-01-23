@@ -122,7 +122,7 @@ export interface DbPencairan {
     petugas_id: string | null;
     bank_sampah_id: string | null;
     jumlah: number;
-    status: 'pending' | 'approved' | 'rejected' | 'completed';
+    status: 'pending' | 'approved' | 'rejected' | 'completed' | 'cancelled';
     alasan: string | null;
     tanggal_pengajuan: string;
     tanggal_selesai: string | null;
