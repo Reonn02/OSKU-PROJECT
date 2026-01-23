@@ -31,7 +31,7 @@ export default function AddWasteTypeModal({
         if (editingWasteType) {
             setFormData({
                 nama: editingWasteType.nama,
-                satuan: editingWasteType.satuan,
+                satuan: editingWasteType.satuan as 'kg' | 'ltr' | 'pcs',
                 hargaPerSatuan: editingWasteType.hargaPerSatuan
             });
         }
