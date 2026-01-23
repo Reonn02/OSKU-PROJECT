@@ -1,15 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
+const getSupabaseAdmin = () => {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
+    const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
 
-const supabaseAdmin = createClient(supabaseUrl, supabaseServiceKey, {
-    auth: {
-        autoRefreshToken: false,
-        persistSession: false
-    }
-});
+    return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+};
 
 export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
@@ -22,7 +24,7 @@ export async function GET(request: NextRequest) {
     try {
         // Use listUsers but handling pagination or just hoping for best for now,
         // actually let's try to loop a few pages if needed, or just list 100.
-        const { data: { users }, error } = await supabaseAdmin.auth.admin.listUsers({
+        const { data: { users }, error } = await getSupabaseAdmin().auth.admin.listUsers({
             perPage: 1000
         });
 
@@ -30,7 +32,7 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: error.message }, { status: 500 });
         }
 
-        const user = users.find(u => u.email?.toLowerCase() === email.toLowerCase());
+        const user = users.find((u: any) => u.email?.toLowerCase() === email.toLowerCase());
 
         if (!user) {
             return NextResponse.json({ message: 'User not found' }, { status: 404 });
