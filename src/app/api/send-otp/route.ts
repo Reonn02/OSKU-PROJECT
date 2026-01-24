@@ -211,7 +211,7 @@ PERINGATAN: OSKU tidak akan pernah meminta kode OTP Anda melalui telepon atau pe
             {
                 success: false,
                 message: 'Gagal mengirim OTP. Silakan coba lagi.',
-                error: process.env.NODE_ENV === 'development' ? String(error) : undefined
+                error: String(error) // TEMPORARY: Always show error for debugging
             },
             { status: 500 }
         );
