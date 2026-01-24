@@ -5,6 +5,7 @@ import Image from 'next/image';
 import { getAllNasabah, formatSaldo, deleteNasabah, NasabahData } from '@/data/nasabahData';
 import { showStandaloneToast } from './Toast';
 import { useBankSampah } from '@/contexts/BankSampahContext';
+import DeleteConfirmModal from './DeleteConfirmModal';
 
 export default function NasabahAdmin() {
     const { banks } = useBankSampah();
@@ -12,6 +13,25 @@ export default function NasabahAdmin() {
     const [selectedNasabah, setSelectedNasabah] = useState<NasabahData | null>(null);
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedBank, setSelectedBank] = useState('');
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [nasabahToDelete, setNasabahToDelete] = useState<NasabahData | null>(null);
+
+    const handleDelete = async () => {
+        if (!nasabahToDelete) return;
+
+        try {
+            const success = await deleteNasabah(nasabahToDelete.id);
+            if (success) {
+                showStandaloneToast('success', 'Nasabah Dihapus', `Nasabah ${nasabahToDelete.name} berhasil dihapus`);
+                refreshData();
+            } else {
+                showStandaloneToast('error', 'Gagal Menghapus', 'Gagal menghapus nasabah');
+            }
+        } catch (error) {
+            console.error('Delete error:', error);
+            showStandaloneToast('error', 'Error', 'Terjadi kesalahan saat menghapus nasabah');
+        }
+    };
 
     // Load nasabah data on mount
     useEffect(() => {
@@ -264,7 +284,13 @@ export default function NasabahAdmin() {
                                             >
                                                 Edit
                                             </button>
-                                            <button className="bg-warning hover:bg-red-700 text-white px-5 py-2 rounded-xl text-[10px] font-bold shadow-md active:scale-95 transition-all cursor-pointer">
+                                            <button
+                                                onClick={() => {
+                                                    console.log('Delete button clicked for:', nasabah.name); // Debug log
+                                                    setNasabahToDelete(nasabah);
+                                                    setShowDeleteModal(true);
+                                                }}
+                                                className="bg-warning hover:bg-red-700 text-white px-5 py-2 rounded-xl text-[10px] font-bold shadow-md active:scale-95 transition-all cursor-pointer">
                                                 Hapus
                                             </button>
                                         </div>
@@ -298,6 +324,13 @@ export default function NasabahAdmin() {
                     </button>
                 </div>
             )}
+
+            <DeleteConfirmModal
+                isOpen={showDeleteModal}
+                onClose={() => setShowDeleteModal(false)}
+                onConfirm={handleDelete}
+                bankName={nasabahToDelete?.name || ''}
+            />
         </div>
     );
 }
