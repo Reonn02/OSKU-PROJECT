@@ -63,7 +63,7 @@ export async function POST(request: NextRequest) {
             secure: process.env.SMTP_SECURE === 'true', // true for 465, false for other ports
             auth: {
                 user: process.env.SMTP_USER, // Your email address
-                pass: process.env.SMTP_PASS, // Your email password or app password
+                pass: process.env.SMTP_PASS?.replace(/\s+/g, ''), // Remove spaces from app password
             },
         });
 
