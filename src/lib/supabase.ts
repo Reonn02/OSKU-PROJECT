@@ -38,15 +38,15 @@ const getSupabase = () => {
 // The error 'supabaseUrl is required' comes from createClient.
 
 // FIX: Check vars before creating.
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || ''
-const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-// Note: If empty string, createClient might still throw "supabaseUrl is required" or invalid URL error.
-// Let's test if we can pass a placeholder during build.
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.trim() || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || '';
 
-// Better fix:
-export const supabase = (supabaseUrl && supabaseAnonKey)
+// Valid URL check
+const isValidUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
+
+export const supabase = (isValidUrl(supabaseUrl) && supabaseAnonKey)
     ? createClient(supabaseUrl, supabaseAnonKey)
-    : createClient('https://placeholder.supabase.co', 'placeholder')
+    : createClient('https://placeholder.supabase.co', 'placeholder');
 // We use a placeholder to allow build to pass. 
 // This assumes the client isn't actively USED during build static generation (fetching data).
 // If it is used, it will fail connection, which is better than crashing on import.
