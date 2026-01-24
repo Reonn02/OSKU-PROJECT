@@ -44,6 +44,15 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY?.trim() || '';
 // Valid URL check
 const isValidUrl = (url: string) => url.startsWith('http://') || url.startsWith('https://');
 
+// DEBUG: Log the values to see what Vercel is actually providing
+if (typeof window !== 'undefined') {
+    console.log('Attributes:', {
+        url: supabaseUrl,
+        hasKey: !!supabaseAnonKey,
+        isValid: isValidUrl(supabaseUrl)
+    });
+}
+
 export const supabase = (isValidUrl(supabaseUrl) && supabaseAnonKey)
     ? createClient(supabaseUrl, supabaseAnonKey)
     : createClient('https://placeholder.supabase.co', 'placeholder');
