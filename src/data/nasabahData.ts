@@ -253,17 +253,24 @@ export const addSaldoToNasabah = async (name: string, amount: number): Promise<N
     }
 };
 
-// Delete nasabah
+// Delete nasabah completely (including Auth account)
 export const deleteNasabah = async (id: string): Promise<boolean> => {
     try {
-        const { error } = await supabase
-            .from('nasabah')
-            .delete()
-            .eq('id', id);
+        const { data, error } = await supabase.rpc('delete_nasabah_completely', {
+            target_nasabah_id: id
+        });
 
         if (error) {
-            console.error('Failed to delete nasabah:', error);
-            return false;
+            console.error('Failed to delete nasabah (RPC):', error);
+            // Fallback: Try deleting locally if RPC failed (though likely auth error)
+            const { error: localError } = await supabase
+                .from('nasabah')
+                .delete()
+                .eq('id', id);
+
+            if (localError) return false;
+            await initNasabahCache();
+            return true;
         }
 
         await initNasabahCache();
