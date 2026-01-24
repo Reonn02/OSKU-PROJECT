@@ -39,6 +39,7 @@ export const sendOTPEmail = async (email: string, otp: string): Promise<boolean>
             // API failed - use development fallback mode
             console.warn('⚠️ Email API gagal, menggunakan development mode');
             console.warn('Error:', data.message);
+            if (data.error) console.error('Detailed Error:', data.error); // Show real error details
 
             // Fall back to development mode
             return sendOTPDevelopmentMode(email, otp);
