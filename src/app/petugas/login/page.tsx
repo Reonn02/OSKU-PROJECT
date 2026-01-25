@@ -178,7 +178,7 @@ function PetugasLoginContent() {
                                     Tampilkan Password
                                 </label>
                             </div>
-                            <Link href="/forgot-password" title="" className="text-xs text-primary hover:underline font-medium">
+                            <Link href="/forgot-password?role=petugas" title="" className="text-xs text-primary hover:underline font-medium">
                                 Lupa Password?
                             </Link>
                         </div>

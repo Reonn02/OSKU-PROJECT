@@ -1,14 +1,16 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, useRef, KeyboardEvent, ClipboardEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useRef, KeyboardEvent, ClipboardEvent, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { maskEmail } from '@/utils/otpUtils';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
-export default function ForgotPasswordVerifyOTP() {
+function ForgotPasswordVerifyOTPContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const role = searchParams.get('role');
     const { t } = useLanguage();
     const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
     const [email, setEmail] = useState<string>('');
@@ -18,6 +20,9 @@ export default function ForgotPasswordVerifyOTP() {
     const [canResend, setCanResend] = useState(false);
     const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
+    // Determine back link
+    const backLink = role ? `/forgot-password?role=${role}` : '/forgot-password';
+
     useEffect(() => {
         // Get email from sessionStorage
         const storedEmail = sessionStorage.getItem('otpEmail');
@@ -25,14 +30,14 @@ export default function ForgotPasswordVerifyOTP() {
 
         if (!storedEmail || flow !== 'forgot-password') {
             // Redirect to forgot-password if no email or wrong flow
-            router.push('/forgot-password');
+            router.push(backLink);
             return;
         }
         setEmail(storedEmail);
 
         // Focus first input
         inputRefs.current[0]?.focus();
-    }, [router]);
+    }, [router, backLink]);
 
     useEffect(() => {
         // Countdown timer
@@ -130,8 +135,12 @@ export default function ForgotPasswordVerifyOTP() {
                 // Show success animation briefly
                 await new Promise(resolve => setTimeout(resolve, 500));
 
-                // Redirect to reset password page
-                router.push('/forgot-password/reset');
+                // Redirect to reset password page with role if present
+                if (role) {
+                    router.push(`/forgot-password/reset?role=${role}`);
+                } else {
+                    router.push('/forgot-password/reset');
+                }
             } else {
                 setError(t('auth.otp.error_invalid'));
                 setOtp(new Array(6).fill(''));
@@ -193,7 +202,7 @@ export default function ForgotPasswordVerifyOTP() {
             </div>
             <main className="flex-grow flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-md mb-4 flex justify-start">
-                    <Link href="/forgot-password" title="" className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white hover:bg-primary-dark transition text-2xl">
+                    <Link href={backLink} title="" className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white hover:bg-primary-dark transition text-2xl">
                         <i className="fas fa-arrow-left"></i>
                     </Link>
                 </div>
@@ -299,5 +308,13 @@ export default function ForgotPasswordVerifyOTP() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function ForgotPasswordVerifyOTP() {
+    return (
+        <Suspense fallback={null}>
+            <ForgotPasswordVerifyOTPContent />
+        </Suspense>
     );
 }

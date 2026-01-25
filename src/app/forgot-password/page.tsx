@@ -1,8 +1,10 @@
 'use client';
 
+export const dynamic = 'force-dynamic';
+
 import Link from 'next/link';
-import { useState, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, FormEvent, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import {
@@ -13,13 +15,19 @@ import {
 } from '@/utils/validationUtils';
 import { generateOTP } from '@/utils/otpUtils';
 
-export default function ForgotPassword() {
+function ForgotPasswordContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const role = searchParams.get('role');
     const { t } = useLanguage();
     const [email, setEmail] = useState('');
     const [error, setError] = useState<string | undefined>();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [touched, setTouched] = useState(false);
+
+    // Determine back link and text based on role
+    const backLink = role === 'petugas' ? '/petugas/login' : '/login';
+    const backText = role === 'petugas' ? 'Kembali ke Login Petugas' : t('auth.forgot_password.back_login');
 
     const handleEmailChange = (value: string) => {
         setEmail(value);
@@ -83,8 +91,12 @@ export default function ForgotPassword() {
             sessionStorage.setItem('otpCode', otp);
             sessionStorage.setItem('otpExpiry', (Date.now() + 5 * 60 * 1000).toString()); // 5 minutes
 
-            // Redirect to OTP verification page
-            router.push('/forgot-password/verify');
+            // Pass role to next page if needed, or query param
+            if (role) {
+                router.push(`/forgot-password/verify?role=${role}`);
+            } else {
+                router.push('/forgot-password/verify');
+            }
         } catch (err) {
             console.error('Error sending OTP:', err);
             setError(t('auth.forgot_password.error_generic'));
@@ -100,12 +112,12 @@ export default function ForgotPassword() {
             </div>
             <main className="flex-grow flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-lg mb-4 flex justify-start">
-                    <button
-                        onClick={() => router.back()}
+                    <Link
+                        href={backLink}
                         className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white hover:bg-primary-dark transition text-2xl"
                     >
                         <i className="fas fa-arrow-left"></i>
-                    </button>
+                    </Link>
                 </div>
                 <div className="w-full max-w-lg border border-gray-200 rounded-3xl p-8 md:p-12 shadow-sm bg-white">
                     <div className="text-center mb-8">
@@ -156,13 +168,21 @@ export default function ForgotPassword() {
 
                         {/* Back to Login Link */}
                         <div className="text-center">
-                            <Link href="/login" className="text-sm text-primary hover:underline font-medium">
-                                {t('auth.forgot_password.back_login')}
+                            <Link href={backLink} className="text-sm text-primary hover:underline font-medium">
+                                {backText}
                             </Link>
                         </div>
                     </form>
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function ForgotPassword() {
+    return (
+        <Suspense fallback={null}>
+            <ForgotPasswordContent />
+        </Suspense>
     );
 }
