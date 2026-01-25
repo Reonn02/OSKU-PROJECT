@@ -77,7 +77,7 @@ export default function ProfilAdmin() {
                     <span className="px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
                         {admin.role === 'superadmin' ? 'Super Admin' : 'Admin'}
                     </span>
-                    <p className="text-xs text-gray-400">ID: {admin.id}</p>
+
                 </div>
 
                 {/* Edit Form Section */}
