@@ -86,6 +86,16 @@ export default function ProfilAdmin() {
 
                     <div className="space-y-4">
                         <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-1">ID Admin</label>
+                            <input
+                                type="text"
+                                value={admin.id}
+                                disabled
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-400 text-sm cursor-not-allowed"
+                            />
+                        </div>
+
+                        <div>
                             <label className="block text-xs font-bold text-gray-500 mb-1">Nama Tampilan</label>
                             <input
                                 type="text"
