@@ -59,6 +59,10 @@ export default function NasabahWasteChart({
         return steps;
     };
 
+    // Fallback: If no data, show empty months
+    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agust', 'Sep', 'Okt', 'Nov', 'Des'];
+    const finalDisplayData = displayData.length > 0 ? displayData : months.map(m => ({ label: m, value: 0 }));
+
     const steps = generateSteps(maxValue);
 
     // Generate year options (current year and 4 years back)
@@ -119,7 +123,7 @@ export default function NasabahWasteChart({
 
                         {/* Bars Area */}
                         <div className="flex-1 h-full flex items-end justify-between relative z-10 px-2 sm:px-4">
-                            {displayData.map((item, idx) => (
+                            {finalDisplayData.map((item, idx) => (
                                 <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group px-1 min-w-[32px] sm:min-w-0">
                                     <div
                                         className="w-3 sm:w-2.5 bg-primary hover:bg-primary-dark transition-all duration-300 relative rounded-full cursor-pointer"

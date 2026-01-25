@@ -84,8 +84,13 @@ export default function AdminDashboard() {
 
     const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData(selectedYear));
     const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData(selectedYear));
-    const [chartMaxY, setChartMaxY] = useState(0);
-    const [chartSteps, setChartSteps] = useState<{ label: string; value: number }[]>([]);
+
+    // Split MaxY and Steps for each chart
+    const [saldoMaxY, setSaldoMaxY] = useState(0);
+    const [saldoSteps, setSaldoSteps] = useState<{ label: string; value: number }[]>([]);
+
+    const [pencairanMaxY, setPencairanMaxY] = useState(0);
+    const [pencairanSteps, setPencairanSteps] = useState<{ label: string; value: number }[]>([]);
 
     // Summary Stats State - Using Keys
     const [stats, setStats] = useState([
@@ -210,24 +215,45 @@ export default function AdminDashboard() {
                 // Calculate dynamic Max Y and Steps
                 // Use banks from context which is already the source of truth for "active/approved" banks
                 const effectiveBankCount = banks.length > 0 ? banks.length : 1;
-                const baseMinMaxY = 1000000 * effectiveBankCount;
 
-                const allValues = [...newSaldoData.map(d => d.value), ...newPencairanData.map(d => d.value)];
-                const maxValue = Math.max(...allValues, baseMinMaxY);
-                const newMaxY = Math.ceil(maxValue * 1.1); // Add 10% buffer
-                setChartMaxY(newMaxY);
+                // 1. Saldo (Income) Range: 0 - (5jt * banks)
+                const baseSaldoMax = 5000000 * effectiveBankCount;
+                const saldoValues = newSaldoData.map(d => d.value);
+                const maxSaldoValue = Math.max(...saldoValues, baseSaldoMax);
+                const newSaldoMaxY = Math.ceil(maxSaldoValue * 1.05); // 5% buffer if over base
 
-                // Generate 5 steps
-                const stepValue = Math.ceil(newMaxY / 5);
-                const steps = [];
+                setSaldoMaxY(newSaldoMaxY);
+
+                const saldoStepVal = Math.ceil(newSaldoMaxY / 5);
+                const newSaldoSteps = [];
                 for (let i = 5; i >= 0; i--) {
-                    const val = i * stepValue;
-                    steps.push({
-                        label: formatCurrencyAxis(val), // Use helper for labels
+                    const val = i * saldoStepVal;
+                    newSaldoSteps.push({
+                        label: formatCurrencyAxis(val),
                         value: val
                     });
                 }
-                setChartSteps(steps);
+                setSaldoSteps(newSaldoSteps);
+
+
+                // 2. Pencairan (Withdrawal) Range: 0 - (10jt * banks)
+                const basePencairanMax = 10000000 * effectiveBankCount;
+                const pencairanValues = newPencairanData.map(d => d.value);
+                const maxPencairanValue = Math.max(...pencairanValues, basePencairanMax);
+                const newPencairanMaxY = Math.ceil(maxPencairanValue * 1.05); // 5% buffer
+
+                setPencairanMaxY(newPencairanMaxY);
+
+                const pencairanStepVal = Math.ceil(newPencairanMaxY / 5);
+                const newPencairanSteps = [];
+                for (let i = 5; i >= 0; i--) {
+                    const val = i * pencairanStepVal;
+                    newPencairanSteps.push({
+                        label: formatCurrencyAxis(val),
+                        value: val
+                    });
+                }
+                setPencairanSteps(newPencairanSteps);
 
             } catch (error) {
                 console.error('Error fetching admin chart data:', error);
@@ -298,8 +324,8 @@ export default function AdminDashboard() {
                                     showBankSampahFilter={false}
                                     showExportButton={true}
                                     selectedYear={selectedYear}
-                                    maxY={chartMaxY}
-                                    yAxisSteps={chartSteps}
+                                    maxY={saldoMaxY}
+                                    yAxisSteps={saldoSteps}
                                     valueFormatter={formatCurrencyAxis}
                                 />
                                 <WasteChart
@@ -308,8 +334,8 @@ export default function AdminDashboard() {
                                     initialData={pencairanChartData}
                                     showWasteFilter={false}
                                     showBankSampahFilter={false}
-                                    maxY={chartMaxY}
-                                    yAxisSteps={chartSteps}
+                                    maxY={pencairanMaxY}
+                                    yAxisSteps={pencairanSteps}
                                     showExportButton={true}
                                     valueFormatter={formatCurrencyAxis}
                                 />

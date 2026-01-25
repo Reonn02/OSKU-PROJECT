@@ -7,7 +7,7 @@ import { usePenyetoran } from '@/contexts/PenyetoranContext';
 import ImageViewerModal from '@/components/shared/ImageViewerModal';
 import YearPicker from '@/components/shared/YearPicker';
 import { showStandaloneToast } from '@/components/shared/Toast';
-import { getAllNasabah, getNasabahByName, getNasabahByBankSampah, addSaldoToNasabah, NasabahData } from '@/data/nasabahData';
+import { getAllNasabah, getNasabahByName, getNasabahByBankSampah, getNasabahByBankId, addSaldoToNasabah, NasabahData } from '@/data/nasabahData';
 
 export default function PenyetoranPetugas() {
     const { banks, getBankById } = useBankSampah();
@@ -131,8 +131,12 @@ export default function PenyetoranPetugas() {
     // Load nasabah data filtered by bank sampah
     useEffect(() => {
         const loadData = async () => {
-            if (formData.bankSampah && formData.bankSampah !== '-') {
-                // Fetch only nasabah for this bank
+            if (petugasBankId) {
+                // Fetch by ID (Most reliable)
+                const data = await getNasabahByBankId(petugasBankId);
+                setNasabahList(data);
+            } else if (formData.bankSampah && formData.bankSampah !== '-') {
+                // Fallback: Fetch by Name
                 const data = await getNasabahByBankSampah(formData.bankSampah);
                 setNasabahList(data);
             } else {
@@ -140,7 +144,7 @@ export default function PenyetoranPetugas() {
             }
         };
         loadData();
-    }, [formData.bankSampah]);
+    }, [formData.bankSampah, petugasBankId]);
 
     // Load waste types when bank sampah changes
     useEffect(() => {

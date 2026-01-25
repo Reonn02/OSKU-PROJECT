@@ -13,7 +13,7 @@ import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 
 // Utility function to aggregate transaction data by bank
-function aggregateTransactionsByBank(transactions: any[], banks: any[]) {
+function aggregateTransactionsByBank(transactions: any[], banks: any[], pencairanList: any[] = []) {
     return banks.map(bank => {
         // Filter transactions for this bank using ID comparison (more reliable)
         const bankTransactions = transactions.filter(t =>
@@ -22,8 +22,26 @@ function aggregateTransactionsByBank(transactions: any[], banks: any[]) {
             t.bank_sampah?.id === bank.id
         );
 
+        // Filter pencairan for this bank
+        const bankPencairan = pencairanList.filter(p =>
+            p.bank_sampah_id === bank.id &&
+            (p.status === 'approved' || p.status === 'completed')
+        );
+
         // Calculate total saldo from DB field total_harga
         const totalSaldo = bankTransactions.reduce((sum, t) => sum + (t.total_harga || 0), 0);
+
+        // Calculate total pencairan
+        const totalPencairanAmount = bankPencairan.reduce((sum, p) => sum + (p.jumlah || 0), 0);
+
+        // Ensure transactions have type name from joined data
+        const processedTransactions = bankTransactions.map(t => ({
+            ...t,
+            type: t.type || t.jenis_sampah?.nama || 'Unknown',
+            unit: t.unit || t.jenis_sampah?.satuan || 'kg',
+            price: t.price || t.jenis_sampah?.harga_per_satuan || 0,
+            weight: t.berat || t.weight || 0
+        }));
 
         return {
             id: bank.id,
@@ -41,7 +59,8 @@ function aggregateTransactionsByBank(transactions: any[], banks: any[]) {
             jumlahJenis: (bank.wasteTypes || []).length,
             totalPenyetoran: bankTransactions.length,
             totalSaldo: totalSaldo,
-            transactions: bankTransactions // Store for detail table
+            totalPencairan: totalPencairanAmount,
+            transactions: processedTransactions // Store for detail table
         };
     });
 }
@@ -73,15 +92,24 @@ export default function AdminBankSampahPage() {
                 // Fetch real data from database
                 const { data: transactions, error } = await supabase
                     .from('penyetoran')
-                    .select('*');
+                    .select('*, jenis_sampah:jenis_sampah_id(nama, satuan, harga_per_satuan)');
 
                 if (error) {
                     console.error('Error fetching transactions:', error);
                     return;
                 }
 
+                // Fetch pencairan data
+                const { data: pencairanList, error: pencairanError } = await supabase
+                    .from('pencairan')
+                    .select('*');
+
+                if (pencairanError) {
+                    console.error('Error fetching pencairan:', pencairanError);
+                }
+
                 if (transactions && banks.length > 0) {
-                    const aggregated = aggregateTransactionsByBank(transactions, banks);
+                    const aggregated = aggregateTransactionsByBank(transactions, banks, pencairanList || []);
                     setAggregatedData(aggregated);
                 }
             } catch (error) {

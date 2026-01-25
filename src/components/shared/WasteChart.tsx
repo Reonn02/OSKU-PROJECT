@@ -101,16 +101,24 @@ export default function WasteChart({
         // Create CSV title and header based on chart title
         const sanitizedTitle = title.replace(/\s+/g, '_');
         const csvTitle = `Laporan ${title} Tahun ${selectedYear}\n\n`;
-        const csvHeader = `Bulan,Nilai,Satuan\n`;
+
+        // Determine if we should show "Satuan" column
+        // If currentUnit is empty OR valueFormatter is defined (implies currency), skip unit column
+        const showUnitColumn = Boolean(currentUnit && !valueFormatter);
+
+        const csvHeader = showUnitColumn ? `Bulan,Nilai,Satuan\n` : `Bulan,Nilai\n`;
 
         // Create CSV rows from displayData
-        const csvRows = displayData.map(item =>
-            `${item.label},${item.value},${currentUnit}`
-        ).join('\n');
+        const csvRows = displayData.map(item => {
+            const baseRow = `${item.label},${item.value}`;
+            return showUnitColumn ? `${baseRow},${currentUnit}` : baseRow;
+        }).join('\n');
 
         // Calculate total
         const totalValue = displayData.reduce((sum, item) => sum + item.value, 0);
-        const totalRow = `\n\nTotal,${totalValue},${currentUnit}`;
+        const totalRow = showUnitColumn
+            ? `\n\nTotal,${totalValue},${currentUnit}`
+            : `\n\nTotal,${totalValue}`;
 
         const csvContent = csvTitle + csvHeader + csvRows + totalRow;
 
@@ -225,8 +233,11 @@ export default function WasteChart({
 
                 {/* Scrollable chart area - Scrollbar visible as requested */}
                 <div className="overflow-x-auto pb-4 ml-10 sm:ml-12 custom-scrollbar">
-                    {/* Increased min-width to ensure date labels have space (approx 2000px for 48 weeks) */}
-                    <div className="h-[250px] sm:h-[300px] relative flex items-end pt-4 pb-0 min-w-[2000px]">
+                    {/* Dynamic min-width: 60px per item is standard, prevents squeezing. Minimum 600px to fill space. */}
+                    <div
+                        className="h-[250px] sm:h-[300px] relative flex items-end pt-12 pb-0"
+                        style={{ minWidth: `${Math.max(600, displayData.length * 60)}px` }}
+                    >
                         {/* Grid Lines */}
                         <div className="absolute inset-0 flex flex-col justify-between py-0 mb-8 pointer-events-none">
                             {displaySteps.map((step, idx) => (
@@ -241,7 +252,7 @@ export default function WasteChart({
                             {displayData.map((item, idx) => (
                                 <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group px-0.5 min-w-[20px]">
                                     <div
-                                        className="w-full bg-primary hover:bg-primary-dark transition-all duration-300 relative rounded-t-sm cursor-pointer"
+                                        className="w-full max-w-[32px] bg-primary hover:bg-primary-dark transition-all duration-300 relative rounded-t-sm cursor-pointer"
                                         style={{ height: `${(item.value / maxValue) * 100}%`, minHeight: item.value > 0 ? '4px' : '0' }}
                                     >
                                         {/* Tooltip */}

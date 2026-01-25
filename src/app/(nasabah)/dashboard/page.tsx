@@ -36,10 +36,12 @@ const formatDate = (dateString: string): string => {
     if (!dateString) return '-';
 
     // If already in DD/MM/YYYY format, return as is
-    if (dateString.includes('/')) return dateString;
+    if (dateString.includes('/') && !dateString.includes('T')) return dateString;
 
-    // Convert from YYYY-MM-DD to DD/MM/YYYY
-    const parts = dateString.split('-');
+    // Handle ISO string or YYYY-MM-DD
+    const cleanDate = dateString.split('T')[0]; // Take only the date part
+    const parts = cleanDate.split('-');
+
     if (parts.length === 3) {
         return `${parts[2]}/${parts[1]}/${parts[0]}`;
     }
@@ -73,6 +75,7 @@ function Dashboard() {
     const [withdrawalDate, setWithdrawalDate] = useState<string>('');
     const [withdrawalBank, setWithdrawalBank] = useState<string>('');
     const [withdrawalRejectReason, setWithdrawalRejectReason] = useState<string>('');
+    const [submittedData, setSubmittedData] = useState<{ amount: number, date: string, bank: string, id: string } | null>(null);
     const [scrollPercentage, setScrollPercentage] = useState(0);
     const [currentPageSetoran, setCurrentPageSetoran] = useState(1);
     const [currentPagePenarikan, setCurrentPagePenarikan] = useState(1);
@@ -192,8 +195,9 @@ function Dashboard() {
             setActiveTab(tab);
         }
 
+        // Only load from localStorage if we don't have a nasabah bank defined
         const savedBank = localStorage.getItem('selectedBankSampah');
-        if (savedBank) {
+        if (savedBank && !nasabah?.bankSampah) {
             setSelectedBankSampah(savedBank);
         }
 
@@ -247,8 +251,37 @@ function Dashboard() {
                     } else {
                         // For final states (rejected, completed, cancelled), we reset to empty
                         // so it doesn't look like an active transaction status for a new request
+                        // UNLESS it was just interacting with it. 
+                        // But for "Bukti Pengajuan", we might want to show it if it was recent?
+                        // For now, keep original logic but populate data if active
                         setWithdrawalStatus('empty');
                         setWithdrawalId(null); // Clear ID as well
+                    }
+
+                    // FIX: Populate submittedData if we have an active withdrawal so receipts persist after refresh
+                    if (dbStatus === 'pending' || dbStatus === 'approved' || dbStatus === 'completed') {
+                        // Find bank name
+                        let bankName = '-';
+                        if (banks.length > 0 && mostRecent.bank_sampah_id) {
+                            const foundBank = banks.find(b => b.id === mostRecent.bank_sampah_id);
+                            if (foundBank) bankName = foundBank.nama;
+                        }
+
+                        // Parse amount if string or number
+                        // amount is string or number in db? DbPencairan says jumlah: number
+                        const amount = typeof mostRecent.jumlah === 'string' ? parseFloat(mostRecent.jumlah) : mostRecent.jumlah;
+
+                        setSubmittedData({
+                            amount: amount,
+                            date: mostRecent.tanggal_pengajuan || new Date().toISOString(),
+                            bank: bankName,
+                            id: mostRecent.id
+                        });
+
+                        // Also populate local state for editing if needed (though typically we don't edit submitted ones)
+                        setWithdrawalDate(mostRecent.tanggal_pengajuan?.split('T')[0] || '');
+                        // withdrawalAmount string format
+                        // setWithdrawalAmount(...) 
                     }
                 }
             } catch (error) {
@@ -1290,7 +1323,7 @@ function Dashboard() {
                                     { label: 'Kota', value: 'Jakarta Timur' },
                                     { label: 'Provinsi', value: 'DKI Jakarta' },
                                     { label: 'Kode Pos', value: '13740' },
-                                    { label: 'Bank Sampah Terdekat', value: selectedBankSampah }
+                                    { label: 'Bank Sampah Terdekat', value: nasabah?.bankSampah || selectedBankSampah }
                                 ].map((item, idx) => (
                                     <div key={item.label} className={`flex flex-col sm:flex-row ${idx !== 13 ? 'border-b border-gray-100 pb-2' : 'pb-2'}`}>
                                         <span className="font-bold text-primary w-full sm:w-48 mb-1 sm:mb-0">{item.label}</span>
@@ -1894,13 +1927,11 @@ function Dashboard() {
                                 <div className="flex justify-center">
                                     <button
                                         onClick={async () => {
+
                                             // Validate inputs
                                             if (!withdrawalAmount || !withdrawalDate) {
                                                 return;
                                             }
-
-                                            // Set the bank sampah location from selected bank
-                                            setWithdrawalBank(selectedBankSampah);
 
                                             // Find bankSampahId from selected bank name
                                             const userBank = banks.find(b => {
@@ -1911,13 +1942,22 @@ function Dashboard() {
                                                     selected.includes(bankName.replace('bank sampah ', ''));
                                             });
 
+                                            // VALIDATION: Bank Must Be Found
+                                            if (!userBank) {
+                                                showStandaloneToast('error', 'Gagal', 'Bank Sampah tidak ditemukan. Silakan periksa profil Anda atau hubungi admin.');
+                                                return;
+                                            }
+
+                                            // Set the bank sampah location from selected bank
+                                            setWithdrawalBank(selectedBankSampah);
+
                                             const amount = parseInt(withdrawalAmount.replace(/\D/g, ''));
 
                                             // Try to save to Supabase database first
                                             const result = await addPencairan({
                                                 nasabah_id: userId,
                                                 petugas_id: null,
-                                                bank_sampah_id: userBank?.id || null,
+                                                bank_sampah_id: userBank.id, // Now guaranteed to exist
                                                 jumlah: amount,
                                                 status: 'pending',
                                                 alasan: null,
@@ -1930,6 +1970,12 @@ function Dashboard() {
                                                 // Successfully saved to database - status is 'Diproses'
                                                 setWithdrawalId(result.id || '-');
                                                 setWithdrawalStatus('processing');
+                                                setSubmittedData({
+                                                    amount: amount,
+                                                    date: new Date().toISOString(),
+                                                    bank: selectedBankSampah,
+                                                    id: result.id
+                                                });
 
                                                 // Clear form inputs
                                                 setWithdrawalAmount('');
@@ -2147,14 +2193,20 @@ function Dashboard() {
 
                                             {/* ID Banner */}
                                             <div className="bg-tertiary w-full py-4 rounded-2xl flex justify-between items-center px-6 mb-6">
-                                                <span className="text-primary font-bold text-sm">ID Pengajuan</span>
-                                                <span className="text-primary font-bold text-xl tracking-wide">{withdrawalId}</span>
+                                                <span className="text-primary font-bold text-sm flex-shrink-0">ID Pengajuan</span>
+                                                <span className="text-primary font-bold text-xs sm:text-sm tracking-wide break-all text-right ml-4">{withdrawalId}</span>
                                             </div>
 
                                             {/* Details Grid */}
                                             {(() => {
-                                                const nominal = parseInt(withdrawalAmount.replace(/\D/g, '')) || 0;
-                                                const selectedBankData = banks.find(b => b.nama === (withdrawalBank || selectedBankSampah));
+                                                // FIX: Use submittedData if available (for receipt after new submission), otherwise fallback to history or current state
+                                                // This prevents 0 issue when form is cleared
+                                                const displayAmount = submittedData ? submittedData.amount : (parseInt(withdrawalAmount.replace(/\D/g, '')) || 0);
+                                                const displayDate = submittedData ? submittedData.date : withdrawalDate;
+                                                const displayBank = submittedData ? submittedData.bank : (withdrawalBank || selectedBankSampah);
+
+                                                const nominal = displayAmount;
+                                                const selectedBankData = banks.find(b => b.nama === displayBank);
                                                 const komisiPersen = selectedBankData?.komisiPersen ?? 30;
                                                 const biayaLayanan = Math.round(nominal * komisiPersen / 100);
                                                 const yangDiterima = nominal - biayaLayanan;
@@ -2167,11 +2219,11 @@ function Dashboard() {
 
                                                             <div className="flex flex-col px-2 items-center justify-start">
                                                                 <span className="text-gray-400 text-[10px] uppercase font-medium mb-2 tracking-wider">Tanggal</span>
-                                                                <span className="text-primary font-bold text-lg">{formatDate(withdrawalDate)}</span>
+                                                                <span className="text-primary font-bold text-lg">{formatDate(displayDate)}</span>
                                                             </div>
                                                             <div className="flex flex-col px-2 items-center justify-start">
                                                                 <span className="text-gray-400 text-[10px] uppercase font-medium mb-2 tracking-wider">Lokasi</span>
-                                                                <span className="text-primary font-bold text-sm leading-tight">{withdrawalBank || selectedBankSampah || '-'}</span>
+                                                                <span className="text-primary font-bold text-sm leading-tight">{displayBank || '-'}</span>
                                                             </div>
                                                         </div>
 
@@ -2283,13 +2335,16 @@ function Dashboard() {
                                                     doc.setTextColor(...primaryColor);
                                                     doc.setFont('helvetica', 'bold');
                                                     doc.text('ID Pengajuan', 20, yPos + 9);
-                                                    doc.setFontSize(14);
+                                                    doc.setFontSize(10);
                                                     doc.text(withdrawalId || '-', pageWidth - 20, yPos + 9, { align: 'right' });
                                                     yPos += 25;
 
                                                     // Calculate commission
-                                                    const nominal = parseInt(withdrawalAmount.replace(/\D/g, '')) || 0;
-                                                    const selectedBankData = banks.find(b => b.nama === (withdrawalBank || selectedBankSampah));
+                                                    const displayAmount = submittedData ? submittedData.amount : (parseInt(withdrawalAmount.replace(/\D/g, '')) || 0);
+                                                    const displayBank = submittedData ? submittedData.bank : (withdrawalBank || selectedBankSampah);
+
+                                                    const nominal = displayAmount;
+                                                    const selectedBankData = banks.find(b => b.nama === displayBank);
                                                     const komisiPersen = selectedBankData?.komisiPersen ?? 30;
                                                     const biayaLayanan = Math.round(nominal * komisiPersen / 100);
                                                     const yangDiterima = nominal - biayaLayanan;

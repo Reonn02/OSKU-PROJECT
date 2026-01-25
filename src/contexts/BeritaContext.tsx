@@ -78,8 +78,8 @@ export function BeritaProvider({ children }: { children: ReactNode }) {
 
     const addBerita = async (newBerita: Omit<Berita, 'id' | 'createdAt'>) => {
         try {
+            // Remove 'id' to let Supabase auto-generate UUID
             const { error } = await supabase.from('berita').insert({
-                id: Date.now().toString(),
                 judul: newBerita.judul,
                 tanggal: newBerita.tanggal,
                 author: newBerita.author,

@@ -18,7 +18,7 @@ import BantuanContent from '@/components/landing/BantuanContent';
 import YearPicker from '@/components/shared/YearPicker';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { usePenyetoran } from '@/contexts/PenyetoranContext';
-import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo, getNasabahByBankSampah } from '@/data/nasabahData';
+import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo, getNasabahByBankSampah, getNasabahByBankId } from '@/data/nasabahData';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
 
@@ -148,7 +148,11 @@ export default function PetugasDashboard() {
                 let totalNasabah = 0;
                 let totalSaldo = 0;
 
-                if (petugasBankName) {
+                if (petugasBankId) {
+                    const nasabahList = await getNasabahByBankId(petugasBankId);
+                    totalNasabah = nasabahList.length;
+                    totalSaldo = nasabahList.reduce((acc, curr) => acc + curr.saldo, 0);
+                } else if (petugasBankName) {
                     const nasabahList = await getNasabahByBankSampah(petugasBankName);
                     totalNasabah = nasabahList.length;
                     totalSaldo = nasabahList.reduce((acc, curr) => acc + curr.saldo, 0);
@@ -277,8 +281,13 @@ export default function PetugasDashboard() {
     const [penyetoranChartData, setPenyetoranChartData] = useState(generateWeeklyData(selectedYear));
     const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData(selectedYear));
     const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData(selectedYear));
-    const [moneyChartMaxY, setMoneyChartMaxY] = useState(0);
-    const [moneyChartSteps, setMoneyChartSteps] = useState<{ label: string; value: number }[]>([]);
+
+    // Split Money MaxY and Steps
+    const [saldoMaxY, setSaldoMaxY] = useState(0);
+    const [saldoSteps, setSaldoSteps] = useState<{ label: string; value: number }[]>([]);
+
+    const [pencairanMaxY, setPencairanMaxY] = useState(0);
+    const [pencairanSteps, setPencairanSteps] = useState<{ label: string; value: number }[]>([]);
     const [weightChartMaxY, setWeightChartMaxY] = useState(0);
     const [weightChartSteps, setWeightChartSteps] = useState<{ label: string; value: number }[]>([]);
 
@@ -295,7 +304,7 @@ export default function PetugasDashboard() {
                     if (!item.tanggal) return;
                     const date = new Date(item.tanggal);
                     if (date.getFullYear() === selectedYear) {
-                        const month = date.getMonth();
+                        const month = date.getMonth(); // 0-11
                         const day = date.getDate();
                         let weekIndex = 0;
 
@@ -375,19 +384,37 @@ export default function PetugasDashboard() {
             setWeightChartSteps(weightSteps);
 
 
-            // Calculate Money Charts Scale (MaxY & Steps)
-            const allMoneyValues = [...newSaldoData.map(d => d.value), ...newPencairanData.map(d => d.value)];
-            const maxMoney = Math.max(...allMoneyValues, 1000000); // Min 1 Juta default if empty
-            const moneyMaxY = Math.ceil(maxMoney * 1.1);
-            setMoneyChartMaxY(moneyMaxY);
+            setWeightChartSteps(weightSteps);
 
-            const moneySteps = [];
-            const mStepVal = Math.ceil(moneyMaxY / 5);
+
+            // Calculate SALDO (Income) Scale: Base 5 Juta
+            const saldoValues = newSaldoData.map(d => d.value);
+            const maxSaldo = Math.max(...saldoValues, 5000000); // Min 5 Juta default
+            const newSaldoMaxY = Math.ceil(maxSaldo * 1.05);
+            setSaldoMaxY(newSaldoMaxY);
+
+            const saldoStepVal = Math.ceil(newSaldoMaxY / 5);
+            const newSaldoSteps = [];
             for (let i = 5; i >= 0; i--) {
-                const val = i * mStepVal;
-                moneySteps.push({ label: formatCurrencyAxis(val), value: val });
+                const val = i * saldoStepVal;
+                newSaldoSteps.push({ label: formatCurrencyAxis(val), value: val });
             }
-            setMoneyChartSteps(moneySteps);
+            setSaldoSteps(newSaldoSteps);
+
+
+            // Calculate PENCAIRAN (Withdrawal) Scale: Base 10 Juta
+            const pencairanValues = newPencairanData.map(d => d.value);
+            const maxPencairan = Math.max(...pencairanValues, 10000000); // Min 10 Juta default
+            const newPencairanMaxY = Math.ceil(maxPencairan * 1.05);
+            setPencairanMaxY(newPencairanMaxY);
+
+            const pencairanStepVal = Math.ceil(newPencairanMaxY / 5);
+            const newPencairanSteps = [];
+            for (let i = 5; i >= 0; i--) {
+                const val = i * pencairanStepVal;
+                newPencairanSteps.push({ label: formatCurrencyAxis(val), value: val });
+            }
+            setPencairanSteps(newPencairanSteps);
 
             setPenyetoranChartData(newPenyetoranData);
             setSaldoChartData(newSaldoData);
@@ -648,8 +675,8 @@ export default function PetugasDashboard() {
                                     unit=""
                                     initialData={saldoChartData}
                                     showWasteFilter={false}
-                                    maxY={moneyChartMaxY}
-                                    yAxisSteps={moneyChartSteps}
+                                    maxY={saldoMaxY}
+                                    yAxisSteps={saldoSteps}
                                     showExportButton={true}
                                     valueFormatter={formatCurrencyAxis}
                                     selectedYear={selectedYear}
@@ -659,8 +686,8 @@ export default function PetugasDashboard() {
                                     unit=""
                                     initialData={pencairanChartData}
                                     showWasteFilter={false}
-                                    maxY={moneyChartMaxY}
-                                    yAxisSteps={moneyChartSteps}
+                                    maxY={pencairanMaxY}
+                                    yAxisSteps={pencairanSteps}
                                     showExportButton={true}
                                     valueFormatter={formatCurrencyAxis}
                                     selectedYear={selectedYear}

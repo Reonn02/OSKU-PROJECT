@@ -73,35 +73,90 @@ export default function PrediksiAdmin() {
     // Parse CSV content
     const parseCSV = (content: string): CSVRow[] => {
         const lines = content.trim().split('\n');
-        const rows: CSVRow[] = [];
 
-        // Find header row (skip title rows)
-        let headerIndex = -1;
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].toLowerCase();
-            if (line.includes('tahun') && (line.includes('bulan') || line.includes('saldo'))) {
-                headerIndex = i;
-                break;
+        // Check format type
+        const headerLine = lines.find(l => l.toLowerCase().includes('bulan') && l.toLowerCase().includes('nilai'));
+        const oldHeaderLine = lines.find(l => l.toLowerCase().includes('tahun') && l.toLowerCase().includes('bulan'));
+
+        if (!headerLine && !oldHeaderLine) {
+            throw new Error('Format CSV tidak valid. Pastikan ada header: "Bulan, Nilai" (Format Baru) atau "Tahun, Bulan, Saldo" (Format Lama)');
+        }
+
+        // NEW FORMAT: Weekly Data (Bulan, Nilai) -> needs aggregation
+        if (headerLine && !oldHeaderLine) {
+            const rows: Record<string, CSVRow> = {}; // Key: "Year-MonthNum" to aggregate
+
+            // Find header index
+            const headerIndex = lines.indexOf(headerLine);
+            const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
+            const bulanLabelIdx = headers.findIndex(h => h === 'bulan');
+            const nilaiIdx = headers.findIndex(h => h === 'nilai');
+
+            if (bulanLabelIdx === -1 || nilaiIdx === -1) throw new Error('Kolom Bulan dan Nilai harus ada');
+
+            for (let i = headerIndex + 1; i < lines.length; i++) {
+                const line = lines[i].trim();
+                if (!line || line.toLowerCase().startsWith('total')) continue;
+
+                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+                const label = values[bulanLabelIdx]; // e.g. "Jan 1-7 2026"
+                const nilaiStr = values[nilaiIdx];
+                const nilai = parseFloat(nilaiStr);
+
+                if (!label || isNaN(nilai)) continue;
+
+                // Parse Label "Jan 1-7 2026"
+                const parts = label.split(' '); // ["Jan", "1-7", "2026"]
+                if (parts.length < 3) continue;
+
+                const monthName = parts[0]; // "Jan"
+                const yearStr = parts[parts.length - 1]; // "2026"
+                const year = parseInt(yearStr);
+
+                // Map Short Month to Index
+                const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                let monthIndex = shortMonths.indexOf(monthName);
+
+                // Fallback for full names if needed, though chart uses short
+                if (monthIndex === -1) {
+                    monthIndex = BULAN_NAMES.findIndex(m => m.toLowerCase().startsWith(monthName.toLowerCase()));
+                }
+
+                if (monthIndex !== -1 && !isNaN(year)) {
+                    const key = `${year}-${monthIndex}`;
+
+                    if (!rows[key]) {
+                        rows[key] = {
+                            tahun: year,
+                            bulan: BULAN_NAMES[monthIndex], // Use full name for internal consistent data
+                            bulan_num: monthIndex + 1,
+                            saldo_rup: 0,
+                            saldo_juta: 0
+                        };
+                    }
+
+                    rows[key].saldo_rup += nilai;
+                }
             }
+
+            // Convert map to array and update saldo_juta
+            return Object.values(rows).map(row => ({
+                ...row,
+                saldo_juta: row.saldo_rup / 1000000
+            }));
         }
 
-        if (headerIndex === -1) {
-            throw new Error('Format CSV tidak valid. Pastikan ada header: Tahun, Bulan, Bulan_Num, Saldo_Rup/Saldo_Juta');
-        }
+        // OLD FORMAT (Legacy Support)
+        const rows: CSVRow[] = [];
+        const headerIndex = lines.indexOf(oldHeaderLine!);
+        const headers = oldHeaderLine!.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
 
-        // Parse headers
-        const headers = lines[headerIndex].split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
         const tahunIdx = headers.findIndex(h => h === 'tahun');
         const bulanIdx = headers.findIndex(h => h === 'bulan');
-        const bulanNumIdx = headers.findIndex(h => h.includes('bulan_num') || h === 'bulan_num');
-        const saldoRupIdx = headers.findIndex(h => h.includes('saldo_rup') || h === 'saldo_rup');
-        const saldoJutaIdx = headers.findIndex(h => h.includes('saldo_juta') || h === 'saldo_juta');
+        const bulanNumIdx = headers.findIndex(h => h.includes('bulan_num'));
+        const saldoRupIdx = headers.findIndex(h => h.includes('saldo_rup'));
+        const saldoJutaIdx = headers.findIndex(h => h.includes('saldo_juta'));
 
-        if (tahunIdx === -1 || bulanIdx === -1) {
-            throw new Error('Kolom Tahun dan Bulan harus ada dalam CSV');
-        }
-
-        // Parse data rows
         for (let i = headerIndex + 1; i < lines.length; i++) {
             const line = lines[i].trim();
             if (!line || line.toLowerCase().includes('total')) continue;
@@ -332,7 +387,7 @@ export default function PrediksiAdmin() {
                         <h4 className="font-bold text-primary text-sm mb-1">Analisis Prediksi AI</h4>
                         <p className="text-primary text-xs">
                             Unggah data CSV pemasukan bank sampah untuk melihat prediksi trend kenaikan.
-                            Format CSV harus memiliki kolom: <span className="font-semibold">Tahun, Bulan, Bulan_Num, Saldo_Rup (atau Saldo_Juta)</span>
+                            Format CSV bisa berupa: <span className="font-semibold">Bulan (e.g., "Jan 1-7 2026"), Nilai</span> (Format Mingguan) atau format lama.
                         </p>
                     </div>
                 </div>

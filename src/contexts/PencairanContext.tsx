@@ -194,6 +194,20 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 reference_type: 'pencairan'
             });
 
+            // NOTIFICATION: Notify Nasabah (Confirmation)
+            await supabase.from('notifikasi').insert({
+                recipient_role: 'nasabah',
+                recipient_id: data.nasabah_id,
+                type: 'info',
+                title: 'Pengajuan Terkirim',
+                message: `Pengajuan pencairan sebesar Rp ${data.jumlah.toLocaleString('id-ID')} berhasil dikirim dan sedang menunggu persetujuan petugas.`,
+                link: '/dashboard?tab=pencairan',
+                reference_id: inserted.id,
+                reference_type: 'pencairan',
+                status: 'Menunggu',
+                amount: `Rp ${data.jumlah.toLocaleString('id-ID')}`
+            });
+
             return inserted;
         } catch (err: any) {
             console.error('Error adding pencairan:', err);

@@ -437,7 +437,7 @@ export default function NavbarNasabah({
                                                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <i className="fas fa-bell-slash text-2xl text-gray-400"></i>
                                                 </div>
-                                                <h4 className="text-sm font-semibold text-gray-600 mb-1">{t('common.no_notifications') || 'Tidak ada Notifikasi'}</h4>
+                                                <h4 className="text-sm font-semibold text-gray-600 mb-1">{t('Tidak Ada Notifikasi') || 'Tidak ada Notifikasi'}</h4>
                                                 <p className="text-xs text-gray-400">Aktivitas terbaru Anda akan muncul di sini</p>
                                             </div>
                                         ) : (

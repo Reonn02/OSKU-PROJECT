@@ -5,6 +5,7 @@ import Image from 'next/image';
 import YearPicker from '@/components/shared/YearPicker';
 import { showStandaloneToast } from '@/components/shared/Toast';
 import { usePencairan } from '@/contexts/PencairanContext';
+import { supabase } from '@/lib/supabase';
 
 interface PetugasData {
     id: string;
@@ -28,6 +29,7 @@ interface DataItem {
     processed_at: string | null;
     raw_date: string; // Store original ISO string for filtering
     raw_processed_at: string | null;
+    nasabah_id_real: string; // Real UUID for reference
 }
 
 const STATUS_OPTIONS = ['Diproses', 'Disetujui', 'Ditolak'];
@@ -96,6 +98,7 @@ export default function PersetujuanPetugas() {
                 processed_at: item.tanggal_selesai ? new Date(item.tanggal_selesai).toLocaleDateString('id-ID') : null,
                 raw_date: item.tanggal_pengajuan,
                 raw_processed_at: item.tanggal_selesai,
+                nasabah_id_real: item.nasabah_id,
             }));
         }
 
@@ -116,6 +119,7 @@ export default function PersetujuanPetugas() {
                     processed_at: item.processed_at || null,
                     raw_date: new Date().toISOString(), // Fallback
                     raw_processed_at: item.processed_at ? new Date(item.processed_at).toISOString() : null,
+                    nasabah_id_real: item.nasabah_id_real || '',
                 }));
         } catch {
             return [];
@@ -140,6 +144,7 @@ export default function PersetujuanPetugas() {
                 processed_at: item.tanggal_selesai ? new Date(item.tanggal_selesai).toLocaleDateString('id-ID') : null,
                 raw_date: item.tanggal_pengajuan,
                 raw_processed_at: item.tanggal_selesai,
+                nasabah_id_real: item.nasabah_id,
             }));
         }
 
@@ -160,6 +165,7 @@ export default function PersetujuanPetugas() {
                     processed_at: item.processed_at || null,
                     raw_date: new Date().toISOString(), // Fallback
                     raw_processed_at: item.processed_at ? new Date(item.processed_at).toISOString() : null,
+                    nasabah_id_real: item.nasabah_id_real || '',
                 }));
         } catch {
             return [];
@@ -222,6 +228,26 @@ export default function PersetujuanPetugas() {
                 const success = await approvePencairan(selectedItem.id, petugasId);
                 if (success) {
                     showStandaloneToast('success', 'Berhasil', 'Pengajuan pencairan berhasil disetujui');
+
+                    // Send Notification to Nasabah
+                    try {
+                        const { error: notifError } = await supabase
+                            .from('notifikasi')
+                            .insert({
+                                recipient_role: 'nasabah',
+                                recipient_id: selectedItem.nasabah_id_real,
+                                type: 'success',
+                                title: 'Pengajuan Disetujui',
+                                message: `Pengajuan pencairan Anda sebesar Rp ${selectedItem.amount.toLocaleString('id-ID')} telah disetujui. Silakan ambil tunai di bank sampah.`,
+                                link: '/dashboard?tab=pencairan',
+                                reference_id: selectedItem.id,
+                                reference_type: 'pencairan',
+                                status: 'Disetujui',
+                                amount: `Rp ${selectedItem.amount.toLocaleString('id-ID')}`
+                            });
+                    } catch (e) {
+                        console.error("Failed to send notification", e);
+                    }
                 } else {
                     // Fallback: update localStorage if database fails
                     try {
@@ -260,6 +286,26 @@ export default function PersetujuanPetugas() {
             const success = await rejectPencairan(selectedItem.id, rejectReason, petugasId);
             if (success) {
                 showStandaloneToast('info', 'Ditolak', 'Pengajuan pencairan telah ditolak');
+
+                // Send Notification to Nasabah
+                try {
+                    await supabase
+                        .from('notifikasi')
+                        .insert({
+                            recipient_role: 'nasabah',
+                            recipient_id: selectedItem.nasabah_id_real,
+                            type: 'error',
+                            title: 'Pengajuan Ditolak',
+                            message: `Pengajuan pencairan Anda sebesar Rp ${selectedItem.amount.toLocaleString('id-ID')} ditolak. Alasan: ${rejectReason}`,
+                            link: '/dashboard?tab=pencairan',
+                            reference_id: selectedItem.id,
+                            reference_type: 'pencairan',
+                            status: 'Ditolak'
+                        });
+                } catch (e) {
+                    console.error("Failed to send notification", e);
+                }
+
             } else {
                 // Fallback: update localStorage if database fails
                 try {

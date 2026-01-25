@@ -188,7 +188,7 @@ export default function KonfirmasiPetugas() {
         if (selectedItem?.id) {
             const success = await cancelPencairan(selectedItem.id, rejectReason);
             if (success) {
-                showStandaloneToast('info', 'Dibatalkan', 'Pencairan telah dibatalkan');
+                showStandaloneToast('error', 'Dibatalkan', 'Pencairan telah dibatalkan');
             } else {
                 showStandaloneToast('error', 'Gagal', 'Terjadi kesalahan saat membatalkan pencairan');
             }

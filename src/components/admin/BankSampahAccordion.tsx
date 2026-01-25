@@ -14,6 +14,7 @@ interface BankSampahData {
     jumlahJenis: number;      // Number of different waste types from transactions
     totalPenyetoran: number;   // Total number of transactions
     totalSaldo: number;        // Total money from all transactions
+    totalPencairan?: number;   // Total money withdrawn
     openDay?: string;
     closeDay?: string;
     openTime?: string;
@@ -165,12 +166,18 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                                     </span>
                                                     <span className="inline-flex items-center gap-1 text-xs bg-tertiary text-primary px-3 py-1 rounded-full font-bold">
                                                         <i className="fas fa-box"></i>
-                                                        {bank.totalPenyetoran || 0} Transaksi
+                                                        {bank.totalPenyetoran || 0} Penyetoran
                                                     </span>
-                                                    <span className="inline-flex items-center gap-1 text-xs bg-yellow-light text-dark-yellow px-3 py-1 rounded-full font-bold">
+                                                    <span className="inline-flex items-center gap-1 text-xs bg-yellow-light text-dark-yellow px-3 py-1 rounded-full font-bold" title="Total Uang Saat Ini">
                                                         <i className="fas fa-coins"></i>
-                                                        {formatCurrency(bank.totalSaldo || 0)}
+                                                        {formatCurrency((bank.totalSaldo || 0) - (bank.totalPencairan || 0))}
                                                     </span>
+                                                    {bank.totalPencairan !== undefined && (
+                                                        <span className="inline-flex items-center gap-1 text-xs bg-red-100 text-red-600 px-3 py-1 rounded-full font-bold" title="Total Pencairan">
+                                                            <i className="fas fa-money-bill-wave"></i>
+                                                            {formatCurrency(bank.totalPencairan)}
+                                                        </span>
+                                                    )}
                                                 </div>
                                             </div>
                                         </div>
@@ -239,7 +246,7 @@ export default function BankSampahAccordion({ data, onEditSuccess, onDeleteSucce
                                         <div className="pt-4 border-t border-gray-100">
                                             <h4 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
                                                 <i className="fas fa-history text-primary"></i>
-                                                Riwayat Transaksi
+                                                Riwayat Penyetoran
                                             </h4>
 
                                             {/* Transaction Aggregates Table - Dynamic from localStorage */}

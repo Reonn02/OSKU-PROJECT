@@ -98,7 +98,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 
-    const handleNotificationClick = async (notification: Notification) => {
+    const handleNotificationClick = async (notification: Notification, stopNavigation = false) => {
         // Mark as read in DB
         if (!notification.isRead) {
             await supabase
@@ -113,9 +113,30 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
         }
 
         // Navigate to link
-        if (notification.link) {
+        if (notification.link && !stopNavigation) {
             setShowNotifications(false);
             router.push(notification.link);
+        }
+    };
+
+    const handleDeleteAll = async () => {
+        try {
+            const idsToDelete = notifications.map(n => n.id);
+
+            if (idsToDelete.length > 0) {
+                const { error } = await supabase
+                    .from('notifikasi')
+                    .delete()
+                    .in('id', idsToDelete);
+
+                if (error) throw error;
+            }
+
+            // Clear state
+            setNotifications([]);
+
+        } catch (error) {
+            console.error('Error deleting notifications:', error);
         }
     };
 
@@ -163,11 +184,21 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                         <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in duration-200">
                             <div className="p-4 border-b border-gray-100">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-primary">{t('common.notifications')}</h3>
-                                    {unreadCount > 0 && (
-                                        <span className="text-xs bg-warning text-white px-2 py-1 rounded-full">
-                                            {unreadCount}
-                                        </span>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-primary">{t('common.notifications')}</h3>
+                                        {unreadCount > 0 && (
+                                            <span className="text-xs bg-warning text-white px-2 py-0.5 rounded-full">
+                                                {unreadCount}
+                                            </span>
+                                        )}
+                                    </div>
+                                    {notifications.length > 0 && (
+                                        <button
+                                            onClick={handleDeleteAll}
+                                            className="text-[10px] text-red-500 hover:text-red-600 font-bold hover:underline transition-colors"
+                                        >
+                                            Bersihkan Semua
+                                        </button>
                                     )}
                                 </div>
                             </div>
@@ -176,14 +207,14 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                                 {notifications.length === 0 ? (
                                     <div className="p-8 text-center">
                                         <i className="fas fa-bell-slash text-4xl text-gray-300 mb-3"></i>
-                                        <p className="text-sm text-gray-400">Tidak ada notifikasi</p>
+                                        <p className="text-sm text-gray-400">{t('Tidak Ada Notifikasi') || 'Tidak ada notifikasi'}</p>
                                     </div>
                                 ) : (
                                     notifications.map((notif) => (
                                         <div
                                             key={notif.id}
                                             onClick={() => handleNotificationClick(notif)}
-                                            className={`p-4 border-b border-tertiary hover:bg-gray-50 transition cursor-pointer ${!notif.isRead ? 'bg-tertiary/30' : ''}`}
+                                            className={`p-4 border-b border-tertiary hover:bg-gray-50 transition cursor-pointer relative group ${!notif.isRead ? 'bg-tertiary/30' : ''}`}
                                         >
                                             <div className="flex gap-3">
                                                 <div className="flex-shrink-0">
@@ -191,7 +222,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                                                         <i className={`fas ${notif.icon} ${notif.color}`}></i>
                                                     </div>
                                                 </div>
-                                                <div className="flex-1 min-w-0">
+                                                <div className="flex-1 min-w-0 pr-16">
                                                     <p className="text-xs font-bold text-primary mb-1">
                                                         {notif.title}
                                                     </p>
@@ -203,10 +234,19 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                                                     </p>
                                                 </div>
 
-                                                {/* Unread Indicator */}
+                                                {/* Unread Indicator & Mark Read Button */}
                                                 {!notif.isRead && (
-                                                    <div className="flex-shrink-0">
-                                                        <div className="w-2 h-2 bg-warning rounded-full"></div>
+                                                    <div className="absolute right-4 top-1/2 -translate-y-1/2 flex flex-col gap-2 items-end">
+                                                        <div className="w-2 h-2 bg-warning rounded-full mb-2"></div>
+                                                        <button
+                                                            onClick={(e) => {
+                                                                e.stopPropagation();
+                                                                handleNotificationClick(notif, true);
+                                                            }}
+                                                            className="text-[10px] text-primary font-bold hover:underline bg-white shadow-sm px-2 py-1 rounded-full border border-gray-100 hover:bg-gray-50 transition-colors z-10"
+                                                        >
+                                                            Tandai dibaca
+                                                        </button>
                                                     </div>
                                                 )}
                                             </div>
