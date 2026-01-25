@@ -6,6 +6,7 @@ export default function ProfilAdmin() {
     const { admin, isLoading, updateAdmin } = useAdmin();
     const [formData, setFormData] = useState({
         nama: '',
+        email: '',
         noHp: '',
         kelurahan: ''
     });
@@ -14,6 +15,7 @@ export default function ProfilAdmin() {
         if (admin) {
             setFormData({
                 nama: admin.nama || '',
+                email: admin.email || '',
                 noHp: admin.noHp || '',
                 kelurahan: admin.kelurahan || ''
             });
@@ -25,6 +27,7 @@ export default function ProfilAdmin() {
             try {
                 await updateAdmin({
                     nama: formData.nama,
+                    email: formData.email,
                     noHp: formData.noHp,
                     kelurahan: formData.kelurahan
                 });
@@ -109,9 +112,9 @@ export default function ProfilAdmin() {
                             <label className="block text-xs font-bold text-gray-500 mb-1">Email</label>
                             <input
                                 type="text"
-                                value={admin.email}
-                                disabled
-                                className="w-full px-4 py-3 rounded-xl border border-gray-200 bg-gray-50 text-gray-400 text-sm cursor-not-allowed"
+                                value={formData.email}
+                                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
                             />
                         </div>
 

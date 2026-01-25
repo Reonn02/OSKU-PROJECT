@@ -59,24 +59,29 @@ export default function AdminDashboard() {
         }
     };
 
-    // Chart data handling
-    const defaultChartData = [
-        { label: 'JAN', value: 0 },
-        { label: 'FEB', value: 0 },
-        { label: 'MAR', value: 0 },
-        { label: 'APR', value: 0 },
-        { label: 'MAY', value: 0 },
-        { label: 'JUN', value: 0 },
-        { label: 'JUL', value: 0 },
-        { label: 'AUG', value: 0 },
-        { label: 'SEP', value: 0 },
-        { label: 'OCT', value: 0 },
-        { label: 'NOV', value: 0 },
-        { label: 'DEC', value: 0 },
-    ];
+    const formatCurrencyAxis = (value: number) => {
+        if (value === 0) return '0';
+        if (value >= 1000000000) return `Rp ${(value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} M`;
+        if (value >= 1000000) return `Rp ${(value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`;
+        return `Rp ${value.toLocaleString('id-ID')}`;
+    };
 
-    const [saldoChartData, setSaldoChartData] = useState(defaultChartData);
-    const [pencairanChartData, setPencairanChartData] = useState(defaultChartData);
+    const generateWeeklyData = () => {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const data: { label: string; value: number }[] = [];
+        months.forEach(month => {
+            data.push({ label: `${month} 1-7`, value: 0 });
+            data.push({ label: `${month} 8-14`, value: 0 });
+            data.push({ label: `${month} 15-21`, value: 0 });
+            data.push({ label: `${month} 22-Akhir`, value: 0 });
+        });
+        return data;
+    };
+
+    const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData());
+    const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData());
+    const [chartMaxY, setChartMaxY] = useState(0);
+    const [chartSteps, setChartSteps] = useState<{ label: string; value: number }[]>([]);
 
     // Summary Stats State - Using Keys
     const [stats, setStats] = useState([
@@ -141,8 +146,8 @@ export default function AdminDashboard() {
         };
 
         const fetchChartData = async (start: string, end: string) => {
-            const newSaldoData = JSON.parse(JSON.stringify(defaultChartData));
-            const newPencairanData = JSON.parse(JSON.stringify(defaultChartData));
+            const newSaldoData = generateWeeklyData();
+            const newPencairanData = generateWeeklyData();
 
             try {
                 // 1. Fetch Total Saldo (Penyetoran) - Global
@@ -156,7 +161,17 @@ export default function AdminDashboard() {
                     penyetoranData.forEach(item => {
                         if (!item.tanggal) return;
                         const date = new Date(item.tanggal);
-                        newSaldoData[date.getMonth()].value += Number(item.total_harga) || 0;
+                        const month = date.getMonth();
+                        const day = date.getDate();
+                        let weekIndex = 0;
+
+                        if (day <= 7) weekIndex = 0;
+                        else if (day <= 14) weekIndex = 1;
+                        else if (day <= 21) weekIndex = 2;
+                        else weekIndex = 3;
+
+                        const dataIndex = month * 4 + weekIndex;
+                        newSaldoData[dataIndex].value += Number(item.total_harga) || 0;
                     });
                 }
 
@@ -172,16 +187,40 @@ export default function AdminDashboard() {
                     pencairanData.forEach(item => {
                         if (!item.tanggal_selesai) return;
                         const date = new Date(item.tanggal_selesai);
-                        newPencairanData[date.getMonth()].value += Number(item.jumlah) || 0;
+                        const month = date.getMonth();
+                        const day = date.getDate();
+                        let weekIndex = 0;
+
+                        if (day <= 7) weekIndex = 0;
+                        else if (day <= 14) weekIndex = 1;
+                        else if (day <= 21) weekIndex = 2;
+                        else weekIndex = 3;
+
+                        const dataIndex = month * 4 + weekIndex;
+                        newPencairanData[dataIndex].value += Number(item.jumlah) || 0;
                     });
                 }
 
-                // Scale to Millions
-                newSaldoData.forEach((d: any) => d.value = d.value / 1000000);
-                newPencairanData.forEach((d: any) => d.value = d.value / 1000000);
-
                 setSaldoChartData(newSaldoData);
                 setPencairanChartData(newPencairanData);
+
+                // Calculate dynamic Max Y and Steps
+                const allValues = [...newSaldoData.map(d => d.value), ...newPencairanData.map(d => d.value)];
+                const maxValue = Math.max(...allValues, 100000); // Minimum 100k
+                const newMaxY = Math.ceil(maxValue * 1.1); // Add 10% buffer
+                setChartMaxY(newMaxY);
+
+                // Generate 5 steps
+                const stepValue = Math.ceil(newMaxY / 5);
+                const steps = [];
+                for (let i = 5; i >= 0; i--) {
+                    const val = i * stepValue;
+                    steps.push({
+                        label: formatCurrencyAxis(val), // Use helper for labels
+                        value: val
+                    });
+                }
+                setChartSteps(steps);
 
             } catch (error) {
                 console.error('Error fetching admin chart data:', error);
@@ -245,38 +284,26 @@ export default function AdminDashboard() {
 
                                 <WasteChart
                                     title={t('admin.dashboard.chart_balance')}
-                                    unit="jt"
+                                    unit="" // We use formatter now
                                     initialData={saldoChartData}
                                     showWasteFilter={false}
                                     showBankSampahFilter={false}
                                     showExportButton={true}
                                     selectedYear={selectedYear}
-                                    maxY={150}
-                                    yAxisSteps={[
-                                        { label: '150jt', value: 150 },
-                                        { label: '100jt', value: 100 },
-                                        { label: '75jt', value: 75 },
-                                        { label: '50jt', value: 50 },
-                                        { label: '25jt', value: 25 },
-                                        { label: '0', value: 0 },
-                                    ]}
+                                    maxY={chartMaxY}
+                                    yAxisSteps={chartSteps}
+                                    valueFormatter={formatCurrencyAxis}
                                 />
                                 <WasteChart
                                     title={t('admin.dashboard.chart_withdraw')}
-                                    unit="jt"
+                                    unit="" // We use formatter now
                                     initialData={pencairanChartData}
                                     showWasteFilter={false}
                                     showBankSampahFilter={false}
-                                    maxY={50}
-                                    yAxisSteps={[
-                                        { label: '50jt', value: 50 },
-                                        { label: '40jt', value: 40 },
-                                        { label: '30jt', value: 30 },
-                                        { label: '20jt', value: 20 },
-                                        { label: '10jt', value: 10 },
-                                        { label: '0', value: 0 },
-                                    ]}
+                                    maxY={chartMaxY}
+                                    yAxisSteps={chartSteps}
                                     showExportButton={true}
+                                    valueFormatter={formatCurrencyAxis}
                                 />
                             </div>
                         </div>

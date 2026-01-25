@@ -253,31 +253,39 @@ export default function PetugasDashboard() {
         }
     };
 
-    const defaultChartData = [
-        { label: 'JAN', value: 0 },
-        { label: 'FEB', value: 0 },
-        { label: 'MAR', value: 0 },
-        { label: 'APR', value: 0 },
-        { label: 'MAY', value: 0 },
-        { label: 'JUN', value: 0 },
-        { label: 'JUL', value: 0 },
-        { label: 'AUG', value: 0 },
-        { label: 'SEP', value: 0 },
-        { label: 'OCT', value: 0 },
-        { label: 'NOV', value: 0 },
-        { label: 'DEC', value: 0 },
-    ];
+    const formatCurrencyAxis = (value: number) => {
+        if (value === 0) return '0';
+        if (value >= 1000000000) return `Rp ${(value / 1000000000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} M`;
+        if (value >= 1000000) return `Rp ${(value / 1000000).toLocaleString('id-ID', { maximumFractionDigits: 1 })} jt`;
+        return `Rp ${value.toLocaleString('id-ID')}`;
+    };
 
-    const [penyetoranChartData, setPenyetoranChartData] = useState(defaultChartData);
-    const [saldoChartData, setSaldoChartData] = useState(defaultChartData);
-    const [pencairanChartData, setPencairanChartData] = useState(defaultChartData);
+    const generateWeeklyData = () => {
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const data: { label: string; value: number }[] = [];
+        months.forEach(month => {
+            data.push({ label: `${month} 1-7`, value: 0 });
+            data.push({ label: `${month} 8-14`, value: 0 });
+            data.push({ label: `${month} 15-21`, value: 0 });
+            data.push({ label: `${month} 22-Akhir`, value: 0 });
+        });
+        return data;
+    };
+
+    const [penyetoranChartData, setPenyetoranChartData] = useState(generateWeeklyData());
+    const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData());
+    const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData());
+    const [moneyChartMaxY, setMoneyChartMaxY] = useState(0);
+    const [moneyChartSteps, setMoneyChartSteps] = useState<{ label: string; value: number }[]>([]);
+    const [weightChartMaxY, setWeightChartMaxY] = useState(0);
+    const [weightChartSteps, setWeightChartSteps] = useState<{ label: string; value: number }[]>([]);
 
     useEffect(() => {
         const processCharts = async () => {
             // Clone default structure deeply
-            const newPenyetoranData = JSON.parse(JSON.stringify(defaultChartData));
-            const newSaldoData = JSON.parse(JSON.stringify(defaultChartData));
-            const newPencairanData = JSON.parse(JSON.stringify(defaultChartData));
+            const newPenyetoranData = generateWeeklyData();
+            const newSaldoData = generateWeeklyData();
+            const newPencairanData = generateWeeklyData();
 
             // 1. Process Penyetoran (Weight & Money In)
             if (penyetoranList && penyetoranList.length > 0) {
@@ -285,19 +293,24 @@ export default function PetugasDashboard() {
                     if (!item.tanggal) return;
                     const date = new Date(item.tanggal);
                     if (date.getFullYear() === selectedYear) {
-                        const monthIdx = date.getMonth();
+                        const month = date.getMonth();
+                        const day = date.getDate();
+                        let weekIndex = 0;
+
+                        if (day <= 7) weekIndex = 0;
+                        else if (day <= 14) weekIndex = 1;
+                        else if (day <= 21) weekIndex = 2;
+                        else weekIndex = 3;
+
+                        const dataIndex = month * 4 + weekIndex;
 
                         // Filter logic for Weight Chart
                         if (!selectedWasteFilter || item.waste_type_name === selectedWasteFilter) {
-                            newPenyetoranData[monthIdx].value += Number(item.berat) || 0;
+                            newPenyetoranData[dataIndex].value += Number(item.berat) || 0;
                         }
 
-                        // Total Money includes all unless we want to filter that too. 
-                        // Usually "Total Saldo" implies everything, but let's keep it consistent:
-                        // If we filter weight, we arguably should filter money too IF the chart had a filter.
-                        // But the second chart has showWasteFilter={false}, so it should probably show TOTAL.
-                        // So we ONLY filter newPenyetoranData.
-                        newSaldoData[monthIdx].value += Number(item.total_harga) || 0;
+                        // Total Money
+                        newSaldoData[dataIndex].value += Number(item.total_harga) || 0;
                     }
                 });
             }
@@ -316,8 +329,17 @@ export default function PetugasDashboard() {
                             if (!item.tanggal_selesai) return;
                             const date = new Date(item.tanggal_selesai);
                             if (date.getFullYear() === selectedYear) {
-                                const monthIdx = date.getMonth();
-                                newPencairanData[monthIdx].value += Number(item.jumlah) || 0;
+                                const month = date.getMonth();
+                                const day = date.getDate();
+                                let weekIndex = 0;
+
+                                if (day <= 7) weekIndex = 0;
+                                else if (day <= 14) weekIndex = 1;
+                                else if (day <= 21) weekIndex = 2;
+                                else weekIndex = 3;
+
+                                const dataIndex = month * 4 + weekIndex;
+                                newPencairanData[dataIndex].value += Number(item.jumlah) || 0;
                             }
                         });
                     }
@@ -326,9 +348,32 @@ export default function PetugasDashboard() {
                 }
             }
 
-            // Scale Money Values to Millions (jt)
-            newSaldoData.forEach((d: any) => d.value = d.value / 1000000);
-            newPencairanData.forEach((d: any) => d.value = d.value / 1000000);
+            // Calculate Weight Chart Scale (MaxY & Steps)
+            const maxWeight = Math.max(...newPenyetoranData.map(d => d.value), 10); // Min 10
+            const weightMaxY = Math.ceil(maxWeight * 1.1);
+            setWeightChartMaxY(weightMaxY);
+
+            const weightSteps = [];
+            const wStepVal = Math.ceil(weightMaxY / 5);
+            for (let i = 5; i >= 0; i--) {
+                weightSteps.push({ label: `${i * wStepVal}kg`, value: i * wStepVal }); // Keep simple for weight
+            }
+            setWeightChartSteps(weightSteps);
+
+
+            // Calculate Money Charts Scale (MaxY & Steps)
+            const allMoneyValues = [...newSaldoData.map(d => d.value), ...newPencairanData.map(d => d.value)];
+            const maxMoney = Math.max(...allMoneyValues, 100000); // Min 100k
+            const moneyMaxY = Math.ceil(maxMoney * 1.1);
+            setMoneyChartMaxY(moneyMaxY);
+
+            const moneySteps = [];
+            const mStepVal = Math.ceil(moneyMaxY / 5);
+            for (let i = 5; i >= 0; i--) {
+                const val = i * mStepVal;
+                moneySteps.push({ label: formatCurrencyAxis(val), value: val });
+            }
+            setMoneyChartSteps(moneySteps);
 
             setPenyetoranChartData(newPenyetoranData);
             setSaldoChartData(newSaldoData);
@@ -579,48 +624,29 @@ export default function PetugasDashboard() {
                                     initialData={penyetoranChartData}
                                     showWasteFilter={true}
                                     onWasteTypeChange={setSelectedWasteFilter}
-                                    maxY={125}
-                                    yAxisSteps={[
-                                        { label: '125kg', value: 125 },
-                                        { label: '100kg', value: 100 },
-                                        { label: '75kg', value: 75 },
-                                        { label: '50kg', value: 50 },
-                                        { label: '25kg', value: 25 },
-                                        { label: '0', value: 0 },
-                                    ]}
+                                    maxY={weightChartMaxY}
+                                    yAxisSteps={weightChartSteps}
                                     showExportButton={true}
                                 />
                                 <WasteChart
                                     title={t('petugas.dashboard.total_balance_collected')}
-                                    unit="jt"
+                                    unit=""
                                     initialData={saldoChartData}
                                     showWasteFilter={false}
-                                    maxY={150}
-                                    yAxisSteps={[
-                                        { label: '150jt', value: 150 },
-                                        { label: '100jt', value: 100 },
-                                        { label: '75jt', value: 75 },
-                                        { label: '50jt', value: 50 },
-                                        { label: '25jt', value: 25 },
-                                        { label: '0', value: 0 },
-                                    ]}
+                                    maxY={moneyChartMaxY}
+                                    yAxisSteps={moneyChartSteps}
                                     showExportButton={true}
+                                    valueFormatter={formatCurrencyAxis}
                                 />
                                 <WasteChart
                                     title={t('admin.dashboard.chart_withdraw')}
-                                    unit="jt"
+                                    unit=""
                                     initialData={pencairanChartData}
                                     showWasteFilter={false}
-                                    maxY={50}
-                                    yAxisSteps={[
-                                        { label: '50jt', value: 50 },
-                                        { label: '40jt', value: 40 },
-                                        { label: '30jt', value: 30 },
-                                        { label: '20jt', value: 20 },
-                                        { label: '10jt', value: 10 },
-                                        { label: '0', value: 0 },
-                                    ]}
+                                    maxY={moneyChartMaxY}
+                                    yAxisSteps={moneyChartSteps}
                                     showExportButton={true}
+                                    valueFormatter={formatCurrencyAxis}
                                 />
                             </div>
 

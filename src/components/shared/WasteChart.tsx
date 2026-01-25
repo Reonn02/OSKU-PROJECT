@@ -26,6 +26,7 @@ interface WasteChartProps {
     chartFilter?: 'tahun' | 'bulan';
     showExportButton?: boolean; // New prop for export button
     onWasteTypeChange?: (type: string) => void;
+    valueFormatter?: (value: number) => string;
 }
 
 
@@ -42,7 +43,8 @@ export default function WasteChart({
     selectedYear = 2026,
     chartFilter = 'tahun',
     showExportButton = false,
-    onWasteTypeChange
+    onWasteTypeChange,
+    valueFormatter
 }: WasteChartProps) {
     const { banks } = useBankSampah();
 
@@ -234,7 +236,7 @@ export default function WasteChart({
                                     >
                                         {/* Tooltip */}
                                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-lg font-bold">
-                                            {item.value}{currentUnit}
+                                            {valueFormatter ? valueFormatter(item.value) : `${item.value}${currentUnit}`}
                                         </div>
                                     </div>
                                     <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold mt-4 sm:mt-6 tracking-tight">{item.label}</span>

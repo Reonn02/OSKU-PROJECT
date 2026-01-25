@@ -101,6 +101,7 @@ function Dashboard() {
     const [totalPenyetoran, setTotalPenyetoran] = useState<number>(0);
     const [totalPencairan, setTotalPencairan] = useState<number>(0);
     const [wasteSummary, setWasteSummary] = useState<{ label: string, value: string, unit: string }[]>([]);
+    const [adminContact, setAdminContact] = useState<string>('+6281234567890');
 
     const scrollContainerRef = useRef<HTMLDivElement>(null);
     const receiptRef = useRef<HTMLDivElement>(null);
@@ -139,6 +140,15 @@ function Dashboard() {
         }
         router.push('/login');
     };
+
+    // Fetch Admin Contact
+    useEffect(() => {
+        const fetchAdminContact = async () => {
+            const { data } = await supabase.from('admins').select('no_hp').eq('role', 'superadmin').limit(1).single();
+            if (data?.no_hp) setAdminContact(data.no_hp);
+        };
+        fetchAdminContact();
+    }, []);
 
     // Redirect to login if not authenticated
     useEffect(() => {
@@ -2411,9 +2421,9 @@ function Dashboard() {
                             <p className="text-gray-500 text-xs mb-6 max-w-[220px] leading-relaxed">
                                 Jika terjadi kendala hubungi kontak berikut :
                             </p>
-                            <a href="tel:+620000000000" className="inline-flex items-center bg-[#3B8A51] hover:bg-[#2F6E41] text-white px-8 py-3 rounded-full text-sm font-bold transition-all shadow-md active:scale-95 group">
+                            <a href={`tel:${adminContact}`} className="inline-flex items-center bg-[#3B8A51] hover:bg-[#2F6E41] text-white px-8 py-3 rounded-full text-sm font-bold transition-all shadow-md active:scale-95 group">
                                 <i className="fas fa-phone-alt mr-3 text-xs group-hover:rotate-12 transition-transform"></i>
-                                +620000000000
+                                {adminContact}
                             </a>
                         </div>
                     </div>

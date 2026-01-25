@@ -1,11 +1,36 @@
-'use client';
-
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/lib/supabase';
 
 export default function Footer() {
     const { t } = useLanguage();
+    const [contactInfo, setContactInfo] = useState({ phone: '+6281234567890', email: 'info@osku-banksampah.id' });
+
+    useEffect(() => {
+        const fetchContact = async () => {
+            try {
+                // Fetch Super Admin contact info (LIMIT 1)
+                const { data } = await supabase
+                    .from('admins')
+                    .select('no_hp, email')
+                    .eq('role', 'superadmin')
+                    .limit(1)
+                    .single();
+
+                if (data) {
+                    setContactInfo({
+                        phone: data.no_hp || '+6281234567890',
+                        email: data.email || 'info@osku-banksampah.id'
+                    });
+                }
+            } catch (error) {
+                console.error("Error fetching contact info:", error);
+            }
+        };
+        fetchContact();
+    }, []);
 
     return (
         <footer className="bg-[#0f172a] text-white pt-16 pb-12 px-4 sm:px-6 lg:px-12 font-sans">
@@ -55,11 +80,11 @@ export default function Footer() {
                             </li>
                             <li className="flex items-center space-x-3 text-gray-400">
                                 <i className="fas fa-phone-alt text-white"></i>
-                                <span>+6200000000000</span>
+                                <span>{contactInfo.phone}</span>
                             </li>
                             <li className="flex items-center space-x-3 text-gray-400">
                                 <i className="far fa-envelope text-white"></i>
-                                <span>info@osku-banksampah.id</span>
+                                <span>{contactInfo.email}</span>
                             </li>
                             <li className="flex items-center space-x-3 text-gray-400">
                                 <i className="far fa-clock text-white"></i>
