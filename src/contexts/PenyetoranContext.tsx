@@ -99,23 +99,12 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
     // Add new penyetoran
     const addPenyetoran = useCallback(async (data: Omit<DbPenyetoran, 'id'>): Promise<DbPenyetoran | null> => {
         try {
-            // Generate sequential ID for id_penyetoran
-            const { data: lastRecord } = await supabase
-                .from('penyetoran')
-                .select('id_penyetoran')
-                .order('id_penyetoran', { ascending: false })
-                .limit(1);
-
-            const lastId = lastRecord?.[0]?.id_penyetoran ? parseInt(lastRecord[0].id_penyetoran) : 0;
-            const newIdPenyetoran = (lastId + 1).toString().padStart(8, '0');
-
             console.log('📝 Adding penyetoran with data:', data);
 
             const { data: inserted, error: insertError } = await supabase
                 .from('penyetoran')
                 .insert({
                     ...data,
-                    id_penyetoran: newIdPenyetoran,
                 })
                 .select()
                 .single();

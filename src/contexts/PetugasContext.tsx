@@ -10,7 +10,6 @@ export interface Petugas {
     noHp: string | null;
     bankSampahId: string | null;
     bankSampahNama?: string; // For display purposes
-    avatar: string | null;
     mustChangePassword?: boolean;
     createdAt: string;
     updatedAt: string | null;
@@ -42,7 +41,6 @@ const dbToPetugas = (petugas: DbPetugas, bankNama?: string): Petugas => ({
     noHp: petugas.no_hp,
     bankSampahId: petugas.bank_sampah_id,
     bankSampahNama: bankNama,
-    avatar: petugas.avatar,
     mustChangePassword: petugas.must_change_password,
     createdAt: petugas.created_at,
     updatedAt: petugas.updated_at
@@ -79,7 +77,6 @@ export function PetugasProvider({ children }: { children: ReactNode }) {
                 noHp: p.no_hp,
                 bankSampahId: p.bank_sampah_id,
                 bankSampahNama: p.bank_sampah?.nama || null,
-                avatar: p.avatar,
                 mustChangePassword: p.must_change_password,
                 createdAt: p.created_at,
                 updatedAt: p.updated_at
@@ -101,35 +98,25 @@ export function PetugasProvider({ children }: { children: ReactNode }) {
 
     const addPetugas = async (petugas: Omit<Petugas, 'id' | 'createdAt' | 'updatedAt'>): Promise<Petugas | null> => {
         try {
-            // Generate sequential officer ID (1XXXX format)
-            const existingIds = petugasList
-                .map(p => parseInt(p.id))
-                .filter(id => !isNaN(id) && id >= 10000 && id < 20000);
-            const maxId = existingIds.length > 0 ? Math.max(...existingIds) : 10000;
-            const newId = (maxId + 1).toString();
-
             // Try inserting with password fields first
             let result = await supabase.from('petugas').insert({
-                id: newId,
                 nama: petugas.nama,
                 email: petugas.email,
                 password: DEFAULT_PASSWORD,
                 no_hp: petugas.noHp,
                 bank_sampah_id: petugas.bankSampahId,
-                avatar: petugas.avatar,
                 must_change_password: true
             }).select().single();
 
             // If password column doesn't exist yet, try without it
             if (result.error && (result.error.message.includes('password') || result.error.message.includes('must_change_password') || result.error.code === '42703')) {
                 console.warn('Password columns not found, inserting without them. Please run the ALTER TABLE SQL command.');
+                console.warn('Password columns not found, inserting without them. Please run the ALTER TABLE SQL command.');
                 result = await supabase.from('petugas').insert({
-                    id: newId,
                     nama: petugas.nama,
                     email: petugas.email,
                     no_hp: petugas.noHp,
-                    bank_sampah_id: petugas.bankSampahId,
-                    avatar: petugas.avatar
+                    bank_sampah_id: petugas.bankSampahId
                 }).select().single();
             }
 
@@ -153,7 +140,6 @@ export function PetugasProvider({ children }: { children: ReactNode }) {
             if (updates.email !== undefined) dbUpdates.email = updates.email;
             if (updates.noHp !== undefined) dbUpdates.no_hp = updates.noHp;
             if (updates.bankSampahId !== undefined) dbUpdates.bank_sampah_id = updates.bankSampahId;
-            if (updates.avatar !== undefined) dbUpdates.avatar = updates.avatar;
             dbUpdates.updated_at = new Date().toISOString();
 
             const { error } = await supabase
@@ -229,7 +215,6 @@ export function PetugasProvider({ children }: { children: ReactNode }) {
                 noHp: data.no_hp,
                 bankSampahId: data.bank_sampah_id,
                 bankSampahNama: data.bank_sampah?.nama || null,
-                avatar: data.avatar,
                 mustChangePassword: data.must_change_password,
                 createdAt: data.created_at,
                 updatedAt: data.updated_at

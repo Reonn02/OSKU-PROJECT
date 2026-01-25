@@ -11,7 +11,6 @@ export interface Admin {
     noHp: string;
     role: 'superadmin';
     kelurahan: string;
-    avatar?: string;
     createdAt: Date;
     updatedAt?: Date;
 }
@@ -46,7 +45,6 @@ const dbToAdmin = (db: DbAdmin): Admin => ({
     noHp: db.no_hp || '',
     role: db.role,
     kelurahan: db.kelurahan || '',
-    avatar: db.avatar || undefined,
     createdAt: new Date(db.created_at),
     updatedAt: db.updated_at ? new Date(db.updated_at) : undefined
 });
@@ -59,7 +57,6 @@ const adminToDb = (admin: Partial<Admin>): Partial<DbAdmin> => {
     if (admin.noHp !== undefined) result.no_hp = admin.noHp;
     if (admin.role !== undefined) result.role = admin.role;
     if (admin.kelurahan !== undefined) result.kelurahan = admin.kelurahan;
-    if (admin.avatar !== undefined) result.avatar = admin.avatar;
     result.updated_at = new Date().toISOString();
     return result;
 };

@@ -32,39 +32,15 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     // Fetch nasabah data based on auth user
     const fetchNasabahData = useCallback(async (authUserId: string) => {
         try {
-            const { data, error } = await supabase
-                .from('nasabah')
-                .select('*')
-                .eq('auth_user_id', authUserId)
-                .single();
+            const data = await import('@/data/nasabahData').then(m => m.getNasabahByAuthUserId(authUserId));
 
-            if (error || !data) {
+            if (!data) {
                 console.warn('Nasabah not found for auth user:', authUserId);
                 setNasabah(null);
                 return;
             }
 
-            // Convert DB format to NasabahData
-            setNasabah({
-                id: data.id,
-                username: data.username,
-                name: data.name,
-                email: data.email,
-                phone: data.phone || '',
-                nik: data.nik || undefined,
-                saldo: data.saldo,
-                bankSampah: data.bank_sampah || '',
-                address: data.address || undefined,
-                rt: data.rt || undefined,
-                rw: data.rw || undefined,
-                kelurahan: data.kelurahan || undefined,
-                kecamatan: data.kecamatan || undefined,
-                kota: data.kota || undefined,
-                provinsi: data.provinsi || undefined,
-                kodepos: data.kodepos || undefined,
-                createdAt: data.created_at,
-                authUserId: data.auth_user_id,
-            });
+            setNasabah(data);
         } catch (error) {
             console.error('Error fetching nasabah:', error);
             setNasabah(null);

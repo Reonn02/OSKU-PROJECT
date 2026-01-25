@@ -13,7 +13,6 @@ interface PetugasData {
     noHp: string | null;
     bankSampahId: string | null;
     bankSampahNama: string | null;
-    avatar: string | null;
 }
 
 export default function KonfirmasiPetugas() {
@@ -50,7 +49,7 @@ export default function KonfirmasiPetugas() {
     // Map database data to component format
     const pendingData = approvedList.map(item => ({
         id: item.id,
-        withdrawal_id: item.id_pengajuan || '-',
+        withdrawal_id: item.id || '-',
         nasabah_id: item.nasabah_username || '-',
         nasabah_name: item.nasabah_name || '-',
         amount: item.jumlah,
@@ -63,7 +62,7 @@ export default function KonfirmasiPetugas() {
         .filter(item => item.status === 'completed' || item.status === 'cancelled')
         .map(item => ({
             id: item.id,
-            withdrawal_id: item.id_pengajuan || '-',
+            withdrawal_id: item.id || '-',
             nasabah_id: item.nasabah_username || '-',
             nasabah_name: item.nasabah_name || '-',
             amount: item.jumlah,

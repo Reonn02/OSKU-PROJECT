@@ -10,14 +10,14 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- 1. ADMINS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS admins (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nama TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT NOT NULL,
     no_hp TEXT,
     role TEXT CHECK (role IN ('superadmin')) DEFAULT 'superadmin',
+    role TEXT CHECK (role IN ('superadmin')) DEFAULT 'superadmin',
     kelurahan TEXT,
-    avatar TEXT,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
 );
@@ -26,7 +26,7 @@ CREATE TABLE IF NOT EXISTS admins (
 -- 2. BANK SAMPAH TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS bank_sampah (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nama TEXT NOT NULL,
     alamat TEXT NOT NULL,
     open_day TEXT NOT NULL,
@@ -41,11 +41,11 @@ CREATE TABLE IF NOT EXISTS bank_sampah (
 );
 
 -- ============================================
--- 3. WASTE TYPES TABLE (relasi ke bank_sampah)
+-- 3. JENIS SAMPAH TABLE (relasi ke bank_sampah)
 -- ============================================
-CREATE TABLE IF NOT EXISTS waste_types (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
-    bank_id TEXT REFERENCES bank_sampah(id) ON DELETE CASCADE,
+CREATE TABLE IF NOT EXISTS jenis_sampah (
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
+    bank_id UUID REFERENCES bank_sampah(id) ON DELETE CASCADE,
     nama TEXT NOT NULL,
     satuan TEXT CHECK (satuan IN ('kg', 'ltr', 'pcs')) NOT NULL,
     harga_per_satuan INTEGER NOT NULL
@@ -55,13 +55,12 @@ CREATE TABLE IF NOT EXISTS waste_types (
 -- 4. PETUGAS TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS petugas (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     nama TEXT NOT NULL,
     email TEXT UNIQUE NOT NULL,
     password TEXT DEFAULT 'Test1234',
     no_hp TEXT,
-    bank_sampah_id TEXT REFERENCES bank_sampah(id) ON DELETE SET NULL,
-    avatar TEXT,
+    bank_sampah_id UUID REFERENCES bank_sampah(id) ON DELETE SET NULL,
     must_change_password BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     updated_at TIMESTAMPTZ
@@ -71,7 +70,7 @@ CREATE TABLE IF NOT EXISTS petugas (
 -- 5. NASABAH TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS nasabah (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     auth_user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
     username TEXT UNIQUE NOT NULL,
     name TEXT NOT NULL,
@@ -79,7 +78,7 @@ CREATE TABLE IF NOT EXISTS nasabah (
     phone TEXT,
     nik TEXT,
     saldo INTEGER DEFAULT 0,
-    bank_sampah TEXT,
+    bank_sampah TEXT, -- Stores name or text reference, kept as TEXT for now
     address TEXT,
     rt TEXT,
     rw TEXT,
@@ -95,7 +94,7 @@ CREATE TABLE IF NOT EXISTS nasabah (
 -- 6. BERITA TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS berita (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     judul TEXT NOT NULL,
     tanggal TEXT NOT NULL,
     author TEXT NOT NULL,
@@ -110,7 +109,7 @@ CREATE TABLE IF NOT EXISTS berita (
 -- 7. BERITA KEGIATAN TABLE
 -- ============================================
 CREATE TABLE IF NOT EXISTS berita_kegiatan (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     judul TEXT NOT NULL,
     tanggal TEXT NOT NULL,
     author TEXT NOT NULL,
@@ -125,12 +124,12 @@ CREATE TABLE IF NOT EXISTS berita_kegiatan (
 -- 8. PENYETORAN TABLE (Deposit/Waste Collection Records)
 -- ============================================
 CREATE TABLE IF NOT EXISTS penyetoran (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     id_penyetoran TEXT UNIQUE,
-    nasabah_id TEXT REFERENCES nasabah(id) ON DELETE CASCADE,
-    petugas_id TEXT REFERENCES petugas(id) ON DELETE SET NULL,
-    bank_sampah_id TEXT REFERENCES bank_sampah(id) ON DELETE SET NULL,
-    waste_type_id TEXT REFERENCES waste_types(id) ON DELETE SET NULL,
+    nasabah_id UUID REFERENCES nasabah(id) ON DELETE CASCADE,
+    petugas_id UUID REFERENCES petugas(id) ON DELETE SET NULL,
+    bank_sampah_id UUID REFERENCES bank_sampah(id) ON DELETE SET NULL,
+    waste_type_id UUID REFERENCES jenis_sampah(id) ON DELETE SET NULL,
     berat DECIMAL(10,2) NOT NULL,
     total_harga INTEGER NOT NULL,
     tanggal TIMESTAMPTZ DEFAULT NOW(),
@@ -142,11 +141,11 @@ CREATE TABLE IF NOT EXISTS penyetoran (
 -- 9. PENCAIRAN TABLE (Withdrawal Records)
 -- ============================================
 CREATE TABLE IF NOT EXISTS pencairan (
-    id TEXT PRIMARY KEY DEFAULT uuid_generate_v4()::text,
+    id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
     id_pengajuan TEXT UNIQUE,
-    nasabah_id TEXT REFERENCES nasabah(id) ON DELETE CASCADE,
-    petugas_id TEXT REFERENCES petugas(id) ON DELETE SET NULL,
-    bank_sampah_id TEXT REFERENCES bank_sampah(id) ON DELETE SET NULL,
+    nasabah_id UUID REFERENCES nasabah(id) ON DELETE CASCADE,
+    petugas_id UUID REFERENCES petugas(id) ON DELETE SET NULL,
+    bank_sampah_id UUID REFERENCES bank_sampah(id) ON DELETE SET NULL,
     jumlah INTEGER NOT NULL,
     status TEXT CHECK (status IN ('pending', 'approved', 'rejected', 'completed', 'cancelled')) DEFAULT 'pending',
     alasan TEXT,
@@ -162,7 +161,7 @@ CREATE TABLE IF NOT EXISTS pencairan (
 -- Enable RLS on all tables
 ALTER TABLE admins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE bank_sampah ENABLE ROW LEVEL SECURITY;
-ALTER TABLE waste_types ENABLE ROW LEVEL SECURITY;
+ALTER TABLE jenis_sampah ENABLE ROW LEVEL SECURITY;
 ALTER TABLE petugas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE nasabah ENABLE ROW LEVEL SECURITY;
 ALTER TABLE berita ENABLE ROW LEVEL SECURITY;
@@ -172,14 +171,14 @@ ALTER TABLE pencairan ENABLE ROW LEVEL SECURITY;
 
 -- Allow public read access to most tables (for landing page)
 CREATE POLICY "Allow public read access" ON bank_sampah FOR SELECT USING (true);
-CREATE POLICY "Allow public read access" ON waste_types FOR SELECT USING (true);
+CREATE POLICY "Allow public read access" ON jenis_sampah FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON berita FOR SELECT USING (true);
 CREATE POLICY "Allow public read access" ON berita_kegiatan FOR SELECT USING (true);
 
 -- Admin full access
 CREATE POLICY "Admin full access" ON admins FOR ALL USING (true);
 CREATE POLICY "Admin full access on bank_sampah" ON bank_sampah FOR ALL USING (true);
-CREATE POLICY "Admin full access on waste_types" ON waste_types FOR ALL USING (true);
+CREATE POLICY "Admin full access on jenis_sampah" ON jenis_sampah FOR ALL USING (true);
 CREATE POLICY "Admin full access on petugas" ON petugas FOR ALL USING (true);
 CREATE POLICY "Admin full access on nasabah" ON nasabah FOR ALL USING (true);
 CREATE POLICY "Admin full access on berita" ON berita FOR ALL USING (true);
@@ -192,14 +191,15 @@ CREATE POLICY "Admin full access on pencairan" ON pencairan FOR ALL USING (true)
 -- ============================================
 
 -- Seed Super Admin Data (password: admin123)
+-- Uses a random UUID for ID
 INSERT INTO admins (id, nama, email, password, no_hp, role, kelurahan, created_at) VALUES
-('30001', 'Super Admin OSKU', 'oskuidn@gmail.com', 'admin123', '0812-3456-7890', 'superadmin', 'Kelurahan Ciracas', NOW())
-ON CONFLICT (id) DO NOTHING;
+(uuid_generate_v4(), 'Super Admin OSKU', 'oskuidn@gmail.com', 'admin123', '0812-3456-7890', 'superadmin', 'Kelurahan Ciracas', NOW())
+ON CONFLICT (email) DO NOTHING;
 
 -- ============================================
 -- INDEXES
 -- ============================================
-CREATE INDEX IF NOT EXISTS idx_waste_types_bank_id ON waste_types(bank_id);
+CREATE INDEX IF NOT EXISTS idx_jenis_sampah_bank_id ON jenis_sampah(bank_id);
 CREATE INDEX IF NOT EXISTS idx_nasabah_bank_sampah ON nasabah(bank_sampah);
 CREATE INDEX IF NOT EXISTS idx_penyetoran_nasabah_id ON penyetoran(nasabah_id);
 CREATE INDEX IF NOT EXISTS idx_penyetoran_tanggal ON penyetoran(tanggal);

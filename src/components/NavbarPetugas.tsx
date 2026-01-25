@@ -34,7 +34,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
         const fetchNotifications = async () => {
             try {
                 const { data, error } = await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .select('*')
                     .eq('recipient_role', 'petugas')
                     .order('created_at', { ascending: false })
@@ -69,7 +69,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'notifications',
+                table: 'notifikasi',
                 filter: `recipient_role=eq.petugas`
             }, (payload) => {
                 const item = payload.new as any;
@@ -100,7 +100,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
         // Mark as read in DB
         if (!notification.isRead) {
             await supabase
-                .from('notifications')
+                .from('notifikasi')
                 .update({ is_read: true })
                 .eq('id', notification.id);
 

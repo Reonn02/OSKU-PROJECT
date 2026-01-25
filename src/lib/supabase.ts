@@ -70,7 +70,6 @@ export interface DbAdmin {
     no_hp: string | null;
     role: 'superadmin';
     kelurahan: string | null;
-    avatar: string | null;
     created_at: string;
     updated_at: string | null;
 }
@@ -90,7 +89,7 @@ export interface DbBankSampah {
     updated_at: string | null;
 }
 
-export interface DbWasteType {
+export interface DbJenisSampah {
     id: string;
     bank_id: string;
     nama: string;
@@ -107,7 +106,7 @@ export interface DbNasabah {
     phone: string | null;
     nik: string | null;
     saldo: number;
-    bank_sampah: string | null;
+    bank_sampah_id: string | null;
     address: string | null;
     rt: string | null;
     rw: string | null;
@@ -150,7 +149,6 @@ export interface DbPetugas {
     password: string;
     no_hp: string | null;
     bank_sampah_id: string | null;
-    avatar: string | null;
     must_change_password: boolean;
     created_at: string;
     updated_at: string | null;
@@ -158,7 +156,6 @@ export interface DbPetugas {
 
 export interface DbPenyetoran {
     id: string;
-    id_penyetoran: string | null;
     nasabah_id: string;
     petugas_id: string | null;
     bank_sampah_id: string | null;
@@ -172,7 +169,6 @@ export interface DbPenyetoran {
 
 export interface DbPencairan {
     id: string;
-    id_pengajuan: string | null;
     nasabah_id: string;
     petugas_id: string | null;
     bank_sampah_id: string | null;
@@ -182,4 +178,15 @@ export interface DbPencairan {
     tanggal_pengajuan: string;
     tanggal_selesai: string | null;
     catatan: string | null;
+}
+
+export interface DbNotifikasi {
+    id: string;
+    user_id: string;
+    title: string;
+    message: string;
+    is_read: boolean; // boolean in DB
+    created_at: string;
+    type: string;
+    related_id: string | null;
 }

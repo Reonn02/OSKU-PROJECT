@@ -68,13 +68,11 @@ export default function ProfilAdmin() {
             {/* Profile Card */}
             <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex flex-col md:flex-row gap-10 items-center md:items-start">
                 {/* Avatar Section */}
-                <div className="flex flex-col items-center gap-4">
-                    <div className="w-32 h-32   rounded-3xl bg-tertiary flex items-center justify-center border-2 border-primary/10 relative overflow-hidden group">
-                        {admin.avatar ? (
-                            <img src={admin.avatar} alt={admin.nama} className="w-full h-full object-cover" />
-                        ) : (
-                            <i className="fas fa-user-shield text-5xl text-primary group-hover:scale-110 transition-transform duration-300"></i>
-                        )}
+                {/* Avatar Section Removed */}
+                { /* Wrapper for ID and Role */}
+                <div className="flex flex-col items-center gap-4 min-w-[200px]">
+                    <div className="w-32 h-32 rounded-3xl bg-tertiary flex items-center justify-center border-2 border-primary/10 relative overflow-hidden group">
+                        <i className="fas fa-user-shield text-5xl text-primary group-hover:scale-110 transition-transform duration-300"></i>
                     </div>
                     <span className="px-4 py-1.5 bg-primary/10 text-primary text-[10px] font-bold rounded-full uppercase tracking-wider">
                         {admin.role === 'superadmin' ? 'Super Admin' : 'Admin'}

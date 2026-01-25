@@ -13,6 +13,7 @@ export interface NasabahData {
     nik?: string;
     saldo: number;
     bankSampah: string;
+    bankSampahId?: string;
     address?: string;
     rt?: string;
     rw?: string;
@@ -28,7 +29,7 @@ export interface NasabahData {
 const DEFAULT_NASABAH_DATA: NasabahData[] = [];
 
 // Convert database record to NasabahData interface
-const dbToNasabah = (db: DbNasabah): NasabahData => ({
+const dbToNasabah = (db: DbNasabah & { bank_info?: { nama: string } | null }): NasabahData => ({
     id: db.id,
     authUserId: db.auth_user_id || undefined,
     username: db.username,
@@ -37,7 +38,8 @@ const dbToNasabah = (db: DbNasabah): NasabahData => ({
     phone: db.phone || '',
     nik: db.nik || undefined,
     saldo: db.saldo,
-    bankSampah: db.bank_sampah || '',
+    bankSampah: db.bank_info?.nama || '',
+    bankSampahId: db.bank_sampah_id || undefined,
     address: db.address || undefined,
     rt: db.rt || undefined,
     rw: db.rw || undefined,
@@ -54,7 +56,7 @@ export const getAllNasabah = async (): Promise<NasabahData[]> => {
     try {
         const { data, error } = await supabase
             .from('nasabah')
-            .select('*')
+            .select('*, bank_info:bank_sampah_id(nama)')
             .order('name');
 
         if (error) {
@@ -83,7 +85,7 @@ export const getNasabahById = async (id: string): Promise<NasabahData | undefine
     try {
         const { data, error } = await supabase
             .from('nasabah')
-            .select('*')
+            .select('*, bank_info:bank_sampah_id(nama)')
             .eq('id', id)
             .single();
 
@@ -99,7 +101,7 @@ export const getNasabahByName = async (name: string): Promise<NasabahData | unde
     try {
         const { data, error } = await supabase
             .from('nasabah')
-            .select('*')
+            .select('*, bank_info:bank_sampah_id(nama)')
             .eq('name', name)
             .single();
 
@@ -115,7 +117,7 @@ export const getNasabahByBankSampah = async (bankSampah: string): Promise<Nasaba
     try {
         const { data, error } = await supabase
             .from('nasabah')
-            .select('*')
+            .select('*, bank_info:bank_sampah_id(nama)')
             .ilike('bank_sampah', `%${bankSampah}%`);
 
         if (error) return [];
@@ -129,6 +131,19 @@ export const getNasabahByBankSampah = async (bankSampah: string): Promise<Nasaba
 export const addNasabah = async (nasabah: Omit<NasabahData, 'id' | 'saldo'>): Promise<NasabahData | null> => {
     try {
         const newId = Date.now().toString();
+        // Lookup bank sampah ID if name is provided
+        let bankId = null;
+        if (nasabah.bankSampah) {
+            const { data: bankData } = await supabase
+                .from('bank_sampah')
+                .select('id')
+                .eq('nama', nasabah.bankSampah)
+                .single();
+            if (bankData) {
+                bankId = bankData.id;
+            }
+        }
+
         const { data, error } = await supabase
             .from('nasabah')
             .insert({
@@ -140,7 +155,7 @@ export const addNasabah = async (nasabah: Omit<NasabahData, 'id' | 'saldo'>): Pr
                 phone: nasabah.phone,
                 nik: nasabah.nik,
                 saldo: 0,
-                bank_sampah: nasabah.bankSampah,
+                bank_sampah_id: bankId,
                 address: nasabah.address,
                 rt: nasabah.rt,
                 rw: nasabah.rw,
@@ -150,7 +165,7 @@ export const addNasabah = async (nasabah: Omit<NasabahData, 'id' | 'saldo'>): Pr
                 provinsi: nasabah.provinsi,
                 kodepos: nasabah.kodepos
             })
-            .select()
+            .select('*, bank_info:bank_sampah_id(nama)')
             .single();
 
         if (error || !data) {
@@ -171,7 +186,7 @@ export const getNasabahByAuthUserId = async (authUserId: string): Promise<Nasaba
     try {
         const { data, error } = await supabase
             .from('nasabah')
-            .select('*')
+            .select('*, bank_info:bank_sampah_id(nama)')
             .eq('auth_user_id', authUserId)
             .single();
 
@@ -192,7 +207,20 @@ export const updateNasabah = async (id: string, updates: Partial<NasabahData>): 
         if (updates.phone !== undefined) dbUpdates.phone = updates.phone;
         if (updates.nik !== undefined) dbUpdates.nik = updates.nik;
         if (updates.saldo !== undefined) dbUpdates.saldo = updates.saldo;
-        if (updates.bankSampah !== undefined) dbUpdates.bank_sampah = updates.bankSampah;
+        // Lookup bank sampah ID if name is being updated
+        if (updates.bankSampah !== undefined) {
+            // bank_sampah text column is removed, we only update the ID
+            // Try to find the ID
+            const { data: bankData } = await supabase
+                .from('bank_sampah')
+                .select('id')
+                .eq('nama', updates.bankSampah)
+                .single();
+            if (bankData) {
+                dbUpdates.bank_sampah_id = bankData.id;
+            }
+        }
+
         if (updates.address !== undefined) dbUpdates.address = updates.address;
         if (updates.rt !== undefined) dbUpdates.rt = updates.rt;
         if (updates.rw !== undefined) dbUpdates.rw = updates.rw;
@@ -206,7 +234,7 @@ export const updateNasabah = async (id: string, updates: Partial<NasabahData>): 
             .from('nasabah')
             .update(dbUpdates)
             .eq('id', id)
-            .select()
+            .select('*, bank_info:bank_sampah_id(nama)')
             .single();
 
         if (error || !data) {

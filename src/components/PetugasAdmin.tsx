@@ -36,8 +36,7 @@ export default function PetugasAdmin() {
         email: p.email,
         phone: p.noHp || '',
         bankSampahId: p.bankSampahId,
-        bankSampah: p.bankSampahNama || banks.find(b => b.id === p.bankSampahId)?.nama || '-',
-        avatar: p.avatar
+        bankSampah: p.bankSampahNama || banks.find(b => b.id === p.bankSampahId)?.nama || '-'
     }));
 
     const filteredPetugas = petugasData.filter(p =>
@@ -60,7 +59,6 @@ export default function PetugasAdmin() {
                 email: newOfficer.email,
                 noHp: newOfficer.phone,
                 bankSampahId: newOfficer.bankSampahId,
-                avatar: null,
                 bankSampahNama: banks.find(b => b.id === newOfficer.bankSampahId)?.nama
             });
 

@@ -12,7 +12,6 @@ interface PetugasData {
     noHp: string | null;
     bankSampahId: string | null;
     bankSampahNama: string | null;
-    avatar: string | null;
 }
 
 interface ProfileFormData {

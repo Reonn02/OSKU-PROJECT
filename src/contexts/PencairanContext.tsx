@@ -166,27 +166,11 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 throw new Error('Saldo tidak mencukupi');
             }
 
-            // Generate sequential ID for id_pengajuan (format: O + 7 digits, e.g., O0000001)
-            const { data: lastRecord } = await supabase
-                .from('pencairan')
-                .select('id_pengajuan')
-                .order('id_pengajuan', { ascending: false })
-                .limit(1);
-
-            let newIdPengajuan = 'O0000001'; // Default first ID
-            if (lastRecord?.[0]?.id_pengajuan) {
-                // Extract numeric part (remove 'O' prefix)
-                const lastIdNumeric = parseInt(lastRecord[0].id_pengajuan.substring(1)) || 0;
-                const nextIdNumeric = lastIdNumeric + 1;
-                // Format: O + 7 digits
-                newIdPengajuan = 'O' + nextIdNumeric.toString().padStart(7, '0');
-            }
-
+            // Generate sequential ID for id (PK) (format: O + 7 digits, e.g., O0000001)
             const { data: inserted, error: insertError } = await supabase
                 .from('pencairan')
                 .insert({
                     ...data,
-                    id_pengajuan: newIdPengajuan,
                     status: 'pending',
                     tanggal_pengajuan: new Date().toISOString(),
                 })
@@ -199,7 +183,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
 
 
             // NOTIFICATION: Notify Petugas
-            await supabase.from('notifications').insert({
+            await supabase.from('notifikasi').insert({
                 recipient_role: 'petugas',
                 recipient_id: null, // Broadcast to all petugas
                 type: 'persetujuan',
@@ -288,13 +272,13 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             }
 
             // AUTO-RESOLVE: Delete the "New Request" notification for Petugas
-            await supabase.from('notifications')
+            await supabase.from('notifikasi')
                 .delete()
                 .eq('reference_id', id)
                 .eq('recipient_role', 'petugas');
 
             // NOTIFICATION: Notify Nasabah
-            await supabase.from('notifications').insert({
+            await supabase.from('notifikasi').insert({
                 recipient_role: 'nasabah',
                 recipient_id: pencairan.nasabah_id,
                 type: 'success',
@@ -352,7 +336,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             }
 
             // AUTO-RESOLVE: Delete the "New Request" notification for Petugas
-            await supabase.from('notifications')
+            await supabase.from('notifikasi')
                 .delete()
                 .eq('reference_id', id)
                 .eq('recipient_role', 'petugas');
@@ -361,7 +345,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             // Get amount for message
             const { data: pencairanData } = await supabase.from('pencairan').select('jumlah, nasabah_id').eq('id', id).single();
             if (pencairanData) {
-                await supabase.from('notifications').insert({
+                await supabase.from('notifikasi').insert({
                     recipient_role: 'nasabah',
                     recipient_id: pencairanData.nasabah_id,
                     type: 'error',
@@ -412,7 +396,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             // NOTIFICATION: Notify Nasabah
             const { data: pencairanData } = await supabase.from('pencairan').select('jumlah, nasabah_id').eq('id', id).single();
             if (pencairanData) {
-                await supabase.from('notifications').insert({
+                await supabase.from('notifikasi').insert({
                     recipient_role: 'nasabah',
                     recipient_id: pencairanData.nasabah_id,
                     type: 'success',
@@ -517,7 +501,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             }
 
             // NOTIFICATION: Notify Nasabah
-            await supabase.from('notifications').insert({
+            await supabase.from('notifikasi').insert({
                 recipient_role: 'nasabah',
                 recipient_id: pencairan.nasabah_id,
                 type: 'warning',

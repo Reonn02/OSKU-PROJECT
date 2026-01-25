@@ -63,8 +63,7 @@ function AdminLoginContent() {
                 nama: admin.nama,
                 email: admin.email,
                 role: admin.role,
-                kelurahan: admin.kelurahan,
-                avatar: admin.avatar
+                kelurahan: admin.kelurahan
             }));
 
             // Redirect to dashboard after short delay for toast to show

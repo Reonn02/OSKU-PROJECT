@@ -106,7 +106,7 @@ export default function PenyetoranPetugas() {
     useEffect(() => {
         const mappedData = penyetoranList.map((item, idx) => ({
             id: item.id,
-            idPenyetoran: item.id_penyetoran || '-',
+            idPenyetoran: item.id || '-',
             no: idx + 1,
             name: item.nasabah_name || '-',
             type: item.waste_type_name || '-',
@@ -390,7 +390,6 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
 
             // Create new transaction in database
             const result = await addPenyetoran({
-                id_penyetoran: null,
                 nasabah_id: selectedNasabah.id,
                 petugas_id: localStorage.getItem('petugasData') ? JSON.parse(localStorage.getItem('petugasData')!).id : null,
                 bank_sampah_id: petugasBankId || null,
@@ -414,7 +413,7 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                     total: formData.totalSaldo,
                     date: new Date(formData.tanggalSetor).toLocaleDateString('id-ID'),
                     bankSampah: formData.bankSampah,
-                    idPenyetoran: result.id_penyetoran || ''
+                    idPenyetoran: result.id || ''
                 } : null;
 
                 showStandaloneToast('success', 'Berhasil Disimpan!', 'Data penyetoran berhasil disimpan ke database.');

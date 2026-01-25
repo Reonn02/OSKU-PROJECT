@@ -77,7 +77,7 @@ export default function NavbarNasabah({
                     .filter(n => !clearedBeritaIds.includes(n.id));
 
                 const { data, error } = await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .select('*')
                     .eq('recipient_id', nasabah.id)
                     .order('created_at', { ascending: false })
@@ -120,7 +120,7 @@ export default function NavbarNasabah({
             .on('postgres_changes', {
                 event: 'INSERT',
                 schema: 'public',
-                table: 'notifications',
+                table: 'notifikasi',
                 filter: `recipient_id=eq.${nasabah.id}`
             }, (payload) => {
                 const newItem = payload.new as any;
@@ -151,7 +151,7 @@ export default function NavbarNasabah({
         if (!notification.isRead) {
             if (!notification.id.startsWith('berita-')) {
                 await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .update({ is_read: true })
                     .eq('id', notification.id);
             } else {
@@ -184,7 +184,7 @@ export default function NavbarNasabah({
 
             if (dbUnreadIds.length > 0) {
                 const { error } = await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .update({ is_read: true })
                     .in('id', dbUnreadIds);
 
@@ -219,7 +219,7 @@ export default function NavbarNasabah({
 
             if (dbIds.length > 0) {
                 const { error } = await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .delete()
                     .in('id', dbIds);
 

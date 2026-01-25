@@ -13,10 +13,10 @@ interface PetugasData {
     noHp: string | null;
     bankSampahId: string | null;
     bankSampahNama: string | null;
-    avatar: string | null;
 }
 
 interface DataItem {
+
     id: string;
     id_pengajuan: string;
     id_nasabah: string;
@@ -82,7 +82,7 @@ export default function PersetujuanPetugas() {
         if (pencairanList.length > 0) {
             return pencairanList.map(item => ({
                 id: item.id,
-                id_pengajuan: item.id_pengajuan || '-',
+                id_pengajuan: item.id || '-',
                 id_nasabah: item.nasabah_username || '-',
                 name: item.nasabah_name || '-',
                 amount: item.jumlah,
@@ -127,7 +127,7 @@ export default function PersetujuanPetugas() {
         if (historyList.length > 0) {
             return historyList.map(item => ({
                 id: item.id,
-                id_pengajuan: item.id_pengajuan || '-',
+                id_pengajuan: item.id || '-',
                 id_nasabah: item.nasabah_username || '-',
                 name: item.nasabah_name || '-',
                 amount: item.jumlah,

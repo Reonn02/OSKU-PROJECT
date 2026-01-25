@@ -201,31 +201,6 @@ function Dashboard() {
                         setSelectedBankSampah(userProfile.bankSampahName);
                     }
 
-                    // Generate or retrieve userId (5-digit sequential format: 20001, 20002, ...)
-                    let id = userProfile.userId;
-                    if (!id) {
-                        // Get last used nasabah ID from localStorage
-                        const lastNasabahId = localStorage.getItem('lastNasabahId');
-                        let newId;
-
-                        if (lastNasabahId) {
-                            // Increment from last ID
-                            const lastNum = parseInt(lastNasabahId);
-                            newId = (lastNum + 1).toString();
-                        } else {
-                            // First nasabah starts at 20001
-                            newId = '20001';
-                        }
-
-                        // Save new ID to localStorage
-                        localStorage.setItem('lastNasabahId', newId);
-
-                        // Save to userProfile
-                        id = newId;
-                        userProfile.userId = id;
-                        sessionStorage.setItem('userProfile', JSON.stringify(userProfile));
-                    }
-                    setUserId(id);
                 }
             } catch (error) {
                 console.error('Error reading user profile:', error);
@@ -246,7 +221,7 @@ function Dashboard() {
                     // Get the most recent pengajuan
                     const mostRecent = pencairanList[0]; // Already sorted by date desc
 
-                    setWithdrawalId(mostRecent.id_pengajuan || null);
+                    setWithdrawalId(mostRecent.id || null);
 
                     const dbStatus = mostRecent.status;
                     if (dbStatus === 'pending') {
@@ -584,7 +559,7 @@ function Dashboard() {
                         const userRequests = parsedRequests.filter((item: any) => item.id_nasabah === userId);
                         const mappedRequests = userRequests.map((item: any, idx: number) => ({
                             no: idx + 1,
-                            idPengajuan: item.id_pengajuan || '-',
+                            idPengajuan: item.id || '-',
                             jumlah: item.amount,
                             tglPengajuan: item.date || '-',
                             status: item.status,
@@ -1917,7 +1892,6 @@ function Dashboard() {
 
                                             // Try to save to Supabase database first
                                             const result = await addPencairan({
-                                                id_pengajuan: null,
                                                 nasabah_id: userId,
                                                 petugas_id: null,
                                                 bank_sampah_id: userBank?.id || null,
@@ -1931,7 +1905,7 @@ function Dashboard() {
 
                                             if (result) {
                                                 // Successfully saved to database - status is 'Diproses'
-                                                setWithdrawalId(result.id_pengajuan || '-');
+                                                setWithdrawalId(result.id || '-');
                                                 setWithdrawalStatus('processing');
 
                                                 // Clear form inputs

@@ -65,8 +65,7 @@ function PetugasLoginContent() {
             email: petugas.email,
             noHp: petugas.noHp,
             bankSampahId: petugas.bankSampahId,
-            bankSampahNama: petugas.bankSampahNama,
-            avatar: petugas.avatar
+            bankSampahNama: petugas.bankSampahNama
         }));
 
         if (!skipToast) {

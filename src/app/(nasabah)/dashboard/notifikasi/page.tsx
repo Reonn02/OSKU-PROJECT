@@ -40,7 +40,7 @@ export default function NotifikasiPage() {
             try {
                 setLoading(true);
                 const { data, error } = await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .select('*')
                     .eq('recipient_id', nasabah.id)
                     .order('created_at', { ascending: false });

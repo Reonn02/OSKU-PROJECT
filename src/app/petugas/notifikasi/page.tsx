@@ -30,7 +30,7 @@ export default function NotifikasiPetugasPage() {
                 setLoading(true);
                 // Petugas sees 'petugas' role notifications
                 const { data, error } = await supabase
-                    .from('notifications')
+                    .from('notifikasi')
                     .select('*')
                     .eq('recipient_role', 'petugas')
                     .order('created_at', { ascending: false });
