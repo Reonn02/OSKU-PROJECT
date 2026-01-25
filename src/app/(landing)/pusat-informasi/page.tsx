@@ -1,10 +1,38 @@
+'use client';
+
+import { useState, useEffect } from 'react';
 import Navbar from "@/components/landing/Navbar";
 import Footer from "@/components/landing/Footer";
 import Calculator from "@/components/shared/Calculator";
 import BeritaSection from "@/components/landing/BeritaSection";
 import Image from "next/image";
+import { supabase } from '@/lib/supabase';
 
 export default function PusatInformasi() {
+    // Default fallback number
+    const [phone, setPhone] = useState('085212436339');
+
+    useEffect(() => {
+        const fetchContact = async () => {
+            try {
+                // Fetch Super Admin contact info, similar to Footer logic
+                const { data } = await supabase
+                    .from('admins')
+                    .select('no_hp')
+                    .eq('role', 'superadmin')
+                    .limit(1)
+                    .single();
+
+                if (data && data.no_hp) {
+                    setPhone(data.no_hp);
+                }
+            } catch (error) {
+                console.error("Error fetching contact info:", error);
+            }
+        };
+        fetchContact();
+    }, []);
+
     return (
         <div className="font-sans antialiased text-gray-900 bg-white">
             <Navbar />
@@ -29,7 +57,7 @@ export default function PusatInformasi() {
                                 <div className="flex items-center gap-3 text-primary">
                                     <i className="fas fa-phone text-primary text-xl"></i>
                                     <p className="text-base">
-                                        No HP Helpdesk (Whatsapp): <span className="font-bold">085212436339</span>
+                                        No HP Helpdesk (Whatsapp): <span className="font-bold">{phone}</span>
                                     </p>
                                 </div>
 
