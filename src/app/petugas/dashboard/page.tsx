@@ -260,21 +260,23 @@ export default function PetugasDashboard() {
         return `Rp ${value.toLocaleString('id-ID')}`;
     };
 
-    const generateWeeklyData = () => {
+    const generateWeeklyData = (year: number) => {
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const data: { label: string; value: number }[] = [];
-        months.forEach(month => {
-            data.push({ label: `${month} 1-7`, value: 0 });
-            data.push({ label: `${month} 8-14`, value: 0 });
-            data.push({ label: `${month} 15-21`, value: 0 });
-            data.push({ label: `${month} 22-Akhir`, value: 0 });
+        months.forEach((month, index) => {
+            const daysInMonth = new Date(year, index + 1, 0).getDate();
+            // Using simpler short labels for better spacing
+            data.push({ label: `${month} 1-7 ${year}`, value: 0 });
+            data.push({ label: `${month} 8-14 ${year}`, value: 0 });
+            data.push({ label: `${month} 15-21 ${year}`, value: 0 });
+            data.push({ label: `${month} 22-${daysInMonth} ${year}`, value: 0 });
         });
         return data;
     };
 
-    const [penyetoranChartData, setPenyetoranChartData] = useState(generateWeeklyData());
-    const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData());
-    const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData());
+    const [penyetoranChartData, setPenyetoranChartData] = useState(generateWeeklyData(selectedYear));
+    const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData(selectedYear));
+    const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData(selectedYear));
     const [moneyChartMaxY, setMoneyChartMaxY] = useState(0);
     const [moneyChartSteps, setMoneyChartSteps] = useState<{ label: string; value: number }[]>([]);
     const [weightChartMaxY, setWeightChartMaxY] = useState(0);
@@ -283,9 +285,9 @@ export default function PetugasDashboard() {
     useEffect(() => {
         const processCharts = async () => {
             // Clone default structure deeply
-            const newPenyetoranData = generateWeeklyData();
-            const newSaldoData = generateWeeklyData();
-            const newPencairanData = generateWeeklyData();
+            const newPenyetoranData = generateWeeklyData(selectedYear);
+            const newSaldoData = generateWeeklyData(selectedYear);
+            const newPencairanData = generateWeeklyData(selectedYear);
 
             // 1. Process Penyetoran (Weight & Money In)
             if (penyetoranList && penyetoranList.length > 0) {
@@ -349,21 +351,33 @@ export default function PetugasDashboard() {
             }
 
             // Calculate Weight Chart Scale (MaxY & Steps)
-            const maxWeight = Math.max(...newPenyetoranData.map(d => d.value), 10); // Min 10
+            const maxWeight = Math.max(...newPenyetoranData.map(d => d.value), 50); // Min 50kg default
             const weightMaxY = Math.ceil(maxWeight * 1.1);
             setWeightChartMaxY(weightMaxY);
+
+            // Determine current unit based on filter
+            let currentWeightUnit = 'kg';
+            if (selectedWasteFilter) {
+                // Find unit for selected waste type
+                // Note: using wasteTypes from useMemo, which comes from banks data
+                const wasteTypeObj = wasteTypes.find(w => w.label === selectedWasteFilter);
+                if (wasteTypeObj) {
+                    currentWeightUnit = wasteTypeObj.unit;
+                }
+            }
 
             const weightSteps = [];
             const wStepVal = Math.ceil(weightMaxY / 5);
             for (let i = 5; i >= 0; i--) {
-                weightSteps.push({ label: `${i * wStepVal}kg`, value: i * wStepVal }); // Keep simple for weight
+                // Just send the number as string. WasteChart will handle unit appending.
+                weightSteps.push({ label: `${i * wStepVal}`, value: i * wStepVal });
             }
             setWeightChartSteps(weightSteps);
 
 
             // Calculate Money Charts Scale (MaxY & Steps)
             const allMoneyValues = [...newSaldoData.map(d => d.value), ...newPencairanData.map(d => d.value)];
-            const maxMoney = Math.max(...allMoneyValues, 100000); // Min 100k
+            const maxMoney = Math.max(...allMoneyValues, 1000000); // Min 1 Juta default if empty
             const moneyMaxY = Math.ceil(maxMoney * 1.1);
             setMoneyChartMaxY(moneyMaxY);
 
@@ -381,7 +395,7 @@ export default function PetugasDashboard() {
         };
 
         processCharts();
-    }, [penyetoranList, selectedYear, petugasBankId, selectedWasteFilter]);
+    }, [penyetoranList, selectedYear, petugasBankId, selectedWasteFilter, wasteTypes]); // Added wasteTypes dependency
 
     return (
         <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex">
@@ -393,7 +407,7 @@ export default function PetugasDashboard() {
             />
 
             {/* Main Content */}
-            <div className={`flex-grow ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col transition-all duration-300 ease-in-out`}>
+            <div className={`flex-grow ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden w-full`}>
                 <NavbarPetugas
                     onLogout={() => setShowLogoutModal(true)}
                     onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
@@ -627,6 +641,7 @@ export default function PetugasDashboard() {
                                     maxY={weightChartMaxY}
                                     yAxisSteps={weightChartSteps}
                                     showExportButton={true}
+                                    selectedYear={selectedYear}
                                 />
                                 <WasteChart
                                     title={t('petugas.dashboard.total_balance_collected')}
@@ -637,6 +652,7 @@ export default function PetugasDashboard() {
                                     yAxisSteps={moneyChartSteps}
                                     showExportButton={true}
                                     valueFormatter={formatCurrencyAxis}
+                                    selectedYear={selectedYear}
                                 />
                                 <WasteChart
                                     title={t('admin.dashboard.chart_withdraw')}
@@ -647,6 +663,7 @@ export default function PetugasDashboard() {
                                     yAxisSteps={moneyChartSteps}
                                     showExportButton={true}
                                     valueFormatter={formatCurrencyAxis}
+                                    selectedYear={selectedYear}
                                 />
                             </div>
 

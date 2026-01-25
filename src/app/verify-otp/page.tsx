@@ -160,7 +160,7 @@ export default function VerifyOTP() {
 
                 const result = await addNasabah({
                     authUserId: userProfile.authUserId,
-                    username: userProfile.fullName ? userProfile.fullName.split(' ')[0] : 'User',
+                    username: userProfile.username || (userProfile.fullName ? userProfile.fullName.split(' ')[0] : 'User'),
                     name: userProfile.fullName,
                     email: userProfile.email,
                     phone: userProfile.phoneNumber,

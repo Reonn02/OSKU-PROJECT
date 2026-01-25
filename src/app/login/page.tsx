@@ -106,12 +106,12 @@ export default function Login() {
                             </div>
                         )}
 
-                        {/* Email */}
+                        {/* Email / Username */}
                         <div className="space-y-1">
-                            <label className="text-xs text-primary font-medium block">{t('auth.login.email')}</label>
+                            <label className="text-xs text-primary font-medium block">Email / Username</label>
                             <input
-                                type="email"
-                                placeholder={t('auth.login.email_placeholder')}
+                                type="text"
+                                placeholder="Masukkan email atau username"
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-500"

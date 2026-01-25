@@ -138,12 +138,9 @@ export default function WasteChart({
 
     // Calculate dynamic labels if they are simple numbers to append unit correctly
     const displaySteps = steps.map(step => {
-        // If label already contains unit or is 0, keep it
-        if (step.label.includes(currentUnit) || step.label === '0') return step;
-        return {
-            ...step,
-            label: `${step.label}${currentUnit}`
-        };
+        // Just pass the step through, let the render logic handle unit appending
+        // This avoids the double unit issue (e.g. 15kgkg) if label already has it
+        return step;
     });
 
     const maxValue = maxY;
@@ -209,14 +206,27 @@ export default function WasteChart({
                 <div className="absolute left-0 top-0 bottom-8 w-10 sm:w-12 flex flex-col justify-between py-0 z-20 bg-white">
                     {displaySteps.map((step, idx) => (
                         <div key={idx} className="flex items-center">
-                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold whitespace-nowrap">{step.label}</span>
+                            <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold whitespace-nowrap">
+                                {/* Only append unit if label doesn't already have it and it's not 0 */}
+                                {/* Only append unit if label doesn't already have it and it's not 0 */}
+                                {(() => {
+                                    if (step.label === '0' || valueFormatter) return step.label;
+
+                                    // Check if label already ends with currentUnit (case insensitive)
+                                    const regex = new RegExp(`${currentUnit}$`, 'i');
+                                    if (regex.test(step.label)) return step.label;
+
+                                    return `${step.label}${currentUnit}`;
+                                })()}
+                            </span>
                         </div>
                     ))}
                 </div>
 
-                {/* Scrollable chart area */}
-                <div className="overflow-x-auto scrollbar-hide pl-10 sm:pl-12">
-                    <div className="h-[250px] sm:h-[300px] relative flex items-end pt-4 pb-4 min-w-[500px] sm:min-w-full">
+                {/* Scrollable chart area - Scrollbar visible as requested */}
+                <div className="overflow-x-auto pb-4 ml-10 sm:ml-12 custom-scrollbar">
+                    {/* Increased min-width to ensure date labels have space (approx 2000px for 48 weeks) */}
+                    <div className="h-[250px] sm:h-[300px] relative flex items-end pt-4 pb-0 min-w-[2000px]">
                         {/* Grid Lines */}
                         <div className="absolute inset-0 flex flex-col justify-between py-0 mb-8 pointer-events-none">
                             {displaySteps.map((step, idx) => (
@@ -227,32 +237,30 @@ export default function WasteChart({
                         </div>
 
                         {/* Bars Area */}
-                        <div className="flex-1 h-full flex items-end justify-between relative z-10 px-2 sm:px-4">
+                        <div className="flex-1 h-full flex items-end justify-between relative z-10 px-2 sm:px-4 gap-1">
                             {displayData.map((item, idx) => (
-                                <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group px-1 min-w-[32px] sm:min-w-0">
+                                <div key={idx} className="flex-1 flex flex-col items-center h-full justify-end group px-0.5 min-w-[20px]">
                                     <div
-                                        className="w-3 sm:w-2.5 bg-primary hover:bg-primary-dark transition-all duration-300 relative rounded-full cursor-pointer"
-                                        style={{ height: `${(item.value / maxValue) * 100}%` }}
+                                        className="w-full bg-primary hover:bg-primary-dark transition-all duration-300 relative rounded-t-sm cursor-pointer"
+                                        style={{ height: `${(item.value / maxValue) * 100}%`, minHeight: item.value > 0 ? '4px' : '0' }}
                                     >
                                         {/* Tooltip */}
                                         <div className="absolute -top-10 left-1/2 -translate-x-1/2 bg-primary text-white text-[10px] px-3 py-1.5 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20 shadow-lg font-bold">
                                             {valueFormatter ? valueFormatter(item.value) : `${item.value}${currentUnit}`}
                                         </div>
                                     </div>
-                                    <span className="text-[9px] sm:text-[10px] text-gray-400 font-bold mt-4 sm:mt-6 tracking-tight">{item.label}</span>
+                                    {/* X-Axis Label - Show only if it's the first week of the month to avoid clutter, or rotate */}
+                                    <span className="text-[8px] text-gray-400 font-bold mt-2 rotate-0 text-center w-full px-0.5 whitespace-nowrap">
+                                        {item.label.replace(selectedYear.toString(), '').trim()}
+                                    </span>
                                 </div>
                             ))}
                         </div>
                     </div>
                 </div>
 
-                {/* Scroll hint for mobile */}
-                <div className="sm:hidden text-center mt-2">
-                    <p className="text-[10px] text-gray-400 flex items-center justify-center gap-1">
-                        <i className="fas fa-arrows-alt-h"></i>
-                        Geser untuk melihat lebih banyak
-                    </p>
-                </div>
+                {/* Scroll hint for all devices since chart is now wide */}
+
             </div>
         </div>
     );

@@ -35,18 +35,17 @@ export default function NasabahPetugas() {
         }
     }, []);
 
-    // Load nasabah data filtered by bank sampah (Using Name based on DB check)
+    // Load nasabah data filtered by bank sampah ID
     useEffect(() => {
         const loadData = async () => {
-            if (!petugasBankName) return;
+            if (!petugasBankId) return;
 
             try {
-                // Fetch nasabah from database filtered by bank_sampah (NAME)
-                // Using ilike for case-insensitive matching
+                // Fetch nasabah from database filtered by bank_sampah_id
                 const { data, error } = await supabase
                     .from('nasabah')
                     .select('*')
-                    .ilike('bank_sampah', petugasBankName)
+                    .eq('bank_sampah_id', petugasBankId) // Use ID for exact match
                     .order('name');
 
                 if (error) {
@@ -82,7 +81,7 @@ export default function NasabahPetugas() {
             }
         };
         loadData();
-    }, [petugasBankName]); // Depend on name now
+    }, [petugasBankId]); // Depend on ID now
 
     const filteredNasabah = nasabahList.filter(n =>
         n.name.toLowerCase().includes(searchQuery.toLowerCase()) ||

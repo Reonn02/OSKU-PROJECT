@@ -515,7 +515,7 @@ export default function PrediksiAdmin() {
                                 <i className="fas fa-info-circle mr-2"></i>
                                 {useApiMode
                                     ? 'Mode API akan memanggil backend untuk prediksi menggunakan model ML (ARIMA/Prophet).'
-                                    : 'Mode Simulasi menggunakan Linear Regression sederhana untuk demo. Cocok untuk presentasi.'}
+                                    : 'Mode Simulasi menggunakan Linear Regression sederhana untuk demo.'}
                             </p>
                         </div>
                     </div>

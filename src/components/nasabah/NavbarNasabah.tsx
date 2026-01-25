@@ -44,7 +44,8 @@ export default function NavbarNasabah({
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
     // Use nasabah name from auth context if available
-    const displayName = nasabah?.name || userName;
+    // Use nasabah username from auth context if available, otherwise fallback to name or prop
+    const displayName = nasabah?.username || nasabah?.name || userName;
 
     useEffect(() => {
         const handleScroll = () => {

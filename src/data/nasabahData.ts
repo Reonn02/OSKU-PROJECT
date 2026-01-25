@@ -112,6 +112,22 @@ export const getNasabahByName = async (name: string): Promise<NasabahData | unde
     }
 };
 
+// Get nasabah by username
+export const getNasabahByUsername = async (username: string): Promise<NasabahData | undefined> => {
+    try {
+        const { data, error } = await supabase
+            .from('nasabah')
+            .select('*, bank_info:bank_sampah_id(nama)')
+            .eq('username', username)
+            .single();
+
+        if (error || !data) return undefined;
+        return dbToNasabah(data);
+    } catch {
+        return undefined;
+    }
+};
+
 // Get nasabah by bank sampah
 export const getNasabahByBankSampah = async (bankSampah: string): Promise<NasabahData[]> => {
     try {

@@ -2,6 +2,7 @@
 
 import { supabase } from './supabase';
 import { User, AuthError, Session } from '@supabase/supabase-js';
+import { getNasabahByUsername } from '@/data/nasabahData';
 
 /**
  * Auth Service for Nasabah Authentication using Supabase Auth
@@ -71,8 +72,23 @@ export const signInNasabah = async (
     password: string
 ): Promise<AuthResult> => {
     try {
+        let finalEmail = email;
+
+        // If input is not an email (simple check), try to look up username
+        if (!email.includes('@')) {
+            const nasabah = await getNasabahByUsername(email);
+            if (nasabah && nasabah.email) {
+                finalEmail = nasabah.email;
+            } else {
+                return {
+                    success: false,
+                    error: 'Username tidak ditemukan.',
+                };
+            }
+        }
+
         const { data, error } = await supabase.auth.signInWithPassword({
-            email,
+            email: finalEmail,
             password,
         });
 

@@ -12,11 +12,13 @@ import BantuanContent from '@/components/landing/BantuanContent';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/lib/supabase';
+import { useBankSampah } from '@/contexts/BankSampahContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function AdminDashboard() {
     const searchParams = useSearchParams();
     const { t } = useLanguage();
+    const { banks } = useBankSampah();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -66,20 +68,22 @@ export default function AdminDashboard() {
         return `Rp ${value.toLocaleString('id-ID')}`;
     };
 
-    const generateWeeklyData = () => {
+    const generateWeeklyData = (year: number) => {
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const data: { label: string; value: number }[] = [];
-        months.forEach(month => {
-            data.push({ label: `${month} 1-7`, value: 0 });
-            data.push({ label: `${month} 8-14`, value: 0 });
-            data.push({ label: `${month} 15-21`, value: 0 });
-            data.push({ label: `${month} 22-Akhir`, value: 0 });
+        months.forEach((month, index) => {
+            const daysInMonth = new Date(year, index + 1, 0).getDate();
+            // Using simpler short labels for better spacing
+            data.push({ label: `${month} 1-7 ${year}`, value: 0 });
+            data.push({ label: `${month} 8-14 ${year}`, value: 0 });
+            data.push({ label: `${month} 15-21 ${year}`, value: 0 });
+            data.push({ label: `${month} 22-${daysInMonth} ${year}`, value: 0 });
         });
         return data;
     };
 
-    const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData());
-    const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData());
+    const [saldoChartData, setSaldoChartData] = useState(generateWeeklyData(selectedYear));
+    const [pencairanChartData, setPencairanChartData] = useState(generateWeeklyData(selectedYear));
     const [chartMaxY, setChartMaxY] = useState(0);
     const [chartSteps, setChartSteps] = useState<{ label: string; value: number }[]>([]);
 
@@ -92,9 +96,10 @@ export default function AdminDashboard() {
     ]);
 
     useEffect(() => {
+        const startOfYear = `${selectedYear}-01-01`;
+        const endOfYear = `${selectedYear}-12-31T23:59:59`;
+
         const fetchDashboardData = async () => {
-            const startOfYear = `${selectedYear}-01-01`;
-            const endOfYear = `${selectedYear}-12-31T23:59:59`;
 
             try {
                 // 1. Fetch Counts (Filtered by Year)
@@ -137,17 +142,15 @@ export default function AdminDashboard() {
                     { label: 'admin.dashboard.total_withdraw', value: `Rp. ${totalPencairan.toLocaleString('id-ID')}`, icon: '/icon/Pencairan.svg' },
                 ]);
 
-                // 4. Chart Data (Filtered by Year)
-                fetchChartData(startOfYear, endOfYear);
-
             } catch (error) {
                 console.error('Error fetching dashboard stats:', error);
             }
         };
 
+
         const fetchChartData = async (start: string, end: string) => {
-            const newSaldoData = generateWeeklyData();
-            const newPencairanData = generateWeeklyData();
+            const newSaldoData = generateWeeklyData(selectedYear);
+            const newPencairanData = generateWeeklyData(selectedYear);
 
             try {
                 // 1. Fetch Total Saldo (Penyetoran) - Global
@@ -205,8 +208,12 @@ export default function AdminDashboard() {
                 setPencairanChartData(newPencairanData);
 
                 // Calculate dynamic Max Y and Steps
+                // Use banks from context which is already the source of truth for "active/approved" banks
+                const effectiveBankCount = banks.length > 0 ? banks.length : 1;
+                const baseMinMaxY = 1000000 * effectiveBankCount;
+
                 const allValues = [...newSaldoData.map(d => d.value), ...newPencairanData.map(d => d.value)];
-                const maxValue = Math.max(...allValues, 100000); // Minimum 100k
+                const maxValue = Math.max(...allValues, baseMinMaxY);
                 const newMaxY = Math.ceil(maxValue * 1.1); // Add 10% buffer
                 setChartMaxY(newMaxY);
 
@@ -228,7 +235,8 @@ export default function AdminDashboard() {
         };
 
         fetchDashboardData();
-    }, [selectedYear]);
+        fetchChartData(startOfYear, endOfYear);
+    }, [selectedYear, banks]);
 
     return (
         <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex">
@@ -240,7 +248,7 @@ export default function AdminDashboard() {
             />
 
             {/* Main Content */}
-            <div className={`flex-grow ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col transition-all duration-300 ease-in-out`}>
+            <div className={`flex-grow ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden w-full`}>
                 <NavbarAdmin
                     onLogout={() => setShowLogoutModal(true)}
                     onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}

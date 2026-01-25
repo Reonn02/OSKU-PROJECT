@@ -80,6 +80,7 @@ function Dashboard() {
     const beritaPerPage = 3; // Show 3 news per page
     const [selectedBankSampah, setSelectedBankSampah] = useState<string>('');
     const [displayName, setDisplayName] = useState<string>('-'); // Display name from registration or "-"
+    const [username, setUsername] = useState<string>('-');
     const [userEmail, setUserEmail] = useState<string>(''); // Email from userProfile
     const [userPhone, setUserPhone] = useState<string>(''); // Phone from userProfile
     const [userId, setUserId] = useState<string>('-');
@@ -163,6 +164,7 @@ function Dashboard() {
         if (nasabah) {
             // Load data from authenticated nasabah (Supabase)
             setDisplayName(nasabah.name || '-');
+            setUsername(nasabah.username || '-');
             setUserEmail(nasabah.email || '');
             setUserPhone(nasabah.phone || '');
             setUserNIK(nasabah.nik || '-');
@@ -202,6 +204,7 @@ function Dashboard() {
                 if (userProfileStr) {
                     const userProfile = JSON.parse(userProfileStr);
                     setDisplayName(userProfile.fullName || '-');
+                    setUsername(userProfile.username || '-');
                     setUserEmail(userProfile.email || '');
                     setUserPhone(userProfile.phoneNumber || '');
                     setUserNIK(userProfile.nik || '-');
@@ -277,6 +280,7 @@ function Dashboard() {
                     .from('nasabah')
                     .update({
                         name: displayName,
+                        username: username,
                         phone: userPhone,
                         address: userAddress,
                         rt: userRT,
@@ -294,6 +298,7 @@ function Dashboard() {
                 const userProfile = JSON.parse(userProfileStr);
                 // Update with current values
                 userProfile.fullName = displayName;
+                userProfile.username = username;
                 userProfile.phoneNumber = userPhone;
                 userProfile.address = userAddress;
                 userProfile.rt = userRT;
@@ -1273,6 +1278,7 @@ function Dashboard() {
                                 {[
                                     { label: 'Id nasabah', value: userId },
                                     { label: 'Nama nasabah', value: displayName },
+                                    { label: 'Username', value: username },
                                     { label: 'Email', value: userEmail },
                                     { label: 'Nomor HP', value: userPhone },
                                     { label: 'NIK', value: userNIK },
@@ -1316,6 +1322,10 @@ function Dashboard() {
                                     <div>
                                         <label className="block text-xs font-bold text-primary mb-1">Nama Tampilan</label>
                                         <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-primary mb-1">Username</label>
+                                        <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-sm" />
                                     </div>
                                     <div>
                                         <label className="block text-xs font-bold text-primary mb-1">Nomor HP</label>

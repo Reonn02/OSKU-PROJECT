@@ -19,6 +19,7 @@ import {
 
 interface FormData {
     fullName: string;
+    username: string;
     email: string;
     phoneNumber: string;
     nik: string;
@@ -28,6 +29,7 @@ interface FormData {
 
 interface FormErrors {
     fullName?: string;
+    username?: string;
     email?: string;
     phoneNumber?: string;
     nik?: string;
@@ -42,6 +44,7 @@ export default function Register() {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [formData, setFormData] = useState<FormData>({
         fullName: '',
+        username: '',
         email: '',
         phoneNumber: '',
         nik: '',
@@ -71,6 +74,13 @@ export default function Register() {
             case 'fullName':
                 if (!validateRequired(value)) {
                     error = getRequiredError(t('auth.register.fullname'));
+                }
+                break;
+            case 'username':
+                if (!validateRequired(value)) {
+                    error = getRequiredError('Username');
+                } else if (!/^[a-zA-Z0-9_]+$/.test(value)) {
+                    error = 'Username hanya boleh huruf, angka, dan underscore';
                 }
                 break;
             case 'email':
@@ -124,6 +134,14 @@ export default function Register() {
             isValid = false;
         }
 
+        if (!validateRequired(formData.username)) {
+            newErrors.username = getRequiredError('Username');
+            isValid = false;
+        } else if (!/^[a-zA-Z0-9_]+$/.test(formData.username)) {
+            newErrors.username = 'Username hanya boleh huruf, angka, dan underscore';
+            isValid = false;
+        }
+
         if (!validateRequired(formData.email)) {
             newErrors.email = getRequiredError(t('auth.register.email'));
             isValid = false;
@@ -174,6 +192,7 @@ export default function Register() {
 
         setTouched({
             fullName: true,
+            username: true,
             email: true,
             phoneNumber: true,
             nik: true,
@@ -190,6 +209,7 @@ export default function Register() {
         try {
             sessionStorage.setItem('registrationData', JSON.stringify({
                 fullName: formData.fullName,
+                username: formData.username,
                 email: formData.email,
                 phoneNumber: formData.phoneNumber,
                 nik: formData.nik,
@@ -243,6 +263,25 @@ export default function Register() {
                             />
                             {touched.fullName && errors.fullName && (
                                 <p className="text-xs text-red-500 mt-1">{errors.fullName}</p>
+                            )}
+                        </div>
+
+                        {/* Username */}
+                        <div className="space-y-1">
+                            <label className="text-xs text-primary font-medium block">Username</label>
+                            <input
+                                type="text"
+                                placeholder="Masukkan username"
+                                value={formData.username}
+                                onChange={(e) => handleInputChange('username', e.target.value.replace(/[^a-zA-Z0-9_]/g, ''))}
+                                onBlur={() => handleBlur('username')}
+                                className={`w-full px-4 py-3 rounded-xl border ${touched.username && errors.username
+                                    ? 'border-red-500 focus:border-red-500 focus:ring-red-500'
+                                    : 'border-gray-300 focus:border-primary focus:ring-primary'
+                                    } focus:outline-none focus:ring-1 text-sm text-gray-500`}
+                            />
+                            {touched.username && errors.username && (
+                                <p className="text-xs text-red-500 mt-1">{errors.username}</p>
                             )}
                         </div>
 
