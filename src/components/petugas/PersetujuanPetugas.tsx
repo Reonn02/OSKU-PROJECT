@@ -381,7 +381,7 @@ export default function PersetujuanPetugas() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
             {/* Header */}
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
                 <div className="flex items-center gap-3">
                     <div className="w-8 h-8 flex items-center justify-center">
                         <Image src="/icon/mdi_approve.svg" alt="Persetujuan" width={24} height={24} className="filter-primary" />
@@ -390,7 +390,7 @@ export default function PersetujuanPetugas() {
                 </div>
 
                 {/* Year Picker Moved Here */}
-                <div className="min-w-[150px]">
+                <div className="flex items-center">
                     <YearPicker
                         selectedYear={selectedYear}
                         onYearChange={(year: number) => {

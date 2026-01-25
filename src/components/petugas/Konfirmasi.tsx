@@ -454,21 +454,27 @@ export default function KonfirmasiPetugas() {
                             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                         </div>
 
-                        {/* Status Filter */}
-                        <div className="relative">
-                            <select
-                                value={statusFilter}
-                                onChange={(e) => {
-                                    setStatusFilter(e.target.value as 'all' | 'completed' | 'cancelled');
-                                    setHistoryPage(1);
-                                }}
-                                className="appearance-none bg-white border border-gray-100 rounded-full pl-4 pr-10 py-2.5 text-xs font-medium text-primary shadow-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
-                            >
-                                <option value="all">{t('common.all_status') || 'Semua Status'}</option>
-                                <option value="completed">{t('common.completed')}</option>
-                                <option value="cancelled">{t('common.cancelled')}</option>
-                            </select>
-                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        {/* Status Filter - Pills */}
+                        <div className="flex bg-white rounded-full p-1 border border-gray-100 shadow-sm overflow-hidden">
+                            {[
+                                { value: 'all', label: t('common.all_status') || 'Semua' },
+                                { value: 'completed', label: t('common.completed') },
+                                { value: 'cancelled', label: t('common.cancelled') }
+                            ].map((option) => (
+                                <button
+                                    key={option.value}
+                                    onClick={() => {
+                                        setStatusFilter(option.value as any);
+                                        setHistoryPage(1);
+                                    }}
+                                    className={`px-4 py-2 rounded-full text-xs font-bold transition-all ${statusFilter === option.value
+                                        ? 'bg-primary text-white shadow-md'
+                                        : 'text-gray-400 hover:bg-gray-50'
+                                        }`}
+                                >
+                                    {option.label}
+                                </button>
+                            ))}
                         </div>
 
                         {/* Export Button */}
