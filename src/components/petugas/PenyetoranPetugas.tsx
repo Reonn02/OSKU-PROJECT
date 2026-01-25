@@ -114,7 +114,7 @@ export default function PenyetoranPetugas() {
             weight: item.berat,
             unit: (item.waste_type_satuan ?
                 (item.waste_type_satuan === 'kg' ? 'Kg' :
-                    item.waste_type_satuan === 'ltr' ? 'Liter' :
+                    item.waste_type_satuan === 'ltr' ? 'Ltr' :
                         item.waste_type_satuan === 'pcs' ? 'Pcs' :
                             item.waste_type_satuan.charAt(0).toUpperCase() + item.waste_type_satuan.slice(1))
                 : 'Kg'), // Default fallback
@@ -546,7 +546,7 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
         ? availableWasteTypes.map(wt => {
             // Normalize unit display to match HargaSampahPetugas
             const rawUnit = wt.satuan;
-            const displayUnit = rawUnit === 'kg' ? 'Kg' : rawUnit === 'ltr' ? 'Liter' : rawUnit === 'pcs' ? 'Pcs' : 'Satuan';
+            const displayUnit = rawUnit === 'kg' ? 'Kg' : rawUnit === 'ltr' ? 'Ltr' : rawUnit === 'pcs' ? 'Pcs' : rawUnit.charAt(0).toUpperCase() + rawUnit.slice(1);
 
             const totalWeight = historyData
                 .filter(h => h.type === wt.nama)
@@ -992,7 +992,7 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                                 <input
                                     type="number"
                                     step="0.01"
-                                    placeholder={`Masukkan berat dalam ${formData.satuan || 'satuan'}`}
+                                    placeholder={`Masukkan berat dalam ${formData.satuan === 'ltr' ? 'Ltr' : formData.satuan.charAt(0).toUpperCase() + formData.satuan.slice(1) || 'satuan'}`}
                                     value={formData.beratSampah}
                                     onChange={handleBeratChange}
                                     disabled={!formData.jenisSampah}
