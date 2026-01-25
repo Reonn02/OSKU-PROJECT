@@ -66,7 +66,7 @@ export default function ProfilAdmin() {
             </div>
 
             {/* Profile Card */}
-            <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex flex-col md:flex-row gap-10 items-center md:items-start">
+            <div className="bg-white rounded-[32px] p-8 md:p-12 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex flex-col md:flex-row gap-10 items-center md:items-center">
                 {/* Avatar Section */}
                 {/* Avatar Section Removed */}
                 { /* Wrapper for ID and Role */}
@@ -136,7 +136,7 @@ export default function ProfilAdmin() {
                             </div>
                         </div>
 
-                        <div className="pt-4">
+                        <div className="pt-4 flex justify-center">
                             <button
                                 onClick={handleSave}
                                 className="bg-primary hover:bg-primary-dark text-white px-8 py-3 rounded-xl text-sm font-bold transition-all shadow-md active:scale-95 cursor-pointer w-full md:w-auto"
