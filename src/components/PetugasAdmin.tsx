@@ -125,29 +125,33 @@ export default function PetugasAdmin() {
     const handleSaveChanges = async () => {
         if (selectedPetugas && editedData) {
             try {
-                await updatePetugas(selectedPetugas.id, {
+                const success = await updatePetugas(selectedPetugas.id, {
                     email: editedData.email,
                     noHp: editedData.phone,
                     bankSampahId: editedData.bankSampahId
                 });
 
-                // Update selected petugas to show new data
-                const updatedBankName = banks.find(b => b.id === editedData.bankSampahId)?.nama || '-';
-                setSelectedPetugas({
-                    ...selectedPetugas,
-                    email: editedData.email,
-                    phone: editedData.phone,
-                    bankSampahId: editedData.bankSampahId,
-                    bankSampah: updatedBankName
-                });
+                if (success) {
+                    // Update selected petugas to show new data
+                    const updatedBankName = banks.find(b => b.id === editedData.bankSampahId)?.nama || '-';
+                    setSelectedPetugas({
+                        ...selectedPetugas,
+                        email: editedData.email,
+                        phone: editedData.phone,
+                        bankSampahId: editedData.bankSampahId,
+                        bankSampah: updatedBankName
+                    });
 
-                // Reset edited data
-                setEditedData(null);
+                    // Reset edited data
+                    setEditedData(null);
 
-                // Show success notification
-                setShowEditSuccess(true);
-                setTimeout(() => setShowEditSuccess(false), 3000);
-                showStandaloneToast('success', 'Berhasil!', 'Data petugas berhasil diperbarui.');
+                    // Show success notification
+                    setShowEditSuccess(true);
+                    setTimeout(() => setShowEditSuccess(false), 3000);
+                    showStandaloneToast('success', 'Berhasil!', 'Data petugas berhasil diperbarui.');
+                } else {
+                    showStandaloneToast('error', 'Gagal!', 'Tidak dapat memperbarui data petugas. Pastikan email belum terdaftar.');
+                }
             } catch (error) {
                 showStandaloneToast('error', 'Gagal!', 'Tidak dapat memperbarui data petugas.');
             }

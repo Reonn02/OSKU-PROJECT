@@ -19,7 +19,7 @@ interface PetugasContextType {
     petugasList: Petugas[];
     isLoading: boolean;
     addPetugas: (petugas: Omit<Petugas, 'id' | 'createdAt' | 'updatedAt'>) => Promise<Petugas | null>;
-    updatePetugas: (id: string, updates: Partial<Petugas>) => Promise<void>;
+    updatePetugas: (id: string, updates: Partial<Petugas>) => Promise<boolean>;
     deletePetugas: (id: string) => Promise<void>;
     getPetugasById: (id: string) => Petugas | undefined;
     refreshPetugas: () => Promise<void>;
@@ -133,7 +133,7 @@ export function PetugasProvider({ children }: { children: ReactNode }) {
         }
     };
 
-    const updatePetugas = async (id: string, updates: Partial<Petugas>) => {
+    const updatePetugas = async (id: string, updates: Partial<Petugas>): Promise<boolean> => {
         try {
             const dbUpdates: Partial<DbPetugas> = {};
             if (updates.nama !== undefined) dbUpdates.nama = updates.nama;
@@ -149,12 +149,14 @@ export function PetugasProvider({ children }: { children: ReactNode }) {
 
             if (error) {
                 console.error('Failed to update petugas:', error);
-                return;
+                return false;
             }
 
             await fetchPetugas(); // Refresh data
+            return true;
         } catch (error) {
             console.error('Failed to update petugas:', error);
+            return false;
         }
     };
 
