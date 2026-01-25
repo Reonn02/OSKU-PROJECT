@@ -211,8 +211,8 @@ function PetugasLoginContent() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
                     <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-300">
                         <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-yellow-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i className="fas fa-key text-yellow-600 text-2xl"></i>
+                            <div className="w-16 h-16 bg-tertiary rounded-full flex items-center justify-center mx-auto mb-4">
+                                <i className="fas fa-key text-primary text-2xl"></i>
                             </div>
                             <h3 className="text-xl font-bold text-primary mb-2">Ganti Password</h3>
                             <p className="text-gray-600 text-sm">
