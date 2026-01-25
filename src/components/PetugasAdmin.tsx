@@ -326,7 +326,7 @@ export default function PetugasAdmin() {
                         <select
                             value={selectedBank}
                             onChange={(e) => setSelectedBank(e.target.value)}
-                            className="appearance-none bg-white text-[#3B8A51] border border-gray-100 rounded-full px-6 py-2.5 pr-12 text-xs font-bold text-primary shadow-sm focus:outline-none cursor-pointer"
+                            className="appearance-none bg-white text-[#3B8A51] border border-gray-100 rounded-full px-6 py-2.5 pr-12 text-xs font-bold text-primary shadow-sm focus:outline-none cursor-pointer max-w-[200px] truncate"
                         >
                             <option value="">Bank Sampah</option>
                             {banks.map((bank) => (
