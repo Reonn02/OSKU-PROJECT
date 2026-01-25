@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { showStandaloneToast } from './Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { usePetugas } from '@/contexts/PetugasContext';
 

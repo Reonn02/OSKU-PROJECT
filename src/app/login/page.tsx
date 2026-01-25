@@ -5,9 +5,12 @@ import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { signInNasabah } from '@/lib/authService';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 export default function Login() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -20,12 +23,12 @@ export default function Login() {
         setError('');
 
         if (!email.trim()) {
-            setError('Email wajib diisi');
+            setError(t('auth.login.error_required_email'));
             return;
         }
 
         if (!password.trim()) {
-            setError('Password wajib diisi');
+            setError(t('auth.login.error_required_password'));
             return;
         }
 
@@ -36,7 +39,8 @@ export default function Login() {
             const result = await signInNasabah(email, password);
 
             if (!result.success) {
-                setError(result.error || 'Login gagal. Silakan coba lagi.');
+                // Use a generic error or specific translation if available
+                setError(result.error || t('auth.login.error_generic'));
                 setIsSubmitting(false);
                 return;
             }
@@ -50,7 +54,7 @@ export default function Login() {
                     .single();
 
                 if (nasabahError || !nasabahData) {
-                    setError('Akun tidak ditemukan. Silakan daftar terlebih dahulu.');
+                    setError('Akun tidak ditemukan. Silakan daftar terlebih dahulu.'); // This might be better translated too if possible, but keeping it simple for now or adding to dict
                     // Sign out since no nasabah record
                     await supabase.auth.signOut();
                     setIsSubmitting(false);
@@ -71,23 +75,26 @@ export default function Login() {
             }
         } catch (err) {
             console.error('Login error:', err);
-            setError('Terjadi kesalahan. Silakan coba lagi.');
+            setError(t('auth.login.error_generic'));
             setIsSubmitting(false);
         }
     };
 
     return (
         <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col relative">
+            <div className="absolute top-4 right-4 z-10">
+                <LanguageSwitcher />
+            </div>
             <main className="flex-grow flex flex-col items-center justify-center p-4">
-                <div className="w-full max-w-lg mb-4 flex justify-start">
-                    <Link href="/" title="" className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white hover:bg-primary-dark transition text-2xl">
+                <div className="w-full max-w-lg mb-4 flex justify-between items-center">
+                    <Link href="/" title={t('auth.login.back')} className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white hover:bg-primary-dark transition text-2xl">
                         <i className="fas fa-arrow-left"></i>
                     </Link>
                 </div>
                 <div className="w-full max-w-lg border border-gray-200 rounded-3xl p-8 md:p-12 shadow-sm bg-white">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-primary mb-2">Login Nasabah</h1>
-                        <p className="text-sm text-primary">Masuk akun nasabah anda dan lanjut menabung di OSKU</p>
+                        <h1 className="text-3xl font-bold text-primary mb-2">{t('auth.login.title')}</h1>
+                        <p className="text-sm text-primary">{t('auth.login.subtitle')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
@@ -101,10 +108,10 @@ export default function Login() {
 
                         {/* Email */}
                         <div className="space-y-1">
-                            <label className="text-xs text-primary font-medium block">Email</label>
+                            <label className="text-xs text-primary font-medium block">{t('auth.login.email')}</label>
                             <input
                                 type="email"
-                                placeholder="Masukkan email"
+                                placeholder={t('auth.login.email_placeholder')}
                                 value={email}
                                 onChange={(e) => setEmail(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-500"
@@ -113,10 +120,10 @@ export default function Login() {
 
                         {/* Password */}
                         <div className="space-y-1">
-                            <label className="text-xs text-primary font-medium block">Password</label>
+                            <label className="text-xs text-primary font-medium block">{t('auth.login.password')}</label>
                             <input
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Password"
+                                placeholder={t('auth.login.password_placeholder')}
                                 value={password}
                                 onChange={(e) => setPassword(e.target.value)}
                                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-500"
@@ -134,11 +141,11 @@ export default function Login() {
                                     className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary accent-primary"
                                 />
                                 <label htmlFor="show-password" className="text-xs text-primary select-none cursor-pointer">
-                                    Tampilkan Password
+                                    {t('auth.login.show_password')}
                                 </label>
                             </div>
                             <Link href="/forgot-password" title="" className="text-xs text-primary hover:underline font-medium">
-                                Lupa Password?
+                                {t('auth.login.forgot_password')}
                             </Link>
                         </div>
 
@@ -148,14 +155,14 @@ export default function Login() {
                                 disabled={isSubmitting}
                                 className="w-full bg-primary hover:bg-primary-dark text-white text-center font-medium py-3 rounded-full transition shadow-md disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isSubmitting ? 'Memproses...' : 'Masuk'}
+                                {isSubmitting ? t('auth.login.processing') : t('auth.login.button')}
                             </button>
                         </div>
 
                         {/* Register Link */}
                         <div className="text-center pt-2">
                             <p className="text-xs text-gray-600">
-                                Belum punya akun? <Link href="/register" className="text-primary hover:underline font-medium">Daftar</Link>
+                                {t('auth.login.no_account')} <Link href="/register" className="text-primary hover:underline font-medium">{t('auth.login.register_link')}</Link>
                             </p>
                         </div>
                     </form>
@@ -170,8 +177,8 @@ export default function Login() {
                             <i className="fas fa-check text-white text-lg"></i>
                         </div>
                         <div>
-                            <p className="text-primary font-bold text-sm">Login Berhasil!</p>
-                            <p className="text-primary text-xs">Mengalihkan ke dashboard...</p>
+                            <p className="text-primary font-bold text-sm">{t('auth.login.success_title')}</p>
+                            <p className="text-primary text-xs">{t('auth.login.success_desc')}</p>
                         </div>
                     </div>
                 </div>

@@ -4,8 +4,11 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { usePathname } from 'next/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 export default function Navbar() {
+    const { t } = useLanguage();
     const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
     const pathname = usePathname();
 
@@ -29,11 +32,11 @@ export default function Navbar() {
 
 
     const navLinks = [
-        { name: 'Beranda', href: '/' },
-        { name: 'Tentang Kami', href: '/#about' },
-        { name: 'Lokasi', href: '/lokasi' },
-        { name: 'Pusat Informasi', href: '/pusat-informasi' },
-        { name: 'Tata Cara', href: '/tata-cara' },
+        { name: t('landing.nav.home'), href: '/' },
+        { name: t('landing.nav.about'), href: '/#about' },
+        { name: t('landing.features.locations'), href: '/lokasi' },
+        { name: 'Pusat Informasi', href: '/pusat-informasi' }, // Todo: Add to dictionary
+        { name: 'Tata Cara', href: '/tata-cara' }, // Todo: Add to dictionary
 
     ];
 
@@ -82,26 +85,30 @@ export default function Navbar() {
 
                 {/* Desktop Buttons */}
                 <div className="ml-auto flex items-center space-x-4 pr-2 lg:pr-12 hidden lg:flex">
-                    <Link href="/login" className="text-primary-light hover:text-primary transition font-medium text-[16px]">Login</Link>
-                    <Link href="/register" className="bg-primary text-white font-medium py-2 px-6 rounded-full hover:bg-primary-dark transition text-[16px]">Daftar</Link>
+                    <LanguageSwitcher />
+                    <Link href="/login" className="text-primary-light hover:text-primary transition font-medium text-[16px]">{t('landing.nav.login')}</Link>
+                    <Link href="/register" className="bg-primary text-white font-medium py-2 px-6 rounded-full hover:bg-primary-dark transition text-[16px]">{t('landing.nav.register')}</Link>
                 </div>
 
-                {/* Mobile Menu Button (Hamburger) */}
-                <button
-                    className="lg:hidden text-gray-600 ml-auto mr-4 z-[60] relative w-8 h-8 flex flex-col justify-center items-center group"
-                    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-                    aria-label="Toggle Menu"
-                >
-                    <div className="w-6 h-0.5 bg-gray-600 mb-1.5 transition-all duration-300 ease-in-out transform origin-center"
-                        style={{ transform: isMobileMenuOpen ? 'translateY(8px) rotate(45deg)' : '' }}
-                    ></div>
-                    <div className="w-6 h-0.5 bg-gray-600 mb-1.5 transition-all duration-300 ease-in-out"
-                        style={{ opacity: isMobileMenuOpen ? '0' : '1' }}
-                    ></div>
-                    <div className="w-6 h-0.5 bg-gray-600 transition-all duration-300 ease-in-out transform origin-center"
-                        style={{ transform: isMobileMenuOpen ? 'translateY(-8px) rotate(-45deg)' : '' }}
-                    ></div>
-                </button>
+                {/* Mobile Menu Button (Hamburger) - Same as before but checking if we need LanguageSwitcher here too */}
+                <div className="lg:hidden ml-auto mr-4 flex items-center gap-4">
+                    <LanguageSwitcher />
+                    <button
+                        className="text-gray-600 z-[60] relative w-8 h-8 flex flex-col justify-center items-center group"
+                        onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+                        aria-label="Toggle Menu"
+                    >
+                        <div className="w-6 h-0.5 bg-gray-600 mb-1.5 transition-all duration-300 ease-in-out transform origin-center"
+                            style={{ transform: isMobileMenuOpen ? 'translateY(8px) rotate(45deg)' : '' }}
+                        ></div>
+                        <div className="w-6 h-0.5 bg-gray-600 mb-1.5 transition-all duration-300 ease-in-out"
+                            style={{ opacity: isMobileMenuOpen ? '0' : '1' }}
+                        ></div>
+                        <div className="w-6 h-0.5 bg-gray-600 transition-all duration-300 ease-in-out transform origin-center"
+                            style={{ transform: isMobileMenuOpen ? 'translateY(-8px) rotate(-45deg)' : '' }}
+                        ></div>
+                    </button>
+                </div>
             </div>
 
             {/* Full Screen Mobile Menu Overlay */}
@@ -129,14 +136,14 @@ export default function Navbar() {
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="block text-center border-2 border-primary text-primary hover:bg-primary/5 transition text-lg font-bold py-3.5 rounded-full w-full"
                         >
-                            Login
+                            {t('landing.nav.login')}
                         </Link>
                         <Link
                             href="/register"
                             onClick={() => setIsMobileMenuOpen(false)}
                             className="block text-center bg-primary text-white py-4 px-6 rounded-full hover:bg-primary-dark transition text-lg font-bold w-full shadow-lg"
                         >
-                            Daftar
+                            {t('landing.nav.register')}
                         </Link>
                         <p className="text-center text-gray-400 text-xs mt-6 font-medium tracking-widest">OSKU © 2025</p>
                     </div>

@@ -4,9 +4,9 @@ import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { usePenyetoran } from '@/contexts/PenyetoranContext';
-import ImageViewerModal from './ImageViewerModal';
-import YearPicker from './YearPicker';
-import { showStandaloneToast } from './Toast';
+import ImageViewerModal from '@/components/shared/ImageViewerModal';
+import YearPicker from '@/components/shared/YearPicker';
+import { showStandaloneToast } from '@/components/shared/Toast';
 import { getAllNasabah, getNasabahByName, getNasabahByBankSampah, addSaldoToNasabah, NasabahData } from '@/data/nasabahData';
 
 export default function PenyetoranPetugas() {

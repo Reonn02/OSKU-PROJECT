@@ -2,12 +2,12 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import BackToTop from '@/components/BackToTop';
-import WasteChart from '@/components/WasteChart';
-import NasabahWasteChart from '@/components/NasabahWasteChart';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
-import NavbarNasabah from '@/components/NavbarNasabah';
-import YearPicker from '@/components/YearPicker';
+import BackToTop from '@/components/shared/BackToTop';
+import WasteChart from '@/components/shared/WasteChart';
+import NasabahWasteChart from '@/components/nasabah/NasabahWasteChart';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
+import NavbarNasabah from '@/components/nasabah/NavbarNasabah';
+import YearPicker from '@/components/shared/YearPicker';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { useWastePrice } from '@/contexts/WastePriceContext';
 import { useBerita } from '@/contexts/BeritaContext';
@@ -21,7 +21,9 @@ import { supabase } from '@/lib/supabase';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { showStandaloneToast } from '@/components/Toast'; // Import custom toast
+import { showStandaloneToast } from '@/components/shared/Toast'; // Import custom toast
+import { useLanguage } from '@/contexts/LanguageContext';
+
 
 // Helper function to format number with thousand separator (dots)
 const formatNumber = (value: string | number): string => {
@@ -46,6 +48,7 @@ const formatDate = (dateString: string): string => {
 };
 
 function Dashboard() {
+    const { t } = useLanguage();
     const searchParams = useSearchParams();
     const router = useRouter();
     const { banks } = useBankSampah(); // Get banks from context
@@ -834,7 +837,7 @@ function Dashboard() {
                         <div className="grid md:grid-cols-2 gap-4 mb-8">
                             {/* Saldo Card */}
                             <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center">
-                                <h3 className="text-primary text-xl sm:text-2xl font-bold mb-2">Saldo Anda</h3>
+                                <h3 className="text-primary text-xl sm:text-2xl font-bold mb-2">{t('nasabah.dashboard.balance_card')}</h3>
                                 <div className="text-2xl xs:text-3xl sm:text-4xl font-bold text-primary mb-4 break-all px-2">
                                     <span className="text-lg sm:text-xl align-top mr-1">Rp</span>
                                     {saldoAmount.toLocaleString('id-ID')}
@@ -843,7 +846,7 @@ function Dashboard() {
                                     Cairkan saldo anda tiap 12 bulan sekali, dan pastikan anda sudah mengajukan permohonan pencairan
                                 </p>
                                 <button onClick={() => setActiveTab('pencairan')} className="bg-primary hover:bg-primary-dark text-white py-3 px-8 rounded-full w-full max-w-xs cursor-pointer transition shadow-md text-sm sm:text-base">
-                                    Tarik Saldo
+                                    {t('common.withdrawal')}
                                 </button>
                             </div>
 
@@ -851,12 +854,12 @@ function Dashboard() {
                             <div className="flex flex-col space-y-4">
                                 {/* Total Penyetoran */}
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center flex-1 relative overflow-hidden group">
-                                    <h3 className="text-primary font-bold mb-1 sm:mb-2 text-sm sm:text-base">Total Penyetoran</h3>
+                                    <h3 className="text-primary font-bold mb-1 sm:mb-2 text-sm sm:text-base">{t('nasabah.dashboard.deposit_card')}</h3>
                                     <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary">{totalPenyetoran}</div>
                                 </div>
                                 {/* Total Penarikan */}
                                 <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center flex-1 relative overflow-hidden group">
-                                    <h3 className="text-primary font-bold mb-1 sm:mb-2 text-sm sm:text-base">Total Pencairan</h3>
+                                    <h3 className="text-primary font-bold mb-1 sm:mb-2 text-sm sm:text-base">{t('nasabah.dashboard.withdraw_card')}</h3>
                                     <div className="text-3xl sm:text-4xl md:text-5xl font-bold text-primary">{totalPencairan}</div>
                                 </div>
                             </div>
@@ -884,7 +887,7 @@ function Dashboard() {
                                     <Image src="/icon/Newspaper.svg" alt="Berita" width={20} height={18} className="brightness-0 invert" />
                                 </div>
                                 <div>
-                                    <h2 className="text-lg sm:text-xl font-bold text-primary">Berita Terkini</h2>
+                                    <h2 className="text-lg sm:text-xl font-bold text-primary">{t('common.news')}</h2>
                                     <p className="text-[10px] sm:text-xs text-primary-light">Jangan sampai melewati informasi penting dari kami</p>
                                 </div>
                             </div>
@@ -894,7 +897,7 @@ function Dashboard() {
                                     <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                         <Image src="/icon/Newspaper.svg" alt="Berita" width={32} height={28} className="opacity-30" />
                                     </div>
-                                    <h3 className="text-base sm:text-lg font-bold text-gray-400 mb-2">Belum ada berita</h3>
+                                    <h3 className="text-base sm:text-lg font-bold text-gray-400 mb-2">{t('common.no_data')}</h3>
                                     <p className="text-gray-400 text-xs sm:text-sm text-center max-w-md px-4">
                                         Berita akan muncul di sini ketika admin menambahkan berita baru
                                     </p>
@@ -925,7 +928,7 @@ function Dashboard() {
                                                                 href={`/dashboard/berita/${news.id}`}
                                                                 className="bg-primary hover:bg-primary-dark text-white text-[10px] sm:text-xs font-medium py-2 px-6 rounded-xl transition shadow-sm w-full sm:w-auto text-center"
                                                             >
-                                                                Selengkapnya
+                                                                {t('common.read_more')}
                                                             </Link>
                                                         </div>
                                                     </div>
@@ -975,8 +978,8 @@ function Dashboard() {
                         {/* Waste Summary Card */}
                         <div className="mb-6 sm:mb-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                             <div>
-                                <p className="text-[#3B8A51] opacity-60 text-xs sm:text-sm font-medium mb-1">Ringkasan</p>
-                                <h3 className="text-[#3B8A51] font-bold text-lg sm:text-3xl">Total Sampah Yang Telah Disetorkan</h3>
+                                <p className="text-[#3B8A51] opacity-60 text-xs sm:text-sm font-medium mb-1">{t('common.summary')}</p>
+                                <h3 className="text-[#3B8A51] font-bold text-lg sm:text-3xl">{t('petugas.dashboard.total_deposit_waste')}</h3>
                             </div>
                             <YearPicker
                                 selectedYear={selectedYear}
@@ -1011,7 +1014,7 @@ function Dashboard() {
                         {/* Histori Penyetoran */}
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 sm:p-8 mb-8">
                             <div className="sm:ml-6 mb-4 sm:mb-6">
-                                <h2 className="text-lg sm:text-xl font-bold text-primary mb-1">Histori Penyetoran</h2>
+                                <h2 className="text-lg sm:text-xl font-bold text-primary mb-1">{t('nasabah.dashboard.history_deposit')}</h2>
                                 <p className="text-[10px] sm:text-xs text-primary-light font-medium">Semua penyetoran sampah yang anda disetorkan akan tercatat disini dan di emai anda</p>
                             </div>
 
@@ -1019,7 +1022,7 @@ function Dashboard() {
 
                                 <button onClick={exportDepositToPDF} className="bg-[#3B8A51] text-white text-[10px] sm:text-xs px-4 sm:px-6 py-2 rounded-[32px] hover:bg-primary-dark transition font-medium cursor-pointer flex items-center gap-2">
                                     <i className="fas fa-file-pdf"></i>
-                                    Export PDF
+                                    {t('common.export_pdf')}
                                 </button>
                             </div>
 
@@ -1029,7 +1032,7 @@ function Dashboard() {
                                         <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                             <i className="fas fa-recycle text-3xl sm:text-4xl text-gray-300"></i>
                                         </div>
-                                        <h3 className="text-base sm:text-lg font-bold text-gray-400 mb-2">Belum ada data penyetoran</h3>
+                                        <h3 className="text-base sm:text-lg font-bold text-gray-400 mb-2">{t('common.no_data')}</h3>
                                         <p className="text-gray-400 text-xs sm:text-sm text-center max-w-md px-4">
                                             Riwayat penyetoran sampah Anda akan muncul di sini setelah Anda melakukan penyetoran
                                         </p>
@@ -1045,10 +1048,10 @@ function Dashboard() {
                                                     <th className="px-3 sm:px-4 py-3 sm:py-4">ID Penyetoran</th>
                                                     <th className="px-3 sm:px-4 py-3 sm:py-4">ID Nasabah</th>
                                                     <th className="px-3 sm:px-4 py-3 sm:py-4">Nama Nasabah</th>
-                                                    <th className="px-3 sm:px-4 py-3 sm:py-4">Jenis Sampah</th>
-                                                    <th className="px-3 sm:px-4 py-3 sm:py-4">Berat/jumlah</th>
+                                                    <th className="px-3 sm:px-4 py-3 sm:py-4">{t('common.waste_type')}</th>
+                                                    <th className="px-3 sm:px-4 py-3 sm:py-4">{t('common.weight')}/jumlah</th>
                                                     <th className="px-3 sm:px-4 py-3 sm:py-4">Saldo didapat</th>
-                                                    <th className="px-3 sm:px-4 py-3 sm:py-4">Tanggal</th>
+                                                    <th className="px-3 sm:px-4 py-3 sm:py-4">{t('common.date')}</th>
                                                     <th className="px-3 sm:px-4 py-3 sm:py-4 last:rounded-tr-lg">Lokasi Penyetoran</th>
                                                 </tr>
                                             </thead>
@@ -1118,7 +1121,7 @@ function Dashboard() {
                         {/* Histori Pencairan saldo */}
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-4 sm:p-8 mb-8">
                             <div className="sm:ml-6 mb-4 sm:mb-6">
-                                <h2 className="text-lg sm:text-xl font-bold text-primary mb-1">Histori Pencairan Saldo</h2>
+                                <h2 className="text-lg sm:text-xl font-bold text-primary mb-1">{t('nasabah.dashboard.history_withdrawal')}</h2>
                                 <p className="text-[10px] sm:text-xs text-primary-light font-medium">Semua pencairan saldo yang anda lakukan akan tercatat disini</p>
                             </div>
 
@@ -1126,7 +1129,7 @@ function Dashboard() {
 
                                 <button onClick={exportWithdrawalToPDF} className="bg-[#3B8A51] text-white text-[10px] sm:text-xs px-4 sm:px-6 py-2 rounded-[32px] hover:bg-primary-dark transition font-medium cursor-pointer flex items-center gap-2">
                                     <i className="fas fa-file-pdf"></i>
-                                    Export PDF
+                                    {t('common.export_pdf')}
                                 </button>
                             </div>
 
@@ -1136,7 +1139,7 @@ function Dashboard() {
                                         <div className="w-16 h-16 sm:w-20 sm:h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
                                             <i className="fas fa-inbox text-3xl sm:text-4xl text-gray-300"></i>
                                         </div>
-                                        <h3 className="text-base sm:text-lg font-bold text-gray-400 mb-2">Belum ada data pencairan</h3>
+                                        <h3 className="text-base sm:text-lg font-bold text-gray-400 mb-2">{t('common.no_data')}</h3>
                                         <p className="text-gray-400 text-xs sm:text-sm text-center max-w-md px-4">
                                             Riwayat pencairan saldo Anda akan muncul di sini setelah Anda melakukan pencairan
                                         </p>
@@ -1409,10 +1412,10 @@ function Dashboard() {
 
                         {/* Perkiraan Saldo Didapat */}
                         <div className="bg-white rounded-3xl shadow-sm border border-gray-100 p-6 sm:p-8 mb-8">
-                            <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 text-center">Perkiraan saldo didapat</h2>
+                            <h2 className="text-xl sm:text-2xl font-bold text-primary mb-6 text-center">{t('nasabah.dashboard.estimated_balance')}</h2>
                             <div className="max-w-2xl mx-auto space-y-4">
                                 <div>
-                                    <label className="block text-xs sm:text-sm font-bold text-primary mb-2 pl-4">Jenis Sampah</label>
+                                    <label className="block text-xs sm:text-sm font-bold text-primary mb-2 pl-4">{t('common.waste_type')}</label>
                                     <div className="relative">
                                         <select
                                             value={calcJenisSampah}
@@ -1426,7 +1429,7 @@ function Dashboard() {
                                             }}
                                             className="w-full px-5 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-xs sm:text-sm appearance-none bg-white cursor-pointer"
                                         >
-                                            <option value="">Pilih jenis sampah</option>
+                                            <option value="">{t('common.select_waste_type')}</option>
                                             {filteredWastePrices.map((wp) => (
                                                 <option key={wp.id} value={wp.jenis}>
                                                     {wp.jenis} (Rp {wp.harga.toLocaleString('id-ID')} / {wp.per === 'Kilogram' ? 'kg' : wp.per === 'Liter' ? 'ltr' : 'pcs'})
@@ -1437,13 +1440,13 @@ function Dashboard() {
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs sm:text-sm font-bold text-primary mb-2 pl-4">Berat Sampah</label>
+                                    <label className="block text-xs sm:text-sm font-bold text-primary mb-2 pl-4">{t('common.weight')}</label>
                                     <div className="relative">
                                         <input
                                             type="number"
                                             step="0.01"
                                             min="0"
-                                            placeholder="Masukkan berat"
+                                            placeholder={t('common.enter_weight')}
                                             value={calcBerat}
                                             onChange={(e) => {
                                                 const berat = e.target.value;
@@ -1459,12 +1462,12 @@ function Dashboard() {
                                             className="w-full px-5 py-3 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-xs sm:text-sm disabled:bg-gray-50 disabled:cursor-not-allowed"
                                         />
                                         <span className="absolute mr-6 right-5 xs:right-10 top-1/2 transform -translate-y-1/2 text-gray-400 text-[10px] sm:text-xs">
-                                            {calcJenisSampah ? (getFilteredUnitByJenis(calcJenisSampah) === 'Kilogram' ? 'kg' : getFilteredUnitByJenis(calcJenisSampah) === 'Liter' ? 'ltr' : 'pcs') : 'satuan'}
+                                            {calcJenisSampah ? (getFilteredUnitByJenis(calcJenisSampah) === 'Kilogram' ? 'kg' : getFilteredUnitByJenis(calcJenisSampah) === 'Liter' ? 'ltr' : 'pcs') : t('common.unit').toLowerCase()}
                                         </span>
                                     </div>
                                 </div>
                                 <div>
-                                    <label className="block text-xs sm:text-sm font-bold text-primary mb-2 pl-4">Harga</label>
+                                    <label className="block text-xs sm:text-sm font-bold text-primary mb-2 pl-4">{t('common.price')}</label>
                                     <input
                                         type="text"
                                         value={calcSaldo > 0 ? `Rp. ${calcSaldo.toLocaleString('id-ID')}` : 'Rp. 0'}

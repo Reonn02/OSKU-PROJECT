@@ -3,16 +3,19 @@
 import Link from 'next/link';
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import {
     validateRequired,
     validateEmail,
     getRequiredError,
     getEmailError,
 } from '@/utils/validationUtils';
-import { generateOTP, sendOTPEmail } from '@/utils/otpUtils';
+import { generateOTP } from '@/utils/otpUtils';
 
 export default function ForgotPassword() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [email, setEmail] = useState('');
     const [error, setError] = useState<string | undefined>();
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -31,7 +34,7 @@ export default function ForgotPassword() {
     const validateField = (value: string) => {
         let err: string | undefined;
         if (!validateRequired(value)) {
-            err = getRequiredError('Email');
+            err = getRequiredError(t('auth.forgot_password.label'));
         } else if (!validateEmail(value)) {
             err = getEmailError();
         }
@@ -69,7 +72,7 @@ export default function ForgotPassword() {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                setError(data.error || 'Gagal mengirim OTP. Silakan coba lagi.');
+                setError(data.error || t('auth.forgot_password.error_generic'));
                 setIsSubmitting(false);
                 return;
             }
@@ -84,7 +87,7 @@ export default function ForgotPassword() {
             router.push('/forgot-password/verify');
         } catch (err) {
             console.error('Error sending OTP:', err);
-            setError('Gagal mengirim OTP. Silakan coba lagi.');
+            setError(t('auth.forgot_password.error_generic'));
         } finally {
             setIsSubmitting(false);
         }
@@ -92,6 +95,9 @@ export default function ForgotPassword() {
 
     return (
         <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col relative">
+            <div className="absolute top-4 right-4 z-10">
+                <LanguageSwitcher />
+            </div>
             <main className="flex-grow flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-lg mb-4 flex justify-start">
                     <button
@@ -106,17 +112,17 @@ export default function ForgotPassword() {
                         <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
                             <i className="fas fa-key text-3xl text-primary"></i>
                         </div>
-                        <h1 className="text-3xl font-bold text-primary mb-2">Lupa Password</h1>
-                        <p className="text-sm text-primary">Masukkan email anda untuk menerima kode verifikasi reset password</p>
+                        <h1 className="text-3xl font-bold text-primary mb-2">{t('auth.forgot_password.title')}</h1>
+                        <p className="text-sm text-primary">{t('auth.forgot_password.subtitle')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-6">
                         {/* Email */}
                         <div className="space-y-1">
-                            <label className="text-xs text-primary font-medium block">Email Terdaftar</label>
+                            <label className="text-xs text-primary font-medium block">{t('auth.forgot_password.label')}</label>
                             <input
                                 type="email"
-                                placeholder="nama@email.com"
+                                placeholder={t('auth.forgot_password.placeholder')}
                                 value={email}
                                 onChange={(e) => handleEmailChange(e.target.value)}
                                 onBlur={handleBlur}
@@ -140,10 +146,10 @@ export default function ForgotPassword() {
                                 {isSubmitting ? (
                                     <span className="flex items-center justify-center">
                                         <i className="fas fa-spinner fa-spin mr-2"></i>
-                                        Mengirim OTP...
+                                        {t('auth.forgot_password.sending')}
                                     </span>
                                 ) : (
-                                    'Kirim Kode OTP'
+                                    t('auth.forgot_password.button')
                                 )}
                             </button>
                         </div>
@@ -151,7 +157,7 @@ export default function ForgotPassword() {
                         {/* Back to Login Link */}
                         <div className="text-center">
                             <Link href="/login" className="text-sm text-primary hover:underline font-medium">
-                                Kembali ke Halaman Login
+                                {t('auth.forgot_password.back_login')}
                             </Link>
                         </div>
                     </form>

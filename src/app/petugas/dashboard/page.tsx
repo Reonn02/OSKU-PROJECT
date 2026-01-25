@@ -3,25 +3,27 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
-import SidebarPetugas from '@/components/SidebarPetugas';
-import NavbarPetugas from '@/components/NavbarPetugas';
-import WasteChart from '@/components/WasteChart';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
-import ProfilePetugas from '@/components/ProfilePetugas';
-import NasabahPetugas from '@/components/NasabahPetugas';
-import PersetujuanPetugas from '@/components/PersetujuanPetugas';
-import PenyetoranPetugas from '@/components/PenyetoranPetugas';
-import HargaSampahPetugas from '@/components/HargaSampahPetugas';
-import LaporanPetugas from '@/components/LaporanPetugas';
-import KonfirmasiPetugas from '@/components/Konfirmasi';
-import BantuanContent from '@/components/BantuanContent';
-import YearPicker from '@/components/YearPicker';
+import SidebarPetugas from '@/components/petugas/SidebarPetugas';
+import NavbarPetugas from '@/components/petugas/NavbarPetugas';
+import WasteChart from '@/components/shared/WasteChart';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
+import ProfilePetugas from '@/components/petugas/ProfilePetugas';
+import NasabahPetugas from '@/components/petugas/NasabahPetugas';
+import PersetujuanPetugas from '@/components/petugas/PersetujuanPetugas';
+import PenyetoranPetugas from '@/components/petugas/PenyetoranPetugas';
+import HargaSampahPetugas from '@/components/petugas/HargaSampahPetugas';
+import LaporanPetugas from '@/components/petugas/LaporanPetugas';
+import KonfirmasiPetugas from '@/components/petugas/Konfirmasi';
+import BantuanContent from '@/components/landing/BantuanContent';
+import YearPicker from '@/components/shared/YearPicker';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { usePenyetoran } from '@/contexts/PenyetoranContext';
 import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo, getNasabahByBankSampah } from '@/data/nasabahData';
 import { supabase } from '@/lib/supabase';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function PetugasDashboard() {
+    const { t } = useLanguage();
     const searchParams = useSearchParams();
     const initialTab = searchParams.get('tab') || 'dashboard';
     const [activeTab, setActiveTab] = useState(initialTab);
@@ -112,10 +114,10 @@ export default function PetugasDashboard() {
 
     // Load dynamic summary data from penyetoran and nasabah
     const [summaryStats, setSummaryStats] = useState([
-        { label: 'Jumlah Nasabah', value: '0', icon: '/icon/nasabah.svg' },
-        { label: 'Total Saldo', value: 'Rp. 0', icon: '/icon/miniMoney.svg' },
-        { label: 'Total Pencairan', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
-        { label: 'Total Penyetoran', value: '0', icon: '/icon/LogoPenyetoran.svg' },
+        { label: 'petugas.dashboard.total_nasabah', value: '0', icon: '/icon/nasabah.svg' },
+        { label: 'petugas.dashboard.total_balance', value: 'Rp. 0', icon: '/icon/miniMoney.svg' },
+        { label: 'petugas.dashboard.total_withdraw', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
+        { label: 'petugas.dashboard.total_deposit', value: '0', icon: '/icon/LogoPenyetoran.svg' },
     ]);
 
     const [petugasBankName, setPetugasBankName] = useState<string | null>(null);
@@ -204,10 +206,10 @@ export default function PetugasDashboard() {
 
                 // Update summary stats with dynamic values
                 setSummaryStats([
-                    { label: 'Jumlah Nasabah', value: totalNasabah.toString(), icon: '/icon/nasabah.svg' },
-                    { label: 'Total Saldo', value: formattedSaldo, icon: '/icon/miniMoney.svg' },
-                    { label: 'Total Pencairan', value: formatSaldo(totalPencairanValue), icon: '/icon/Pencairan.svg' },
-                    { label: 'Total Penyetoran', value: totalPenyetoran.toString(), icon: '/icon/LogoPenyetoran.svg' },
+                    { label: 'petugas.dashboard.total_nasabah', value: totalNasabah.toString(), icon: '/icon/nasabah.svg' },
+                    { label: 'petugas.dashboard.total_balance', value: formattedSaldo, icon: '/icon/miniMoney.svg' },
+                    { label: 'petugas.dashboard.total_withdraw', value: formatSaldo(totalPencairanValue), icon: '/icon/Pencairan.svg' },
+                    { label: 'petugas.dashboard.total_deposit', value: totalPenyetoran.toString(), icon: '/icon/LogoPenyetoran.svg' },
                 ]);
             } catch (error) {
                 console.error('Error loading summary data:', error);
@@ -361,7 +363,7 @@ export default function PetugasDashboard() {
                                     <div className="w-8 h-8 flex items-center justify-center">
                                         <Image src="/icon/Dashboard.svg" alt="Dashboard" width={24} height={24} />
                                     </div>
-                                    <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                                    <h1 className="text-2xl font-bold text-primary">{t('petugas.dashboard.title')}</h1>
                                 </div>
                                 <YearPicker
                                     selectedYear={selectedYear}
@@ -377,7 +379,7 @@ export default function PetugasDashboard() {
                                             <Image src={stat.icon} alt={stat.label} width={20} height={20} />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{stat.label}</p>
+                                            <p className="text-[10px] font-bold text-primary uppercase tracking-wider">{t(stat.label)}</p>
                                             <p className="text-xl font-bold text-primary">{stat.value}</p>
                                         </div>
                                     </div>
@@ -419,7 +421,7 @@ export default function PetugasDashboard() {
                                                         className="w-full py-4 text-center text-primary font-bold text-sm hover:bg-tertiary/50 rounded-2xl transition-colors flex items-center justify-center gap-2"
                                                     >
                                                         <i className="fas fa-plus-circle"></i>
-                                                        Lihat Semua Jenis Sampah ({sortedWasteTypes.length} jenis)
+                                                        {t('petugas.dashboard.all_waste_types')} ({sortedWasteTypes.length} {t('common.unit').toLowerCase()})
                                                     </button>
                                                 )}
                                             </>
@@ -430,7 +432,7 @@ export default function PetugasDashboard() {
                                 {/* Sumber Sampah Chart (Right) */}
                                 <div className="lg:col-span-5 bg-white rounded-[64px]shadow-sm flex flex-col items-center">
                                     <div className="w-full bg-primary-light py-4 rounded-t-2xl mb-8">
-                                        <h3 className="text-center text-white font-bold">Sumber Sampah</h3>
+                                        <h3 className="text-center text-white font-bold">{t('petugas.dashboard.waste_source')}</h3>
                                     </div>
 
                                     {/* Dynamic Doughnut Chart Calculation */}
@@ -572,7 +574,7 @@ export default function PetugasDashboard() {
                             {/* Bar Charts Section */}
                             <div className="space-y-6 mt-8">
                                 <WasteChart
-                                    title="Total Penyetoran Sampah"
+                                    title={t('petugas.dashboard.total_deposit_waste')}
                                     unit="kg"
                                     initialData={penyetoranChartData}
                                     showWasteFilter={true}
@@ -589,7 +591,7 @@ export default function PetugasDashboard() {
                                     showExportButton={true}
                                 />
                                 <WasteChart
-                                    title="Total Saldo Terkumpul"
+                                    title={t('petugas.dashboard.total_balance_collected')}
                                     unit="jt"
                                     initialData={saldoChartData}
                                     showWasteFilter={false}
@@ -605,7 +607,7 @@ export default function PetugasDashboard() {
                                     showExportButton={true}
                                 />
                                 <WasteChart
-                                    title="Total Saldo Cair"
+                                    title={t('admin.dashboard.chart_withdraw')}
                                     unit="jt"
                                     initialData={pencairanChartData}
                                     showWasteFilter={false}
@@ -628,13 +630,13 @@ export default function PetugasDashboard() {
                                 <div className="bg-white rounded-[32px] p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                                     <div className="flex justify-between items-center mb-6">
                                         <h3 className="font-bold text-primary flex items-center gap-2 text-xl">
-                                            <Image src="/icon/pricetag.svg" alt="Price" width={24} height={24} /> Daftar Harga Sampah
+                                            <Image src="/icon/pricetag.svg" alt="Price" width={24} height={24} /> {t('petugas.dashboard.waste_price_list')}
                                         </h3>
                                         <button
                                             onClick={() => setActiveTab('harga-sampah')}
                                             className="text-xs text-primary font-bold px-6 py-2.5 rounded-full hover:bg-primary hover:text-white bg-tertiary cursor-pointer transition-all shadow-sm"
                                         >
-                                            Atur Harga
+                                            {t('petugas.dashboard.manage_price')}
                                         </button>
                                     </div>
                                     <div className="overflow-hidden border border-[#E2F2E7] rounded-3xl">
@@ -643,17 +645,17 @@ export default function PetugasDashboard() {
                                                 <tr>
                                                     <th className="px-8 py-5 cursor-pointer hover:bg-[#d4ecd9] transition-colors" onClick={() => toggleSort('type')}>
                                                         <div className="flex items-center justify-between">
-                                                            Jenis Sampah <i className={`fas fa-sort text-xs ml-2 opacity-50 ${priceSortField === 'type' ? 'opacity-100' : ''}`}></i>
+                                                            {t('common.waste_type')} <i className={`fas fa-sort text-xs ml-2 opacity-50 ${priceSortField === 'type' ? 'opacity-100' : ''}`}></i>
                                                         </div>
                                                     </th>
                                                     <th className="px-8 py-5 cursor-pointer hover:bg-[#d4ecd9] transition-colors" onClick={() => toggleSort('per')}>
                                                         <div className="flex items-center justify-between">
-                                                            Satuan <i className={`fas fa-sort text-xs ml-2 opacity-50 ${priceSortField === 'per' ? 'opacity-100' : ''}`}></i>
+                                                            {t('common.unit')} <i className={`fas fa-sort text-xs ml-2 opacity-50 ${priceSortField === 'per' ? 'opacity-100' : ''}`}></i>
                                                         </div>
                                                     </th>
                                                     <th className="px-8 py-5 cursor-pointer hover:bg-[#d4ecd9] transition-colors" onClick={() => toggleSort('price')}>
                                                         <div className="flex items-center justify-between">
-                                                            Harga <i className={`fas fa-sort text-xs ml-2 opacity-50 ${priceSortField === 'price' ? 'opacity-100' : ''}`}></i>
+                                                            {t('common.price')} <i className={`fas fa-sort text-xs ml-2 opacity-50 ${priceSortField === 'price' ? 'opacity-100' : ''}`}></i>
                                                         </div>
                                                     </th>
                                                 </tr>

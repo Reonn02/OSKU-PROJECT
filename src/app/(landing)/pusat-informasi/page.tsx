@@ -1,7 +1,7 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import Calculator from "@/components/Calculator";
-import BeritaSection from "@/components/BeritaSection";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
+import Calculator from "@/components/shared/Calculator";
+import BeritaSection from "@/components/landing/BeritaSection";
 import Image from "next/image";
 
 export default function PusatInformasi() {

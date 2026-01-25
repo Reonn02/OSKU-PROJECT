@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useBerita } from '@/contexts/BeritaContext';
 import AddBeritaModal from './AddBeritaModal';
-import DeleteConfirmModal from './DeleteConfirmModal';
+import DeleteConfirmModal from '@/components/shared/DeleteConfirmModal';
 
 export default function BeritaAdmin() {
     const { berita, deleteBerita } = useBerita();

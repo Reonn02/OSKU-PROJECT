@@ -1,8 +1,8 @@
 'use client';
 
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
-import BackToTop from "@/components/BackToTop";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
+import BackToTop from "@/components/shared/BackToTop";
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import Image from "next/image";
 import { useEffect, useState } from 'react';

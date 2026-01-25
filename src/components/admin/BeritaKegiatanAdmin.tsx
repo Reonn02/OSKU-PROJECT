@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import { useBeritaKegiatan } from '@/contexts/BeritaKegiatanContext';
 import AddBeritaKegiatanModal from './AddBeritaKegiatanModal';
-import DeleteConfirmModal from './DeleteConfirmModal';
+import DeleteConfirmModal from '@/components/shared/DeleteConfirmModal';
 
 export default function BeritaKegiatanAdmin() {
     const { beritaKegiatan, deleteBeritaKegiatan } = useBeritaKegiatan();

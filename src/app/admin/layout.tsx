@@ -1,4 +1,4 @@
-import DesktopOnlyGuard from '@/components/DesktopOnlyGuard';
+import DesktopOnlyGuard from '@/components/shared/DesktopOnlyGuard';
 
 export default function AdminLayout({
     children,

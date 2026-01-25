@@ -80,7 +80,7 @@ export default function PersetujuanPetugas() {
     const data = (() => {
         // First try database data
         if (pencairanList.length > 0) {
-            return pencairanList.map(item => ({
+            return pencairanList.map((item: any) => ({
                 id: item.id,
                 id_pengajuan: item.id || '-',
                 id_nasabah: item.nasabah_username || '-',
@@ -125,7 +125,7 @@ export default function PersetujuanPetugas() {
     const historyData = (() => {
         // First try database data
         if (historyList.length > 0) {
-            return historyList.map(item => ({
+            return historyList.map((item: any) => ({
                 id: item.id,
                 id_pengajuan: item.id || '-',
                 id_nasabah: item.nasabah_username || '-',
@@ -393,7 +393,7 @@ export default function PersetujuanPetugas() {
                 <div className="min-w-[150px]">
                     <YearPicker
                         selectedYear={selectedYear}
-                        onYearChange={(year) => {
+                        onYearChange={(year: number) => {
                             setSelectedYear(year);
                             setHistoryPage(1);
                         }}

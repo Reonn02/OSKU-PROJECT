@@ -2,10 +2,10 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import SidebarAdmin from '@/components/SidebarAdmin';
-import NavbarAdmin from '@/components/NavbarAdmin';
-import PrediksiAdmin from '@/components/PrediksiAdmin';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
+import SidebarAdmin from '@/components/admin/SidebarAdmin';
+import NavbarAdmin from '@/components/admin/NavbarAdmin';
+import PrediksiAdmin from '@/components/admin/PrediksiAdmin';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
 
 export default function PrediksiPage() {
     const [showLogoutModal, setShowLogoutModal] = useState(false);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
-import { showStandaloneToast } from './Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 
 export default function ProfilAdmin() {
     const { admin, isLoading, updateAdmin } = useAdmin();

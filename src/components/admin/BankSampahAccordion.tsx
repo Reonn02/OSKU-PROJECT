@@ -3,9 +3,9 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import { useBankSampah, WasteType } from '@/contexts/BankSampahContext';
-import DeleteConfirmModal from './DeleteConfirmModal';
+import DeleteConfirmModal from '@/components/shared/DeleteConfirmModal';
 import AddBankModal from './AddBankModal';
-import AddWasteTypeModal from './AddWasteTypeModal';
+import AddWasteTypeModal from '@/components/petugas/AddWasteTypeModal';
 
 interface BankSampahData {
     id: string;

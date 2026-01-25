@@ -2,7 +2,7 @@
 
 import { useState, useRef } from 'react';
 import Image from 'next/image';
-import { showStandaloneToast } from './Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 
 interface CSVRow {
     tahun: number;

@@ -3,10 +3,13 @@
 import Link from 'next/link';
 import { useState, useEffect, useRef, KeyboardEvent, ClipboardEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { verifyOTP, maskEmail, resendOTP, clearOTP } from '@/utils/otpUtils';
+import { maskEmail } from '@/utils/otpUtils';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 
 export default function ForgotPasswordVerifyOTP() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [otp, setOtp] = useState<string[]>(new Array(6).fill(''));
     const [email, setEmail] = useState<string>('');
     const [error, setError] = useState<string>('');
@@ -105,14 +108,14 @@ export default function ForgotPasswordVerifyOTP() {
             const otpExpiry = sessionStorage.getItem('otpExpiry');
 
             if (!storedOTP || !otpExpiry) {
-                setError('Kode OTP tidak ditemukan. Silakan kirim ulang.');
+                setError(t('auth.otp.error_generic'));
                 setIsVerifying(false);
                 return;
             }
 
             // Check if OTP is expired
             if (Date.now() > parseInt(otpExpiry)) {
-                setError('Kode OTP sudah kadaluarsa. Silakan kirim ulang.');
+                setError(t('auth.otp.error_expired'));
                 setOtp(new Array(6).fill(''));
                 inputRefs.current[0]?.focus();
                 setIsVerifying(false);
@@ -130,12 +133,12 @@ export default function ForgotPasswordVerifyOTP() {
                 // Redirect to reset password page
                 router.push('/forgot-password/reset');
             } else {
-                setError('Kode OTP tidak valid');
+                setError(t('auth.otp.error_invalid'));
                 setOtp(new Array(6).fill(''));
                 inputRefs.current[0]?.focus();
             }
         } catch (err) {
-            setError('Terjadi kesalahan. Silakan coba lagi.');
+            setError(t('auth.otp.error_generic'));
             console.error('OTP verification error:', err);
         } finally {
             setIsVerifying(false);
@@ -175,16 +178,19 @@ export default function ForgotPasswordVerifyOTP() {
                 sessionStorage.setItem('otpExpiry', (Date.now() + 5 * 60 * 1000).toString());
                 console.log('✅ OTP berhasil dikirim ulang');
             } else {
-                setError('Gagal mengirim ulang OTP. Silakan coba lagi.');
+                setError(t('auth.otp.error_generic'));
             }
         } catch (err) {
-            setError('Gagal mengirim ulang OTP. Silakan coba lagi.');
+            setError(t('auth.otp.error_generic'));
             console.error('Resend OTP error:', err);
         }
     };
 
     return (
         <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col relative">
+            <div className="absolute top-4 right-4 z-10">
+                <LanguageSwitcher />
+            </div>
             <main className="flex-grow flex flex-col items-center justify-center p-4">
                 <div className="w-full max-w-md mb-4 flex justify-start">
                     <Link href="/forgot-password" title="" className="w-12 h-12 bg-primary rounded-full flex items-center justify-center text-white hover:bg-primary-dark transition text-2xl">
@@ -196,9 +202,9 @@ export default function ForgotPasswordVerifyOTP() {
                         <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-4">
                             <i className="fas fa-envelope text-3xl text-primary"></i>
                         </div>
-                        <h1 className="text-3xl font-bold text-primary mb-2">Verifikasi Email</h1>
+                        <h1 className="text-3xl font-bold text-primary mb-2">{t('auth.otp.title')}</h1>
                         <p className="text-sm text-gray-600 mb-2">
-                            Kami telah mengirim kode verifikasi reset password ke email
+                            {t('auth.otp.subtitle')}
                         </p>
                         <p className="text-sm font-medium text-primary">
                             {maskEmail(email)}
@@ -209,7 +215,7 @@ export default function ForgotPasswordVerifyOTP() {
                         {/* OTP Input */}
                         <div>
                             <label className="text-xs text-primary font-medium block mb-3 text-center">
-                                Masukkan 6 Digit Kode OTP
+                                {t('auth.otp.label')}
                             </label>
                             <div className="flex gap-2 justify-center">
                                 {otp.map((digit, index) => (
@@ -245,12 +251,12 @@ export default function ForgotPasswordVerifyOTP() {
                                     onClick={handleResendOTP}
                                     className="text-sm text-primary hover:underline font-medium"
                                 >
-                                    Kirim Ulang Kode OTP
+                                    {t('auth.otp.resend_link')}
                                 </button>
                             ) : (
                                 <p className="text-sm text-gray-600">
-                                    Kirim ulang kode dalam{' '}
-                                    <span className="font-medium text-primary">{resendTimer} detik</span>
+                                    {t('auth.otp.wait_text')} {' '}
+                                    <span className="font-medium text-primary">{resendTimer} {t('auth.otp.seconds')}</span>
                                 </p>
                             )}
                         </div>
@@ -265,10 +271,10 @@ export default function ForgotPasswordVerifyOTP() {
                                 {isVerifying ? (
                                     <span className="flex items-center justify-center">
                                         <i className="fas fa-spinner fa-spin mr-2"></i>
-                                        Memverifikasi...
+                                        {t('auth.otp.verifying')}
                                     </span>
                                 ) : (
-                                    'Verifikasi'
+                                    t('auth.otp.verify_button')
                                 )}
                             </button>
                         </div>
@@ -276,16 +282,16 @@ export default function ForgotPasswordVerifyOTP() {
                         {/* Help Text */}
                         <div className="text-center pt-2">
                             <p className="text-xs text-gray-500">
-                                Tidak menerima email? Periksa folder spam atau{' '}
+                                {t('auth.otp.help_text')} {' '}
                                 {canResend ? (
                                     <button
                                         onClick={handleResendOTP}
                                         className="text-primary hover:underline font-medium"
                                     >
-                                        kirim ulang
+                                        {t('auth.otp.resend')}
                                     </button>
                                 ) : (
-                                    <span className="text-gray-400">tunggu {resendTimer} detik</span>
+                                    <span className="text-gray-400">{t('auth.otp.wait_text')} {resendTimer} {t('auth.otp.seconds')}</span>
                                 )}
                             </p>
                         </div>

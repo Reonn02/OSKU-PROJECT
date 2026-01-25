@@ -2,33 +2,21 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import SidebarAdmin from '@/components/SidebarAdmin';
-import NavbarAdmin from '@/components/NavbarAdmin';
-import WasteChart from '@/components/WasteChart';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
-import YearPicker from '@/components/YearPicker';
-import ProfilAdmin from '@/components/ProfilAdmin';
-import BantuanContent from '@/components/BantuanContent';
+import SidebarAdmin from '@/components/admin/SidebarAdmin';
+import NavbarAdmin from '@/components/admin/NavbarAdmin';
+import WasteChart from '@/components/shared/WasteChart';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
+import YearPicker from '@/components/shared/YearPicker';
+import ProfilAdmin from '@/components/admin/ProfilAdmin';
+import BantuanContent from '@/components/landing/BantuanContent';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/lib/supabase';
-
-// Summary stats - akan diambil dari database
-const SUMMARY_STATS = [
-    { label: 'Jumlah Nasabah', value: '0', icon: '/icon/nasabah.svg' },
-    { label: 'Total Petugas', value: '0', icon: '/icon/Petugas.svg' },
-    { label: 'Total Pemasukan', value: 'Rp. 0', icon: '/icon/miniMoney.svg' },
-    { label: 'Total Pencairan', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
-];
-
-// Waste types - akan diambil dari database
-const WASTE_TYPES: any[] = [];
-
-// Bank sampah data - akan diambil dari database
-const BANK_SAMPAH_DATA: any[] = [];
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function AdminDashboard() {
     const searchParams = useSearchParams();
+    const { t } = useLanguage();
     const [activeTab, setActiveTab] = useState('dashboard');
     const [showLogoutModal, setShowLogoutModal] = useState(false);
     const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
@@ -53,19 +41,6 @@ export default function AdminDashboard() {
         }
     }, [searchParams]);
 
-    // TEMPORARY: Commented for dev access
-    /*
-    useEffect(() => {
-        // Check if user is logged in as admin
-        const isLoggedIn = localStorage.getItem('isLoggedIn');
-        const userRole = localStorage.getItem('userRole');
-
-        if (!isLoggedIn || userRole !== 'admin') {
-            router.push('/');
-        }
-    }, [router]);
-    */
-
     const handleTabChange = (tab: string) => {
         if (tab === 'nasabah') {
             router.push('/admin/nasabah');
@@ -84,7 +59,6 @@ export default function AdminDashboard() {
         }
     };
 
-    // Chart data - akan diambil dari database
     // Chart data handling
     const defaultChartData = [
         { label: 'JAN', value: 0 },
@@ -104,12 +78,12 @@ export default function AdminDashboard() {
     const [saldoChartData, setSaldoChartData] = useState(defaultChartData);
     const [pencairanChartData, setPencairanChartData] = useState(defaultChartData);
 
-    // Summary Stats State
+    // Summary Stats State - Using Keys
     const [stats, setStats] = useState([
-        { label: 'Jumlah Nasabah', value: '0', icon: '/icon/nasabah.svg' },
-        { label: 'Total Petugas', value: '0', icon: '/icon/Petugas.svg' },
-        { label: 'Total Pemasukan', value: 'Rp. 0', icon: '/icon/miniMoney.svg' },
-        { label: 'Total Pencairan', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
+        { label: 'admin.dashboard.total_nasabah', value: '0', icon: '/icon/nasabah.svg' },
+        { label: 'admin.dashboard.total_petugas', value: '0', icon: '/icon/Petugas.svg' },
+        { label: 'admin.dashboard.total_income', value: 'Rp. 0', icon: '/icon/miniMoney.svg' },
+        { label: 'admin.dashboard.total_withdraw', value: 'Rp. 0', icon: '/icon/Pencairan.svg' },
     ]);
 
     useEffect(() => {
@@ -150,12 +124,12 @@ export default function AdminDashboard() {
 
                 const totalPencairan = pencairanData?.reduce((sum, item) => sum + (item.jumlah || 0), 0) || 0;
 
-                // Update Stats
+                // Update Stats with KEYS
                 setStats([
-                    { label: 'Jumlah Nasabah Baru', value: nasabahCount?.toString() || '0', icon: '/icon/nasabah.svg' },
-                    { label: 'Total Petugas Baru', value: petugasCount?.toString() || '0', icon: '/icon/Petugas.svg' },
-                    { label: 'Total Pemasukan', value: `Rp. ${totalPemasukan.toLocaleString('id-ID')}`, icon: '/icon/miniMoney.svg' },
-                    { label: 'Total Pencairan', value: `Rp. ${totalPencairan.toLocaleString('id-ID')}`, icon: '/icon/Pencairan.svg' },
+                    { label: 'admin.dashboard.new_nasabah', value: nasabahCount?.toString() || '0', icon: '/icon/nasabah.svg' },
+                    { label: 'admin.dashboard.new_petugas', value: petugasCount?.toString() || '0', icon: '/icon/Petugas.svg' },
+                    { label: 'admin.dashboard.total_income', value: `Rp. ${totalPemasukan.toLocaleString('id-ID')}`, icon: '/icon/miniMoney.svg' },
+                    { label: 'admin.dashboard.total_withdraw', value: `Rp. ${totalPencairan.toLocaleString('id-ID')}`, icon: '/icon/Pencairan.svg' },
                 ]);
 
                 // 4. Chart Data (Filtered by Year)
@@ -217,9 +191,6 @@ export default function AdminDashboard() {
         fetchDashboardData();
     }, [selectedYear]);
 
-
-
-
     return (
         <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex">
             {/* Sidebar */}
@@ -245,7 +216,7 @@ export default function AdminDashboard() {
                                     <div className="w-8 h-8 flex items-center justify-center">
                                         <Image src="/icon/Dashboard.svg" alt="Dashboard" width={24} height={24} />
                                     </div>
-                                    <h1 className="text-2xl font-bold text-primary">Dashboard</h1>
+                                    <h1 className="text-2xl font-bold text-primary">{t('admin.dashboard.title')}</h1>
                                 </div>
                                 <YearPicker
                                     selectedYear={selectedYear}
@@ -261,21 +232,19 @@ export default function AdminDashboard() {
                                             <Image src={stat.icon} alt={stat.label} width={20} height={20} />
                                         </div>
                                         <div>
-                                            <p className="text-[10px] font-bold text-primary opacity-60 uppercase tracking-wider">{stat.label}</p>
+                                            <p className="text-[10px] font-bold text-primary opacity-60 uppercase tracking-wider">{t(stat.label)}</p>
                                             <p className="text-xl font-bold text-primary">{stat.value}</p>
                                         </div>
                                     </div>
                                 ))}
                             </div>
 
-
-
                             {/* Detailed Charts Section */}
                             <div className="space-y-6 mt-8">
                                 {/* Only Saldo charts for Admin */}
 
                                 <WasteChart
-                                    title="Total Saldo Bank Sampah"
+                                    title={t('admin.dashboard.chart_balance')}
                                     unit="jt"
                                     initialData={saldoChartData}
                                     showWasteFilter={false}
@@ -293,7 +262,7 @@ export default function AdminDashboard() {
                                     ]}
                                 />
                                 <WasteChart
-                                    title="Total Saldo Cair"
+                                    title={t('admin.dashboard.chart_withdraw')}
                                     unit="jt"
                                     initialData={pencairanChartData}
                                     showWasteFilter={false}

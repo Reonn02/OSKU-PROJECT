@@ -1,6 +1,7 @@
 'use client';
 
 import Image from 'next/image';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface NavbarAdminProps {
     onLogout: () => void;
@@ -8,6 +9,8 @@ interface NavbarAdminProps {
 }
 
 export default function NavbarAdmin({ onLogout, onToggleSidebar }: NavbarAdminProps) {
+    const { t } = useLanguage();
+
     return (
         <nav className="sticky top-0 z-50 bg-white border-b border-gray-100 px-6 py-4 lg:px-10 flex items-center justify-between shadow-sm">
             {/* Left: Logo (Mobile) + Toggle Sidebar */}
@@ -39,7 +42,7 @@ export default function NavbarAdmin({ onLogout, onToggleSidebar }: NavbarAdminPr
                     onClick={onLogout}
                     className="bg-primary hover:bg-primary-dark text-white text-[10px] font-bold px-6 py-2 rounded-full transition shadow-sm cursor-pointer"
                 >
-                    Keluar
+                    {t('common.logout')}
                 </button>
             </div>
         </nav>

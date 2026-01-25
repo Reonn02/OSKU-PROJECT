@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import YearPicker from '@/components/YearPicker';
-import { showStandaloneToast } from './Toast';
+import YearPicker from '@/components/shared/YearPicker';
+import { showStandaloneToast } from '@/components/shared/Toast';
 import { usePencairan } from '@/contexts/PencairanContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+
 
 interface PetugasData {
     id: string;
@@ -16,6 +18,7 @@ interface PetugasData {
 }
 
 export default function KonfirmasiPetugas() {
+    const { t } = useLanguage();
     const { approvedList, historyList, loading, fetchApprovedByBank, completePencairan, cancelPencairan } = usePencairan();
     const [completedToday, setCompletedToday] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
@@ -68,7 +71,8 @@ export default function KonfirmasiPetugas() {
             amount: item.jumlah,
             approved_at: item.tanggal_pengajuan ? new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID') : '-',
             phone: '-',
-            status: item.status === 'completed' ? 'Selesai' : 'Dibatalkan',
+            status: item.status === 'completed' ? t('common.completed') : t('common.cancelled'),
+
             reason: item.alasan || '',
             completed_at: item.tanggal_selesai ? new Date(item.tanggal_selesai).toLocaleDateString('id-ID') : '-',
         }));
@@ -84,7 +88,7 @@ export default function KonfirmasiPetugas() {
         currentPage * itemsPerPage
     );
 
-    // Hitung berapa yang sudah dibatalkan hari ini
+    // Hitung berapa konfirmasi yang sudah dibatalkan 
     const today = new Date().toLocaleDateString('id-ID');
     const cancelledTodayCount = historyData.filter(item => item.status === 'Dibatalkan' && item.completed_at === today).length;
 
@@ -195,7 +199,7 @@ export default function KonfirmasiPetugas() {
                 <div className="w-8 h-8 flex items-center justify-center">
                     <i className="fas fa-thumbs-up text-2xl text-primary"></i>
                 </div>
-                <h1 className="text-2xl font-bold text-primary">Konfirmasi Pencairan</h1>
+                <h1 className="text-2xl font-bold text-primary">{t('petugas.konfirmasi.title')}</h1>
             </div>
 
             {/* Stats Card */}
@@ -206,7 +210,7 @@ export default function KonfirmasiPetugas() {
                             <i className="fas fa-clock text-dark-yellow text-xl"></i>
                         </div>
                         <div>
-                            <p className="text-4xs text-dark-yellow font-medium">Menunggu Konfirmasi</p>
+                            <p className="text-4xs text-dark-yellow font-medium">{t('petugas.konfirmasi.pending_confirm')}</p>
                             <p className="text-2xl font-bold text-dark-yellow">{pendingData.length}</p>
                         </div>
                     </div>
@@ -217,7 +221,7 @@ export default function KonfirmasiPetugas() {
                             <i className="fas fa-check-circle text-primary text-xl"></i>
                         </div>
                         <div>
-                            <p className="text-4xs text-primary font-medium">Selesai Hari Ini</p>
+                            <p className="text-4xs text-primary font-medium">{t('petugas.konfirmasi.confirm_completed')}</p>
                             <p className="text-2xl font-bold text-primary">{completedToday}</p>
                         </div>
                     </div>
@@ -228,7 +232,7 @@ export default function KonfirmasiPetugas() {
                             <i className="fas fa-times-circle text-warning text-xl"></i>
                         </div>
                         <div>
-                            <p className="text-4xs text-warning font-medium">Dibatalkan Hari Ini</p>
+                            <p className="text-4xs text-warning font-medium">{t('petugas.konfirmasi.confirm_cancelled')}</p>
                             <p className="text-2xl font-bold text-warning">{cancelledTodayCount}</p>
                         </div>
                     </div>
@@ -256,13 +260,13 @@ export default function KonfirmasiPetugas() {
                             <table className="w-full text-sm text-left">
                                 <thead className="bg-primary text-white font-bold">
                                     <tr>
-                                        <th className="px-6 py-5 border-r border-white/20">ID Pengajuan</th>
-                                        <th className="px-6 py-5 border-r border-white/20">ID Nasabah</th>
-                                        <th className="px-6 py-5 border-r border-white/20">Nama Nasabah</th>
-                                        <th className="px-6 py-5 border-r border-white/20">No. Telepon</th>
-                                        <th className="px-6 py-5 border-r border-white/20">Jumlah</th>
-                                        <th className="px-6 py-5 border-r border-white/20">Tgl Disetujui</th>
-                                        <th className="px-6 py-5">Aksi</th>
+                                        <th className="px-6 py-5 border-r border-white/20">{t('petugas.persetujuan.withdrawal_id')}</th>
+                                        <th className="px-6 py-5 border-r border-white/20">{t('petugas.persetujuan.nasabah_id')}</th>
+                                        <th className="px-6 py-5 border-r border-white/20">{t('petugas.persetujuan.nasabah_name')}</th>
+                                        <th className="px-6 py-5 border-r border-white/20">{t('common.phone_number')}</th>
+                                        <th className="px-6 py-5 border-r border-white/20">{t('common.amount')}</th>
+                                        <th className="px-6 py-5 border-r border-white/20">{t('petugas.konfirmasi.pending_confirm')}</th>
+                                        <th className="px-6 py-5">{t('common.action')}</th>
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-gray-50">
@@ -284,13 +288,13 @@ export default function KonfirmasiPetugas() {
                                                         onClick={() => handleConfirm(item)}
                                                         className="bg-primary hover:bg-primary-dark text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1"
                                                     >
-                                                        Selesai
+                                                        {t('petugas.konfirmasi.btn_finish')}
                                                     </button>
                                                     <button
                                                         onClick={() => handleReject(item)}
                                                         className="bg-warning hover:bg-warning/90 text-white px-4 py-2 rounded-full text-xs font-bold transition-all shadow-sm active:scale-95 cursor-pointer flex items-center gap-1"
                                                     >
-                                                        Batalkan
+                                                        {t('petugas.konfirmasi.btn_cancel')}
                                                     </button>
                                                 </div>
                                             </td>
@@ -353,11 +357,11 @@ export default function KonfirmasiPetugas() {
                         <i className="fas fa-info-circle text-primary text-2xl"></i>
                     </div>
                     <div>
-                        <h4 className="font-bold text-primary mb-2">Cara Konfirmasi Pencairan</h4>
+                        <h4 className="font-bold text-primary mb-2">{t('petugas.konfirmasi.how_to')}</h4>
                         <div className="text-primary text-sm space-y-1">
-                            <p>• <span className="font-semibold">Data otomatis muncul:</span> Pengajuan yang sudah "Disetujui" di halaman Persetujuan akan otomatis muncul di sini.</p>
-                            <p>• <span className="font-semibold">Selesai:</span> Klik jika nasabah sudah mengambil uang. Data akan hilang dari Persetujuan dan Konfirmasi.</p>
-                            <p>• <span className="font-semibold">Batalkan:</span> Klik jika ada masalah. Data akan hilang dari Persetujuan dan Konfirmasi.</p>
+                            <p>• {t('petugas.konfirmasi.how_to_1')}</p>
+                            <p>• {t('petugas.konfirmasi.how_to_2')}</p>
+                            <p>• {t('petugas.konfirmasi.how_to_3')}</p>
                         </div>
                     </div>
                 </div>
@@ -372,7 +376,7 @@ export default function KonfirmasiPetugas() {
                         <div className="w-8 h-8 flex items-center justify-center">
                             <i className="fas fa-history text-2xl text-primary"></i>
                         </div>
-                        <h2 className="text-xl font-bold text-primary">Riwayat Konfirmasi</h2>
+                        <h2 className="text-xl font-bold text-primary">{t('petugas.konfirmasi.history_title')}</h2>
                         <span className="px-4 py-2 bg-white text-primary text-xs font-bold rounded-full">
                             {filteredHistoryData.length} data
                         </span>
@@ -384,7 +388,7 @@ export default function KonfirmasiPetugas() {
                         <div className="relative">
                             <input
                                 type="text"
-                                placeholder="Cari ID atau nama nasabah"
+                                placeholder={t('petugas.konfirmasi.search_placeholder')}
                                 value={historySearchQuery}
                                 onChange={(e) => {
                                     setHistorySearchQuery(e.target.value);
@@ -410,7 +414,7 @@ export default function KonfirmasiPetugas() {
                             className="bg-primary hover:bg-primary-dark text-white px-6 py-2.5 rounded-xl text-xs font-bold transition-all shadow-md active:scale-95 flex items-center gap-2 cursor-pointer"
                         >
                             <i className="fas fa-file-csv"></i>
-                            Export CSV
+                            {t('petugas.konfirmasi.export_csv')}
                         </button>
                     </div>
                 </div>
@@ -436,15 +440,15 @@ export default function KonfirmasiPetugas() {
                                 <table className="w-full text-sm text-left min-w-[1000px]">
                                     <thead className="bg-primary text-white font-bold text-xs">
                                         <tr>
-                                            <th className="px-5 py-4">ID Pengajuan</th>
-                                            <th className="px-5 py-4">ID Nasabah</th>
-                                            <th className="px-5 py-4">Nama Nasabah</th>
-                                            <th className="px-5 py-4">No. Telepon</th>
-                                            <th className="px-5 py-4">Jumlah</th>
-                                            <th className="px-5 py-4">Tgl Disetujui</th>
-                                            <th className="px-5 py-4 text-center">Status</th>
-                                            <th className="px-5 py-4">Alasan</th>
-                                            <th className="px-5 py-4">Tgl Selesai</th>
+                                            <th className="px-5 py-4">{t('petugas.persetujuan.withdrawal_id')}</th>
+                                            <th className="px-5 py-4">{t('petugas.persetujuan.nasabah_id')}</th>
+                                            <th className="px-5 py-4">{t('petugas.persetujuan.nasabah_name')}</th>
+                                            <th className="px-5 py-4">{t('common.phone_number')}</th>
+                                            <th className="px-5 py-4">{t('common.amount')}</th>
+                                            <th className="px-5 py-4">{t('petugas.konfirmasi.pending_confirm')}</th>
+                                            <th className="px-5 py-4 text-center">{t('common.status')}</th>
+                                            <th className="px-5 py-4">{t('petugas.persetujuan.reason')}</th>
+                                            <th className="px-5 py-4">{t('petugas.persetujuan.end_date')}</th>
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-gray-50">
@@ -521,9 +525,12 @@ export default function KonfirmasiPetugas() {
                             <div className="w-16 h-16 bg-tertiary rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i className="fas fa-check text-primary text-2xl"></i>
                             </div>
-                            <h3 className="text-xl font-bold text-primary mb-2">Konfirmasi Pencairan Selesai?</h3>
+                            <h3 className="text-xl font-bold text-primary mb-2">{t('petugas.konfirmasi.modal_confirm_title')}</h3>
                             <p className="text-gray-500 text-sm mb-6">
-                                Apakah nasabah <span className="font-bold text-primary">{selectedItem?.nasabah_name}</span> sudah mengambil uang sebesar <span className="font-bold text-primary">Rp {selectedItem?.amount?.toLocaleString('id-ID')}</span>?
+                                {t('petugas.konfirmasi.modal_confirm_desc', {
+                                    name: selectedItem?.nasabah_name,
+                                    amount: selectedItem?.amount?.toLocaleString('id-ID'),
+                                })}
                             </p>
                             <div className="flex gap-3">
                                 <button
@@ -539,7 +546,7 @@ export default function KonfirmasiPetugas() {
                                     onClick={confirmCompletion}
                                     className="flex-1 bg-primary hover:bg-primary-dark text-white px-6 py-3 rounded-xl font-bold transition-all cursor-pointer shadow-lg"
                                 >
-                                    Ya, Selesai
+                                    {t('petugas.konfirmasi.btn_yes_finish')}
                                 </button>
                             </div>
                         </div>
@@ -555,16 +562,18 @@ export default function KonfirmasiPetugas() {
                             <div className="w-16 h-16 bg-warning-light rounded-full flex items-center justify-center mx-auto mb-4">
                                 <i className="fas fa-times text-warning text-2xl"></i>
                             </div>
-                            <h3 className="text-xl font-bold text-primary mb-2 text-center">Batalkan Pencairan</h3>
+                            <h3 className="text-xl font-bold text-primary mb-2 text-center">{t('petugas.konfirmasi.modal_reject_title')}</h3>
                             <p className="text-gray-500 text-sm mb-4 text-center">
-                                Pembatalan untuk <span className="font-bold text-primary">{selectedItem?.nasabah_name}</span>
+                                {t('petugas.konfirmasi.modal_reject_desc', {
+                                    name: selectedItem?.nasabah_name,
+                                })}
                             </p>
                             <div className="mb-6">
-                                <label className="block text-sm font-bold text-primary mb-2">Alasan Pembatalan *</label>
+                                <label className="block text-sm font-bold text-primary mb-2">{t('petugas.konfirmasi.reject_reason_label')}</label>
                                 <textarea
                                     value={rejectReason}
                                     onChange={(e) => setRejectReason(e.target.value)}
-                                    placeholder="Contoh: Nasabah tidak hadir sesuai jadwal"
+                                    placeholder={t('petugas.konfirmasi.reject_reason_placeholder')}
                                     className="w-full border border-gray-200 rounded-xl p-3 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                                     rows={4}
                                 />
@@ -578,14 +587,14 @@ export default function KonfirmasiPetugas() {
                                     }}
                                     className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-xl font-bold transition-all cursor-pointer"
                                 >
-                                    Batal
+                                    {t('common.cancel')}
                                 </button>
                                 <button
                                     onClick={confirmRejection}
                                     disabled={!rejectReason.trim()}
                                     className="flex-1 bg-warning hover:bg-warning/90 text-white px-6 py-3 rounded-xl font-bold transition-all cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    Ya, Batalkan
+                                    {t('petugas.konfirmasi.btn_yes_cancel')}
                                 </button>
                             </div>
                         </div>

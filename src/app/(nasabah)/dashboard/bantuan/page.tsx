@@ -1,9 +1,9 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import NavbarNasabah from '@/components/NavbarNasabah';
-import BantuanContent from '@/components/BantuanContent';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
+import NavbarNasabah from '@/components/nasabah/NavbarNasabah';
+import BantuanContent from '@/components/landing/BantuanContent';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 

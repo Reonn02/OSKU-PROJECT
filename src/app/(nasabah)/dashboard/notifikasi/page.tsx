@@ -1,12 +1,12 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import NavbarNasabah from '@/components/NavbarNasabah';
+import NavbarNasabah from '@/components/nasabah/NavbarNasabah';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useAuth } from '@/contexts/AuthContext';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
 
 interface Notification {
     id: string;

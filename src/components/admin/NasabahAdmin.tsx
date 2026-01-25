@@ -3,9 +3,9 @@
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { getAllNasabah, formatSaldo, deleteNasabah, NasabahData } from '@/data/nasabahData';
-import { showStandaloneToast } from './Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 import { useBankSampah } from '@/contexts/BankSampahContext';
-import DeleteConfirmModal from './DeleteConfirmModal';
+import DeleteConfirmModal from '@/components/shared/DeleteConfirmModal';
 
 export default function NasabahAdmin() {
     const { banks } = useBankSampah();

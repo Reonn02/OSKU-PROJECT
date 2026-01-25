@@ -1,7 +1,7 @@
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 import Image from "next/image";
-import BackToTop from "@/components/BackToTop";
+import BackToTop from "@/components/shared/BackToTop";
 
 export default function TataCara() {
     const steps = [

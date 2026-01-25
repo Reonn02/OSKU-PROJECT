@@ -1,10 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import SidebarAdmin from '@/components/SidebarAdmin';
-import NavbarAdmin from '@/components/NavbarAdmin';
-import PetugasAdmin from '@/components/PetugasAdmin';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
+import SidebarAdmin from '@/components/admin/SidebarAdmin';
+import NavbarAdmin from '@/components/admin/NavbarAdmin';
+import PetugasAdmin from '@/components/admin/PetugasAdmin';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
 import { useRouter } from 'next/navigation';
 
 export default function AdminPetugasPage() {

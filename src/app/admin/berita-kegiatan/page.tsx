@@ -1,10 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import SidebarAdmin from '@/components/SidebarAdmin';
-import NavbarAdmin from '@/components/NavbarAdmin';
-import BeritaKegiatanAdmin from '@/components/BeritaKegiatanAdmin';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
+import SidebarAdmin from '@/components/admin/SidebarAdmin';
+import NavbarAdmin from '@/components/admin/NavbarAdmin';
+import BeritaKegiatanAdmin from '@/components/admin/BeritaKegiatanAdmin';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
 import { useRouter } from 'next/navigation';
 import { BeritaKegiatanProvider } from '@/contexts/BeritaKegiatanContext';
 

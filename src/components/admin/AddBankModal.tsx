@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useBankSampah, BankSampah, DayOfWeek } from '@/contexts/BankSampahContext';
 import { usePetugas, Petugas } from '@/contexts/PetugasContext';
-import { showStandaloneToast } from './Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 
 interface AddBankModalProps {
     onClose: () => void;

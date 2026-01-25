@@ -3,8 +3,8 @@
 import { use, useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import Navbar from "@/components/Navbar";
-import Footer from "@/components/Footer";
+import Navbar from "@/components/landing/Navbar";
+import Footer from "@/components/landing/Footer";
 import { useBeritaKegiatan } from '@/contexts/BeritaKegiatanContext';
 
 export default function DetailBeritaPage({ params }: { params: Promise<{ id: string }> }) {

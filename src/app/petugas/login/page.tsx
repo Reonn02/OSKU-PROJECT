@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, Suspense } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePetugas, Petugas } from '@/contexts/PetugasContext';
-import { showStandaloneToast } from '@/components/Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 
 function PetugasLoginContent() {
     const [showPassword, setShowPassword] = useState(false);

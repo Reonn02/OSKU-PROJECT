@@ -2,11 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import SidebarAdmin from '@/components/SidebarAdmin';
-import NavbarAdmin from '@/components/NavbarAdmin';
-import BankSampahAccordion from '@/components/BankSampahAccordion';
-import AddBankModal from '@/components/AddBankModal';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
+import SidebarAdmin from '@/components/admin/SidebarAdmin';
+import NavbarAdmin from '@/components/admin/NavbarAdmin';
+import BankSampahAccordion from '@/components/admin/BankSampahAccordion';
+import AddBankModal from '@/components/admin/AddBankModal';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { useRouter } from 'next/navigation';
 

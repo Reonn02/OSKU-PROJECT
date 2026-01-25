@@ -6,6 +6,7 @@ import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 // ... rest of imports
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface NavbarPetugasProps {
     onLogout: () => void;
@@ -26,6 +27,7 @@ interface Notification {
 
 export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetugasProps) {
     const router = useRouter();
+    const { t } = useLanguage();
     const [showNotifications, setShowNotifications] = useState(false);
     const [notifications, setNotifications] = useState<Notification[]>([]);
 
@@ -161,7 +163,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                         <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-gray-100 z-50 animate-in fade-in zoom-in duration-200">
                             <div className="p-4 border-b border-gray-100">
                                 <div className="flex items-center justify-between">
-                                    <h3 className="font-bold text-primary">Notifikasi</h3>
+                                    <h3 className="font-bold text-primary">{t('common.notifications')}</h3>
                                     {unreadCount > 0 && (
                                         <span className="text-xs bg-warning text-white px-2 py-1 rounded-full">
                                             {unreadCount}
@@ -232,7 +234,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                     onClick={onLogout}
                     className="bg-primary hover:bg-primary-dark text-white px-8 py-2 xl:px-10 rounded-full text-sm font-bold transition shadow-sm active:scale-95 cursor-pointer"
                 >
-                    Keluar
+                    {t('common.logout')}
                 </button>
             </div>
         </header>

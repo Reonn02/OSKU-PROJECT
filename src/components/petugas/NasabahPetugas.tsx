@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import { supabase } from '@/lib/supabase';
 import { formatSaldo, NasabahData } from '@/data/nasabahData';
-import { showStandaloneToast } from './Toast';
+import { showStandaloneToast } from '@/components/shared/Toast';
 
 interface PetugasData {
     id: string;

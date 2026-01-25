@@ -9,6 +9,7 @@ import { AdminProvider } from "@/contexts/AdminContext";
 import { PetugasProvider } from "@/contexts/PetugasContext";
 import { PenyetoranProvider } from "@/contexts/PenyetoranContext";
 import { PencairanProvider } from "@/contexts/PencairanContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 const metropolis = localFont({
@@ -51,34 +52,35 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="id" suppressHydrationWarning>
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css" rel="stylesheet" />
       </head>
       <body
-        className={`${metropolis.variable} ${metropolis.className} antialiased bg-white overflow-x-hidden`}
+        className={`${metropolis.variable} font-sans antialiased`}
       >
-        <AuthProvider>
-          <BankSampahProvider>
-            <PetugasProvider>
-              <PenyetoranProvider>
-                <PencairanProvider>
-                  <BeritaProvider>
-                    <BeritaKegiatanProvider>
-                      <WastePriceProvider>
-                        <AdminProvider>
-                          {children}
-                        </AdminProvider>
-                      </WastePriceProvider>
-                    </BeritaKegiatanProvider>
-                  </BeritaProvider>
-                </PencairanProvider>
-              </PenyetoranProvider>
-            </PetugasProvider>
-          </BankSampahProvider>
-        </AuthProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <BankSampahProvider>
+              <BeritaProvider>
+                <BeritaKegiatanProvider>
+                  <WastePriceProvider>
+                    <AdminProvider>
+                      <PetugasProvider>
+                        <PenyetoranProvider>
+                          <PencairanProvider>
+                            {children}
+                          </PencairanProvider>
+                        </PenyetoranProvider>
+                      </PetugasProvider>
+                    </AdminProvider>
+                  </WastePriceProvider>
+                </BeritaKegiatanProvider>
+              </BeritaProvider>
+            </BankSampahProvider>
+          </AuthProvider>
+        </LanguageProvider>
       </body>
     </html>
   );
 }
-

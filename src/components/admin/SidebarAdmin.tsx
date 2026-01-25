@@ -4,6 +4,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { useState, useEffect } from 'react';
 import { useAdmin } from '@/contexts/AdminContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface SidebarAdminProps {
     activeTab: string;
@@ -13,20 +14,21 @@ interface SidebarAdminProps {
 
 export default function SidebarAdmin({ activeTab, onTabChange, isCollapsed = false }: SidebarAdminProps) {
     const { admin } = useAdmin();
+    const { t } = useLanguage();
 
     const menuItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: '/icon/Dashboard.svg' },
-        { id: 'nasabah', label: 'Nasabah', icon: '/icon/nasabah.svg' },
-        { id: 'petugas', label: 'Petugas', icon: '/icon/Petugas.svg' },
-        { id: 'prediksi', label: 'Prediksi', icon: '/icon/Prediksi.svg' },
-        { id: 'berita', label: 'Berita', icon: '/icon/Newspaper.svg' },
-        { id: 'berita-kegiatan', label: 'Berita Kegiatan', icon: 'fas fa-calendar-alt' },
-        { id: 'bank-sampah', label: 'Bank Sampah', icon: 'fas fa-store' },
+        { id: 'dashboard', label: t('common.dashboard'), icon: '/icon/Dashboard.svg' },
+        { id: 'nasabah', label: t('common.nasabah'), icon: '/icon/nasabah.svg' },
+        { id: 'petugas', label: t('common.petugas'), icon: '/icon/Petugas.svg' },
+        { id: 'prediksi', label: t('common.prediction'), icon: '/icon/Prediksi.svg' },
+        { id: 'berita', label: t('common.news'), icon: '/icon/Newspaper.svg' },
+        { id: 'berita-kegiatan', label: t('common.activity_news'), icon: 'fas fa-calendar-alt' },
+        { id: 'bank-sampah', label: t('common.waste_bank'), icon: 'fas fa-store' },
     ];
 
     const settingsItems = [
-        { id: 'profil', label: 'Profil', icon: '/icon/profil.svg' },
-        { id: 'bantuan', label: 'Bantuan', icon: 'fas fa-question-circle' },
+        { id: 'profil', label: t('common.profile'), icon: '/icon/profil.svg' },
+        { id: 'bantuan', label: t('common.help'), icon: 'fas fa-question-circle' },
     ];
 
     return (
@@ -39,7 +41,7 @@ export default function SidebarAdmin({ activeTab, onTabChange, isCollapsed = fal
                     </div>
                     {!isCollapsed && (
                         <div>
-                            <h3 className="text-[10px] text-primary-light opacity-70">Admin</h3>
+                            <h3 className="text-[10px] text-primary-light opacity-70">{t('admin.sidebar.role')}</h3>
                             <p className="text-base font-bold text-primary-light">{admin?.nama || '-'}</p>
                         </div>
                     )}
@@ -61,7 +63,7 @@ export default function SidebarAdmin({ activeTab, onTabChange, isCollapsed = fal
             <nav className={`flex-grow ${isCollapsed ? 'px-2' : 'px-4'} space-y-8 mt-2 overflow-y-auto custom-scrollbar pb-10`}>
                 {/* Main Menu */}
                 <div>
-                    {!isCollapsed && <h4 className="text-[16px] text-primary uppercase tracking-wider mb-3 px-2">MENU</h4>}
+                    {!isCollapsed && <h4 className="text-[16px] text-primary uppercase tracking-wider mb-3 px-2">{t('admin.sidebar.menu')}</h4>}
                     <ul className="space-y-2">
                         {menuItems.map((item) => (
                             <li key={item.id}>
@@ -89,7 +91,7 @@ export default function SidebarAdmin({ activeTab, onTabChange, isCollapsed = fal
 
                 {/* Settings Menu */}
                 <div>
-                    {!isCollapsed && <h4 className="text-[16px] text-primary uppercase tracking-wider mb-4 px-2">PENGATURAN</h4>}
+                    {!isCollapsed && <h4 className="text-[16px] text-primary uppercase tracking-wider mb-4 px-2">{t('admin.sidebar.settings')}</h4>}
                     <ul className="space-y-2">
                         {settingsItems.map((item) => (
                             <li key={item.id}>

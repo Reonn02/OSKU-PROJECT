@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import NavbarPetugas from '@/components/NavbarPetugas';
+import NavbarPetugas from '@/components/petugas/NavbarPetugas';
 import Link from 'next/link';
 import { supabase } from '@/lib/supabase';
 import { useRouter } from 'next/navigation';

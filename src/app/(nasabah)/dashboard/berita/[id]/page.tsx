@@ -2,11 +2,11 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import BackToTop from '@/components/BackToTop';
+import BackToTop from '@/components/shared/BackToTop';
 import { useParams, useRouter } from 'next/navigation';
 import { useState, useEffect } from 'react';
-import KonfirmasiLogout from '@/components/konfirmasiLogout';
-import NavbarNasabah from '@/components/NavbarNasabah';
+import KonfirmasiLogout from '@/components/shared/konfirmasiLogout';
+import NavbarNasabah from '@/components/nasabah/NavbarNasabah';
 import { useBerita } from '@/contexts/BeritaContext';
 import { useAuth } from '@/contexts/AuthContext';
 

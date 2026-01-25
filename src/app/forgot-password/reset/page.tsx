@@ -3,6 +3,8 @@
 import Link from 'next/link';
 import { useState, useEffect, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
+import { useLanguage } from '@/contexts/LanguageContext';
+import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import {
     validateRequired,
     checkPasswordStrength,
@@ -16,6 +18,7 @@ import { clearOTP } from '@/utils/otpUtils';
 
 export default function ResetPassword() {
     const router = useRouter();
+    const { t } = useLanguage();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
@@ -54,14 +57,14 @@ export default function ResetPassword() {
 
         if (field === 'password') {
             if (!validateRequired(password)) {
-                error = getRequiredError('Password Baru');
+                error = getRequiredError(t('auth.reset_password.new_password'));
             } else if (!validatePassword(password)) {
                 const strength = checkPasswordStrength(password);
                 error = getPasswordError(strength);
             }
         } else {
             if (!validateRequired(confirmPassword)) {
-                error = getRequiredError('Konfirmasi Password');
+                error = getRequiredError(t('auth.reset_password.confirm_password'));
             } else if (!validatePasswordMatch(password, confirmPassword)) {
                 error = getPasswordMatchError();
             }
@@ -107,7 +110,7 @@ export default function ResetPassword() {
             const data = await response.json();
 
             if (!response.ok || !data.success) {
-                setErrors({ password: data.error || 'Gagal mereset password. Silakan coba lagi.' });
+                setErrors({ password: data.error || t('auth.forgot_password.error_generic') });
                 setIsSubmitting(false);
                 return;
             }
@@ -134,7 +137,7 @@ export default function ResetPassword() {
             }, 3000);
         } catch (err) {
             console.error('Error resetting password:', err);
-            setErrors({ password: 'Terjadi kesalahan. Silakan coba lagi.' });
+            setErrors({ password: t('auth.forgot_password.error_generic') });
         } finally {
             setIsSubmitting(false);
         }
@@ -149,15 +152,15 @@ export default function ResetPassword() {
                     <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mx-auto mb-6">
                         <i className="fas fa-check text-4xl text-primary"></i>
                     </div>
-                    <h1 className="text-3xl font-bold text-primary mb-4">Password Berhasil Diubah!</h1>
+                    <h1 className="text-3xl font-bold text-primary mb-4">{t('auth.reset_password.success_title')}</h1>
                     <p className="text-gray-600 mb-8">
-                        Password anda telah berhasil diperbarui. Anda akan segera dialihkan ke halaman login.
+                        {t('auth.reset_password.success_desc')}
                     </p>
                     <Link
                         href={userType === 'petugas' ? "/petugas/login" : "/login"}
                         className="inline-block bg-primary hover:bg-primary-dark text-white font-medium px-8 py-3 rounded-full transition shadow-md"
                     >
-                        {userType === 'petugas' ? "Ke Login Petugas" : "Ke Halaman Login"}
+                        {userType === 'petugas' ? t('auth.reset_password.back_login_petugas') : t('auth.reset_password.back_login')}
                     </Link>
                 </div>
             </div>
@@ -166,20 +169,23 @@ export default function ResetPassword() {
 
     return (
         <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col relative">
+            <div className="absolute top-4 right-4 z-10">
+                <LanguageSwitcher />
+            </div>
             <main className="flex-grow flex items-center justify-center p-4">
                 <div className="w-full max-w-lg border border-gray-200 rounded-3xl p-8 md:p-12 shadow-sm bg-white">
                     <div className="text-center mb-8">
-                        <h1 className="text-3xl font-bold text-primary mb-2">Reset Password</h1>
-                        <p className="text-sm text-primary">Buat password baru yang kuat untuk akun anda</p>
+                        <h1 className="text-3xl font-bold text-primary mb-2">{t('auth.reset_password.title')}</h1>
+                        <p className="text-sm text-primary">{t('auth.reset_password.subtitle')}</p>
                     </div>
 
                     <form onSubmit={handleSubmit} className="space-y-4">
                         {/* Password Baru */}
                         <div className="space-y-1">
-                            <label className="text-xs text-primary font-medium block">Password Baru</label>
+                            <label className="text-xs text-primary font-medium block">{t('auth.reset_password.new_password')}</label>
                             <input
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Masukkan password baru"
+                                placeholder={t('auth.reset_password.new_password_placeholder')}
                                 value={password}
                                 onChange={(e) => handleInputChange('password', e.target.value)}
                                 onBlur={() => handleBlur('password')}
@@ -196,16 +202,16 @@ export default function ResetPassword() {
                                 <div className="mt-2 space-y-1">
                                     <div className="flex gap-2 text-[10px] md:text-xs">
                                         <span className={passwordStrength.hasUppercase ? 'text-green-600' : 'text-gray-400'}>
-                                            {passwordStrength.hasUppercase ? '✓' : '○'} Huruf Besar
+                                            {passwordStrength.hasUppercase ? '✓' : '○'} {t('auth.register.strength_uppercase')}
                                         </span>
                                         <span className={passwordStrength.hasLowercase ? 'text-green-600' : 'text-gray-400'}>
-                                            {passwordStrength.hasLowercase ? '✓' : '○'} Huruf Kecil
+                                            {passwordStrength.hasLowercase ? '✓' : '○'} {t('auth.register.strength_lowercase')}
                                         </span>
                                         <span className={passwordStrength.hasNumber ? 'text-green-600' : 'text-gray-400'}>
-                                            {passwordStrength.hasNumber ? '✓' : '○'} Angka
+                                            {passwordStrength.hasNumber ? '✓' : '○'} {t('auth.register.strength_number')}
                                         </span>
                                         <span className={passwordStrength.hasSymbol ? 'text-green-600' : 'text-gray-400'}>
-                                            {passwordStrength.hasSymbol ? '✓' : '○'} Simbol
+                                            {passwordStrength.hasSymbol ? '✓' : '○'} {t('auth.register.strength_symbol')}
                                         </span>
                                     </div>
                                 </div>
@@ -214,10 +220,10 @@ export default function ResetPassword() {
 
                         {/* Konfirmasi Password */}
                         <div className="space-y-1">
-                            <label className="text-xs text-primary font-medium block">Konfirmasi Password</label>
+                            <label className="text-xs text-primary font-medium block">{t('auth.reset_password.confirm_password')}</label>
                             <input
                                 type={showPassword ? "text" : "password"}
-                                placeholder="Ulangi password baru"
+                                placeholder={t('auth.reset_password.confirm_password_placeholder')}
                                 value={confirmPassword}
                                 onChange={(e) => handleInputChange('confirmPassword', e.target.value)}
                                 onBlur={() => handleBlur('confirmPassword')}
@@ -241,7 +247,7 @@ export default function ResetPassword() {
                                 className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary accent-primary"
                             />
                             <label htmlFor="show-password" className="text-xs text-primary select-none cursor-pointer">
-                                Tampilkan Password
+                                {t('auth.register.show_password')}
                             </label>
                         </div>
 
@@ -255,10 +261,10 @@ export default function ResetPassword() {
                                 {isSubmitting ? (
                                     <span className="flex items-center justify-center">
                                         <i className="fas fa-spinner fa-spin mr-2"></i>
-                                        Memperbarui Password...
+                                        {t('auth.reset_password.saving')}
                                     </span>
                                 ) : (
-                                    'Simpan Password Baru'
+                                    t('auth.reset_password.button')
                                 )}
                             </button>
                         </div>

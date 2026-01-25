@@ -1,7 +1,12 @@
+'use client';
+
 import Link from 'next/link';
 import Image from 'next/image';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 export default function Footer() {
+    const { t } = useLanguage();
+
     return (
         <footer className="bg-[#0f172a] text-white pt-16 pb-12 px-4 sm:px-6 lg:px-12 font-sans">
             <div className="container mx-auto max-w-7xl">
@@ -13,7 +18,7 @@ export default function Footer() {
                             <p className="text-xs text-gray-400 mb-4 italic">Olah Sampah Ku</p>
                         </div>
                         <p className="text-gray-400 text-sm leading-relaxed max-w-xs">
-                            Platform digital untuk pengelolaan bank sampah online yang modern dan terpercaya.
+                            {t('landing.footer.about_desc')}
                         </p>
                         <div className="flex space-x-4">
                             <a href="https://www.youtube.com/" className="text-gray-400 hover:text-white transition">
@@ -32,9 +37,9 @@ export default function Footer() {
                     <div>
                         <h4 className="text-lg font-bold mb-6">Menu</h4>
                         <ul className="space-y-4 text-sm text-gray-400 font-medium">
-                            <li><Link href="/" className="hover:text-white transition">Beranda</Link></li>
-                            <li><Link href="/#about" className="hover:text-white transition">Tentang Kami</Link></li>
-                            <li><Link href="/lokasi" className="hover:text-white transition">Lokasi</Link></li>
+                            <li><Link href="/" className="hover:text-white transition">{t('landing.nav.home')}</Link></li>
+                            <li><Link href="/#about" className="hover:text-white transition">{t('landing.nav.about')}</Link></li>
+                            <li><Link href="/lokasi" className="hover:text-white transition">{t('landing.features.locations')}</Link></li>
                             <li><Link href="/pusat-informasi" className="hover:text-white transition">Pusat Informasi</Link></li>
                             <li><Link href="/tata-cara" className="hover:text-white transition">Tata Cara</Link></li>
                         </ul>
@@ -42,7 +47,7 @@ export default function Footer() {
 
                     {/* Contact Section */}
                     <div>
-                        <h4 className="text-lg font-bold mb-6">Kontak</h4>
+                        <h4 className="text-lg font-bold mb-6">{t('landing.footer.contact_us')}</h4>
                         <ul className="space-y-5 text-sm">
                             <li className="flex items-start space-x-3 text-gray-400">
                                 <i className="fas fa-map-marker-alt mt-1 text-white"></i>
@@ -77,7 +82,7 @@ export default function Footer() {
 
                 <div className="border-t border-gray-800 pt-8 flex flex-col items-center">
                     <p className="text-gray-500 text-sm">
-                        &copy;2025 OSKU All right reserved.
+                        {t('landing.footer.copyright')}
                     </p>
                 </div>
             </div>

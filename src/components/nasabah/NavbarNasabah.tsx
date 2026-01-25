@@ -7,6 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { useBerita } from '@/contexts/BeritaContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface NavbarNasabahProps {
     activeTab: string;
@@ -35,6 +36,7 @@ export default function NavbarNasabah({
 }: NavbarNasabahProps) {
     const pathname = usePathname();
     const router = useRouter();
+    const { t } = useLanguage();
     const [scrolled, setScrolled] = useState(false);
     const { berita } = useBerita();
     const { nasabah, signOut } = useAuth();
@@ -291,11 +293,11 @@ export default function NavbarNasabah({
     const isDashboard = pathname === '/dashboard';
 
     const menuItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: '/icon/Dashboard.svg' },
-        { id: 'profile', label: 'Profil', icon: '/icon/profil.svg' },
-        { id: 'penyetoran', label: 'Penyetoran', icon: '/icon/LogoPenyetoran.svg' },
-        { id: 'pencairan', label: 'Pencairan', icon: '/icon/Pencairan.svg' },
-        { id: 'bantuan', label: 'Bantuan', icon: '/icon/help-circle.svg', isPage: true },
+        { id: 'dashboard', label: t('common.dashboard'), icon: '/icon/Dashboard.svg' },
+        { id: 'profile', label: t('common.profile'), icon: '/icon/profil.svg' },
+        { id: 'penyetoran', label: t('petugas.sidebar.deposit'), icon: '/icon/LogoPenyetoran.svg' },
+        { id: 'pencairan', label: t('common.withdrawal'), icon: '/icon/Pencairan.svg' },
+        { id: 'bantuan', label: t('common.help'), icon: '/icon/help-circle.svg', isPage: true },
     ];
 
     const handleTabClick = (tabId: string, isPage?: boolean) => {
@@ -410,7 +412,7 @@ export default function NavbarNasabah({
                                     {/* Header */}
                                     <div className="p-4 border-b border-gray-100 flex items-center justify-between bg-white">
                                         <div className="flex items-center gap-2">
-                                            <h3 className="font-bold text-primary">Notifikasi</h3>
+                                            <h3 className="font-bold text-primary">{t('common.notifications')}</h3>
                                             {unreadCount > 0 && (
                                                 <span className="text-xs bg-warning text-white px-2 py-0.5 rounded-full font-medium">
                                                     {unreadCount}
@@ -434,7 +436,7 @@ export default function NavbarNasabah({
                                                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                                                     <i className="fas fa-bell-slash text-2xl text-gray-400"></i>
                                                 </div>
-                                                <h4 className="text-sm font-semibold text-gray-600 mb-1">Belum ada notifikasi</h4>
+                                                <h4 className="text-sm font-semibold text-gray-600 mb-1">{t('common.no_notifications') || 'Tidak ada Notifikasi'}</h4>
                                                 <p className="text-xs text-gray-400">Aktivitas terbaru Anda akan muncul di sini</p>
                                             </div>
                                         ) : (
@@ -499,7 +501,7 @@ export default function NavbarNasabah({
                                                 onClick={() => setShowNotifications(false)}
                                                 className="text-xs text-primary font-bold hover:underline flex items-center justify-center gap-1 py-1"
                                             >
-                                                Lihat Semua Aktivitas <i className="fas fa-arrow-right text-[10px] ml-1"></i>
+                                                {t('common.view_all')} <i className="fas fa-arrow-right text-[10px] ml-1"></i>
                                             </Link>
                                         </div>
                                     )}
@@ -511,7 +513,7 @@ export default function NavbarNasabah({
                             onClick={() => setShowLogoutModal(true)}
                             className="bg-[#3B8A51] hover:bg-[#2F6E41] text-white px-4 sm:px-7 py-2 sm:py-2.5 rounded-full text-xs sm:text-sm font-bold transition-all shadow-md active:scale-95 cursor-pointer"
                         >
-                            Keluar
+                            {t('common.logout')}
                         </button>
                     </div>
                 </div>
@@ -520,7 +522,7 @@ export default function NavbarNasabah({
             {/* Greeting - Centered at the top of content */}
             <div className="container mx-auto px-4 pt-20 md:pt-24 pb-2 md:pb-4 text-center">
                 <h1 className="text-xl sm:text-3xl md:text-5xl font-bold tracking-tight">
-                    <span className="text-[#3B8A51] opacity-50">Selamat Datang, </span>
+                    <span className="text-[#3B8A51] opacity-50">{t('nasabah.dashboard.hello')} </span>
                     <span className="text-[#3B8A51]">{displayName}</span>
                 </h1>
             </div>
