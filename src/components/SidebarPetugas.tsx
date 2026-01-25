@@ -54,7 +54,7 @@ export default function SidebarPetugas({ activeTab, onTabChange, isCollapsed = f
     }, []);
 
     const menuItems = [
-        { id: 'dashboard', label: 'Dashboard', icon: '/icon/dashboard.svg' },
+        { id: 'dashboard', label: 'Dashboard', icon: '/icon/Dashboard.svg' },
         { id: 'nasabah', label: 'Nasabah', icon: '/icon/nasabah.svg' },
         { id: 'persetujuan', label: 'Persetujuan', icon: '/icon/mdi_approve.svg' },
         { id: 'konfirmasi', label: 'Konfirmasi', icon: 'fas fa-thumbs-up' },
