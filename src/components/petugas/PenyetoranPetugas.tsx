@@ -122,7 +122,7 @@ export default function PenyetoranPetugas() {
             bankSampah: item.bank_sampah_name || '-',
             buktiPreviews: item.bukti_foto || [],
             nasabah_id: item.nasabah_id,
-            waste_type_id: item.waste_type_id,
+            waste_type_id: item.jenis_sampah_id, // Map for internal usage if needed, though we rely on waste_type relation
             bank_sampah_id: item.bank_sampah_id,
         }));
         setHistoryData(mappedData);
@@ -393,7 +393,7 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
                 nasabah_id: selectedNasabah.id,
                 petugas_id: localStorage.getItem('petugasData') ? JSON.parse(localStorage.getItem('petugasData')!).id : null,
                 bank_sampah_id: petugasBankId || null,
-                waste_type_id: selectedWasteType.id,
+                jenis_sampah_id: selectedWasteType.id,
                 berat: parseFloat(formData.beratSampah),
                 total_harga: formData.totalSaldo,
                 tanggal: new Date(formData.tanggalSetor).toISOString(),

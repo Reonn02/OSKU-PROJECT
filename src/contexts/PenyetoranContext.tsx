@@ -45,7 +45,7 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
                 .select(`
                     *,
                     nasabah:nasabah_id (name),
-                    waste_type:waste_type_id (nama, satuan),
+                    waste_type:jenis_sampah_id (nama, satuan),
                     bank_sampah:bank_sampah_id (nama)
                 `)
                 .eq('bank_sampah_id', bankId)
@@ -77,7 +77,7 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
                 .from('penyetoran')
                 .select(`
                     *,
-                    waste_type:waste_type_id (nama),
+                    waste_type:jenis_sampah_id (nama),
                     bank_sampah:bank_sampah_id (nama)
                 `)
                 .eq('nasabah_id', nasabahId)

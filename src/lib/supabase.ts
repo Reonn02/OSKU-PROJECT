@@ -159,7 +159,7 @@ export interface DbPenyetoran {
     nasabah_id: string;
     petugas_id: string | null;
     bank_sampah_id: string | null;
-    waste_type_id: string | null;
+    jenis_sampah_id: string | null;
     berat: number;
     total_harga: number;
     tanggal: string;
