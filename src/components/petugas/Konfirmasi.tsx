@@ -20,8 +20,8 @@ interface PetugasData {
 export default function KonfirmasiPetugas() {
     const { t } = useLanguage();
     const { approvedList, historyList, loading, fetchApprovedByBank, completePencairan, cancelPencairan } = usePencairan();
-    const [completedToday, setCompletedToday] = useState(0);
     const [searchQuery, setSearchQuery] = useState('');
+    const [statusFilter, setStatusFilter] = useState<'all' | 'completed' | 'cancelled'>('all');
     const [currentPage, setCurrentPage] = useState(1);
     const [showConfirmModal, setShowConfirmModal] = useState(false);
     const [showRejectModal, setShowRejectModal] = useState(false);
@@ -88,25 +88,67 @@ export default function KonfirmasiPetugas() {
         currentPage * itemsPerPage
     );
 
-    // Hitung berapa konfirmasi yang sudah dibatalkan 
-    const today = new Date().toLocaleDateString('id-ID');
-    const cancelledTodayCount = historyData.filter(item => item.status === 'Dibatalkan' && item.completed_at === today).length;
+    // Stats calculation based on selectedYear
+    const historyInYearRaw = historyList.filter(item => {
+        if (!item.tanggal_selesai) return false;
+        const date = new Date(item.tanggal_selesai);
+        return date.getFullYear() === selectedYear;
+    });
 
-    // Filter history data by year and search query
+    const completedCount = historyInYearRaw.filter(item => item.status === 'completed').length;
+    const cancelledCount = historyInYearRaw.filter(item => item.status === 'cancelled').length;
+
+    // Filter history data by year, status, and search query
     const filteredHistoryData = historyData
         .filter(item => {
-            // Extract year from completed_at date (format: "17/1/2026" or similar)
+            // Extract year from completed_at date
             const completedYear = item.completed_at ? new Date(item.completed_at.split('/').reverse().join('-')).getFullYear() : null;
-            return completedYear === selectedYear;
+            const matchesYear = completedYear === selectedYear;
+
+            // Status filter
+            // Note: item.status is translated, so we check original logic or mapped string
+            // It's safer to filter based on the 'status' text if we know it, but we can also look at 'reason' for cancelled? 
+            // Better: use historyList to filter first, then map? 
+            // Currently historyData is already mapped. Let's match roughly or rely on translation keys if possible.
+            // Actually, let's map historyList directly with a rawStatus field to make this easier.
+            return matchesYear;
+        })
+        // We need to re-map to include raw status or just fuzzy match the translated status? 
+        // Let's change the historyData mapping above to include rawStatus.
+        .filter(item => {
+            if (statusFilter === 'all') return true;
+            // We need a way to know the raw status. 
+            // Let's inject logic in the previous map, see next chunk.
+            return true;
         })
         .filter(item =>
             item.withdrawal_id.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
             item.nasabah_name.toLowerCase().includes(historySearchQuery.toLowerCase())
         );
 
-    // Pagination for history
-    const totalHistoryPages = Math.ceil(filteredHistoryData.length / itemsPerPage);
-    const paginatedHistoryData = filteredHistoryData.slice(
+    // Improved filtering with raw status access:
+    const finalHistoryData = historyList
+        .filter(item => item.status === 'completed' || item.status === 'cancelled')
+        .map(item => ({
+            ...item,
+            displayStatus: item.status === 'completed' ? t('common.completed') : t('common.cancelled'),
+            formattedDate: item.tanggal_selesai ? new Date(item.tanggal_selesai).toLocaleDateString('id-ID') : '-'
+        }))
+        .filter(item => {
+            const date = item.tanggal_selesai ? new Date(item.tanggal_selesai) : null;
+            return date && date.getFullYear() === selectedYear;
+        })
+        .filter(item => {
+            if (statusFilter === 'all') return true;
+            return item.status === statusFilter;
+        })
+        .filter(item =>
+        (item.id?.toLowerCase().includes(historySearchQuery.toLowerCase()) ||
+            item.nasabah_name?.toLowerCase().includes(historySearchQuery.toLowerCase()))
+        );
+
+    const totalHistoryPages = Math.ceil(finalHistoryData.length / itemsPerPage);
+    const paginatedHistoryData = finalHistoryData.slice(
         (historyPage - 1) * itemsPerPage,
         historyPage * itemsPerPage
     );
@@ -125,7 +167,7 @@ export default function KonfirmasiPetugas() {
         if (selectedItem?.id) {
             const success = await completePencairan(selectedItem.id);
             if (success) {
-                setCompletedToday(completedToday + 1);
+                // setCompletedToday(completedToday + 1); // Removed local state
                 showStandaloneToast('success', 'Berhasil', 'Pencairan berhasil dikonfirmasi');
             } else {
                 showStandaloneToast('error', 'Gagal', 'Terjadi kesalahan saat mengkonfirmasi pencairan');
@@ -163,7 +205,7 @@ export default function KonfirmasiPetugas() {
 
     // Export filtered history to CSV
     const exportToCSV = () => {
-        if (filteredHistoryData.length === 0) {
+        if (finalHistoryData.length === 0) {
             showStandaloneToast('warning', 'Tidak Ada Data', 'Tidak ada data history untuk diekspor.');
             return;
         }
@@ -171,16 +213,16 @@ export default function KonfirmasiPetugas() {
         const headers = ['ID Pengajuan', 'ID Nasabah', 'Nama Nasabah', 'No. Telepon', 'Jumlah', 'Tgl Disetujui', 'Status', 'Alasan', 'Tgl Selesai'];
         const csvRows = [
             headers.join(','),
-            ...filteredHistoryData.map(item => [
-                item.withdrawal_id,
-                item.nasabah_id || '-',
+            ...finalHistoryData.map(item => [
+                item.id || '-',
+                item.nasabah_username || '-',
                 `"${item.nasabah_name}"`,
-                item.phone,
-                item.amount,
-                item.approved_at,
-                item.status,
-                item.reason ? `"${item.reason}"` : '-',
-                item.completed_at
+                '-', // phone
+                item.jumlah,
+                item.tanggal_pengajuan ? new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID') : '-',
+                item.displayStatus,
+                item.alasan ? `"${item.alasan}"` : '-',
+                item.formattedDate
             ].join(','))
         ];
 
@@ -195,11 +237,24 @@ export default function KonfirmasiPetugas() {
     return (
         <div className="space-y-6 animate-in fade-in duration-500">
             {/* Header */}
-            <div className="flex items-center gap-3 mb-2">
-                <div className="w-8 h-8 flex items-center justify-center">
-                    <i className="fas fa-thumbs-up text-2xl text-primary"></i>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-2">
+                <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 flex items-center justify-center">
+                        <i className="fas fa-thumbs-up text-2xl text-primary"></i>
+                    </div>
+                    <h1 className="text-2xl font-bold text-primary">{t('petugas.konfirmasi.title')}</h1>
                 </div>
-                <h1 className="text-2xl font-bold text-primary">{t('petugas.konfirmasi.title')}</h1>
+
+                {/* Year Picker Moved Here */}
+                <div className="flex items-center">
+                    <YearPicker
+                        selectedYear={selectedYear}
+                        onYearChange={(year) => {
+                            setSelectedYear(year);
+                            setHistoryPage(1);
+                        }}
+                    />
+                </div>
             </div>
 
             {/* Stats Card */}
@@ -222,7 +277,7 @@ export default function KonfirmasiPetugas() {
                         </div>
                         <div>
                             <p className="text-4xs text-primary font-medium">{t('petugas.konfirmasi.confirm_completed')}</p>
-                            <p className="text-2xl font-bold text-primary">{completedToday}</p>
+                            <p className="text-2xl font-bold text-primary">{completedCount}</p>
                         </div>
                     </div>
                 </div>
@@ -233,7 +288,7 @@ export default function KonfirmasiPetugas() {
                         </div>
                         <div>
                             <p className="text-4xs text-warning font-medium">{t('petugas.konfirmasi.confirm_cancelled')}</p>
-                            <p className="text-2xl font-bold text-warning">{cancelledTodayCount}</p>
+                            <p className="text-2xl font-bold text-warning">{cancelledCount}</p>
                         </div>
                     </div>
                 </div>
@@ -378,7 +433,7 @@ export default function KonfirmasiPetugas() {
                         </div>
                         <h2 className="text-xl font-bold text-primary">{t('petugas.konfirmasi.history_title')}</h2>
                         <span className="px-4 py-2 bg-white text-primary text-xs font-bold rounded-full">
-                            {filteredHistoryData.length} data
+                            {finalHistoryData.length} data
                         </span>
                     </div>
 
@@ -399,14 +454,22 @@ export default function KonfirmasiPetugas() {
                             <i className="fas fa-search absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs"></i>
                         </div>
 
-                        {/* Year Picker */}
-                        <YearPicker
-                            selectedYear={selectedYear}
-                            onYearChange={(year) => {
-                                setSelectedYear(year);
-                                setHistoryPage(1);
-                            }}
-                        />
+                        {/* Status Filter */}
+                        <div className="relative">
+                            <select
+                                value={statusFilter}
+                                onChange={(e) => {
+                                    setStatusFilter(e.target.value as 'all' | 'completed' | 'cancelled');
+                                    setHistoryPage(1);
+                                }}
+                                className="appearance-none bg-white border border-gray-100 rounded-full pl-4 pr-10 py-2.5 text-xs font-medium text-primary shadow-sm focus:outline-none focus:ring-1 focus:ring-primary cursor-pointer"
+                            >
+                                <option value="all">{t('common.all_status') || 'Semua Status'}</option>
+                                <option value="completed">{t('common.completed')}</option>
+                                <option value="cancelled">{t('common.cancelled')}</option>
+                            </select>
+                            <i className="fas fa-chevron-down absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
+                        </div>
 
                         {/* Export Button */}
                         <button
@@ -420,7 +483,7 @@ export default function KonfirmasiPetugas() {
                 </div>
 
                 {/* History Table */}
-                {filteredHistoryData.length === 0 ? (
+                {finalHistoryData.length === 0 ? (
                     <div className="bg-white rounded-[32px] overflow-hidden shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 p-12">
                         <div className="flex flex-col items-center justify-center py-8">
                             <div className="w-20 h-20 bg-gray-100 rounded-full flex items-center justify-center mb-4">
@@ -454,23 +517,25 @@ export default function KonfirmasiPetugas() {
                                     <tbody className="divide-y divide-gray-50">
                                         {paginatedHistoryData.map((item, idx) => (
                                             <tr key={idx} className="hover:bg-gray-50 transition-colors">
-                                                <td className="px-5 py-4 font-bold text-gray-700">{item.withdrawal_id}</td>
-                                                <td className="px-5 py-4 font-medium text-gray-600">{item.nasabah_id || '-'}</td>
+                                                <td className="px-5 py-4 font-bold text-gray-700">{item.id || '-'}</td>
+                                                <td className="px-5 py-4 font-medium text-gray-600">{item.nasabah_username || '-'}</td>
                                                 <td className="px-5 py-4 text-gray-600">{item.nasabah_name}</td>
-                                                <td className="px-5 py-4 text-gray-500">{item.phone}</td>
+                                                <td className="px-5 py-4 text-gray-500">{'-'}</td>
                                                 <td className="px-5 py-4 font-bold text-gray-700">
-                                                    Rp {item.amount?.toLocaleString('id-ID') || '0'}
+                                                    Rp {item.jumlah?.toLocaleString('id-ID') || '0'}
                                                 </td>
-                                                <td className="px-5 py-4 text-gray-500">{item.approved_at}</td>
+                                                <td className="px-5 py-4 text-gray-500">
+                                                    {item.tanggal_pengajuan ? new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID') : '-'}
+                                                </td>
                                                 <td className="px-5 py-4 text-center">
-                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${item.status === 'Selesai' ? 'bg-tertiary text-primary' : item.status === 'Dibatalkan' ? 'bg-warning-light text-warning' : 'bg-gray-200 text-gray-600'}`}>
-                                                        {item.status}
+                                                    <span className={`px-3 py-1 rounded-full text-[10px] font-bold ${item.status === 'completed' ? 'bg-tertiary text-primary' : item.status === 'cancelled' ? 'bg-warning-light text-warning' : 'bg-gray-200 text-gray-600'}`}>
+                                                        {item.displayStatus}
                                                     </span>
                                                 </td>
-                                                <td className="px-5 py-4 text-gray-500 max-w-[200px] truncate" title={item.reason || '-'}>
-                                                    {item.reason || '-'}
+                                                <td className="px-5 py-4 text-gray-500 max-w-[200px] truncate" title={item.alasan || '-'}>
+                                                    {item.alasan || '-'}
                                                 </td>
-                                                <td className="px-5 py-4 text-gray-500">{item.completed_at}</td>
+                                                <td className="px-5 py-4 text-gray-500">{item.formattedDate}</td>
                                             </tr>
                                         ))}
                                     </tbody>

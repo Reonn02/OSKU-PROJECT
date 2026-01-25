@@ -45,6 +45,11 @@ export const en: Dictionary = {
         export_pdf: 'Export PDF',
         select_waste_type: 'Select Waste Type',
         enter_weight: 'Enter Weight',
+        completed: 'Completed',
+        cancelled: 'Cancelled',
+        all_status: 'All Status',
+        phone_number: 'Phone Number',
+        amount: 'Amount',
     },
     landing: {
         hero: {

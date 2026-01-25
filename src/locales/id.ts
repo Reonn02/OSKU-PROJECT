@@ -43,6 +43,11 @@ export const id = {
         export_pdf: 'Export PDF',
         select_waste_type: 'Pilih Jenis Sampah',
         enter_weight: 'Masukkan Berat',
+        completed: 'Selesai',
+        cancelled: 'Dibatalkan',
+        all_status: 'Semua Status',
+        phone_number: 'No. Telepon',
+        amount: 'Jumlah',
     },
     landing: {
         hero: {
