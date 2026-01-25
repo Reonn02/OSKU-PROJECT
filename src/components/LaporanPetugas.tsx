@@ -164,7 +164,7 @@ export default function LaporanPetugas() {
     };
 
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 pb-10">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="w-8 h-8 flex items-center justify-center">

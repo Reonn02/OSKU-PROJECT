@@ -143,7 +143,7 @@ export default function AdminBankSampahPage() {
                     onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 />
 
-                <main className="p-6 lg:p-10 space-y-4 max-w-[1600px] mx-auto w-full">
+                <main className="p-6 lg:p-10 space-y-6 max-w-[1600px] mx-auto w-full">
                     {activeTab === 'bank-sampah' && (
                         <div className="space-y-6 animate-in fade-in duration-500">
                             {/* Page Header */}

@@ -199,7 +199,7 @@ export default function KonfirmasiPetugas() {
             </div>
 
             {/* Stats Card */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6">
                 <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100">
                     <div className="flex items-center gap-3">
                         <div className="w-12 h-12 bg-yellow-light rounded-xl flex items-center justify-center">

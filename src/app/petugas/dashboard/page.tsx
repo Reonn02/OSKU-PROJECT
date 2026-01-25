@@ -352,9 +352,9 @@ export default function PetugasDashboard() {
                     onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 />
 
-                <main className="p-6 lg:p-10 space-y-4 max-w-[1600px] mx-auto w-full">
+                <main className="p-6 lg:p-10 space-y-6 max-w-[1600px] mx-auto w-full">
                     {activeTab === 'dashboard' && (
-                        <div className="space-y-4 animate-in fade-in duration-500">
+                        <div className="space-y-6 animate-in fade-in duration-500">
                             {/* Page Header */}
                             <div className="flex justify-between items-center mb-6">
                                 <div className="flex items-center gap-3">
@@ -370,7 +370,7 @@ export default function PetugasDashboard() {
                             </div>
 
                             {/* Summary Cards */}
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
                                 {summaryStats.map((stat) => (
                                     <div key={stat.label} className="bg-white rounded-[20px] p-5 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 flex items-center gap-4 group hover:shadow-md transition-all cursor-pointer">
                                         <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center group-hover:scale-110 transition-transform">
@@ -385,7 +385,7 @@ export default function PetugasDashboard() {
                             </div>
 
                             {/* Waste Breakdown & Donut Chart */}
-                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mt-4">
+                            <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mt-4">
                                 {/* Waste Breakdown (Left) - Top 5 only */}
                                 <div className="lg:col-span-7 space-y-4">
                                     {(() => {
@@ -570,7 +570,7 @@ export default function PetugasDashboard() {
                             </div>
 
                             {/* Bar Charts Section */}
-                            <div className="space-y-8 mt-8">
+                            <div className="space-y-6 mt-8">
                                 <WasteChart
                                     title="Total Penyetoran Sampah"
                                     unit="kg"

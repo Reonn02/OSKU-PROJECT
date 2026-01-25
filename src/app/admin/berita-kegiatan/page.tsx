@@ -63,7 +63,7 @@ export default function AdminBeritaKegiatanPage() {
                         onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                     />
 
-                    <main className="p-6 lg:p-10 space-y-4 max-w-[1600px] mx-auto w-full">
+                    <main className="p-6 lg:p-10 space-y-6 max-w-[1600px] mx-auto w-full">
                         {activeTab === 'berita-kegiatan' && (
                             <BeritaKegiatanAdmin />
                         )}

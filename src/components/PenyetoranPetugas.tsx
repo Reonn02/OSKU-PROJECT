@@ -623,7 +623,7 @@ _Pesan ini dikirim otomatis dari sistem OSKU_`;
             </div>
 
             {/* Histori Penyetoran section */}
-            <div className="space-y-4">
+            <div className="space-y-6">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                     <h2 className="text-xl font-bold text-primary-light">Histori Penyetoran Nasabah</h2>
                     <div className="flex items-center gap-3 flex-wrap">
