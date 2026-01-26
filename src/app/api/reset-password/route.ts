@@ -112,8 +112,17 @@ export async function POST(request: NextRequest) {
             { status: 404 }
         );
 
-    } catch (error) {
+    } catch (error: any) {
         console.error('Reset password error:', error);
+
+        // Return specific error for missing config to help debugging
+        if (error.message === 'Supabase URL and Service Key are required') {
+            return NextResponse.json(
+                { success: false, error: 'Konfigurasi Server Bermasalah: SUPABASE_SERVICE_ROLE_KEY tidak ditemukan di Vercel.' },
+                { status: 500 }
+            );
+        }
+
         return NextResponse.json(
             { success: false, error: 'Terjadi kesalahan server' },
             { status: 500 }
