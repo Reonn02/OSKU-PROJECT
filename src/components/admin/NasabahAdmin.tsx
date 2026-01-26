@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import Image from 'next/image';
-import { getAllNasabah, formatSaldo, deleteNasabah, NasabahData } from '@/data/nasabahData';
+import { getAllNasabah, formatSaldo, deleteNasabah, updateNasabah, NasabahData } from '@/data/nasabahData';
 import { showStandaloneToast } from '@/components/shared/Toast';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import DeleteConfirmModal from '@/components/shared/DeleteConfirmModal';
@@ -14,7 +14,31 @@ export default function NasabahAdmin() {
     const [searchQuery, setSearchQuery] = useState('');
     const [selectedBank, setSelectedBank] = useState('');
     const [showDeleteModal, setShowDeleteModal] = useState(false);
+
     const [nasabahToDelete, setNasabahToDelete] = useState<NasabahData | null>(null);
+    const [editedData, setEditedData] = useState<Partial<NasabahData>>({});
+
+    const handleSaveChanges = async () => {
+        if (!selectedNasabah || !editedData) return;
+
+        try {
+            const success = await updateNasabah(selectedNasabah.id, editedData);
+            if (success) {
+                showStandaloneToast('success', 'Berhasil', 'Data nasabah berhasil diperbarui');
+                // Update local list
+                const updatedList = nasabahList.map(n =>
+                    n.id === selectedNasabah.id ? { ...n, ...editedData } : n
+                );
+                setNasabahList(updatedList);
+                setSelectedNasabah({ ...selectedNasabah, ...editedData });
+            } else {
+                showStandaloneToast('error', 'Gagal', 'Gagal memperbarui data nasabah');
+            }
+        } catch (error) {
+            console.error('Update error:', error);
+            showStandaloneToast('error', 'Error', 'Terjadi kesalahan saat menyimpan perubahan');
+        }
+    };
 
     const handleDelete = async () => {
         if (!nasabahToDelete) return;
@@ -113,7 +137,8 @@ export default function NasabahAdmin() {
                             <label className="block text-xs font-bold text-[#3B8A51] mb-2 ml-4">Email</label>
                             <input
                                 type="email"
-                                defaultValue={selectedNasabah.email}
+                                value={editedData.email || selectedNasabah.email}
+                                onChange={(e) => setEditedData({ ...editedData, email: e.target.value })}
                                 className="w-full px-6 py-3.5 rounded-full border border-gray-200 focus:outline-none focus:border-[#3B8A51] text-sm text-gray-500 font-medium bg-white"
                             />
                         </div>
@@ -131,7 +156,8 @@ export default function NasabahAdmin() {
                             <label className="block text-xs font-bold text-[#3B8A51] mb-2 ml-4">Nama Bank Sampah</label>
                             <div className="relative">
                                 <select
-                                    defaultValue={selectedNasabah.bankSampah}
+                                    value={editedData.bankSampah || selectedNasabah.bankSampah}
+                                    onChange={(e) => setEditedData({ ...editedData, bankSampah: e.target.value })}
                                     className="w-full px-6 py-3.5 rounded-full border border-gray-200 focus:outline-none focus:border-[#3B8A51] text-sm text-gray-500 font-medium appearance-none bg-white cursor-pointer"
                                 >
                                     <option value="">Pilih Bank Sampah</option>
@@ -155,7 +181,10 @@ export default function NasabahAdmin() {
                         </div>
 
                         <div className="flex flex-col items-center gap-4 mt-10">
-                            <button className="bg-[#3B8A51] hover:bg-primary-dark text-white font-bold py-3 px-16 rounded-2xl transition-all shadow-md active:scale-95 text-sm cursor-pointer">
+                            <button
+                                onClick={handleSaveChanges}
+                                className="bg-[#3B8A51] hover:bg-primary-dark text-white font-bold py-3 px-16 rounded-2xl transition-all shadow-md active:scale-95 text-sm cursor-pointer"
+                            >
                                 Simpan Perubahan
                             </button>
                         </div>
