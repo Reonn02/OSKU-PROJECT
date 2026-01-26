@@ -266,7 +266,7 @@ export default function PetugasAdmin() {
                             </label>
                             <input
                                 type="email"
-                                value={editedData?.email || selectedPetugas.email}
+                                value={editedData?.email ?? selectedPetugas.email}
                                 onChange={(e) => handleInputChange('email', e.target.value)}
                                 className="w-full px-6 py-3.5 rounded-full border border-gray-200 focus:outline-none focus:border-[#3B8A51] text-sm text-gray-500 font-medium bg-white"
                             />

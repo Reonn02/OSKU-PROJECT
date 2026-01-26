@@ -170,7 +170,7 @@ export default function DataDiri() {
                                 <input
                                     type="text"
                                     placeholder="01"
-                                    maxLength={3}
+                                    maxLength={2}
                                     value={formData.rt}
                                     onChange={(e) => handleInputChange('rt', e.target.value.replace(/\D/g, ''))}
                                     onBlur={() => handleBlur('rt')}
@@ -188,7 +188,7 @@ export default function DataDiri() {
                                 <input
                                     type="text"
                                     placeholder="01"
-                                    maxLength={3}
+                                    maxLength={2}
                                     value={formData.rw}
                                     onChange={(e) => handleInputChange('rw', e.target.value.replace(/\D/g, ''))}
                                     onBlur={() => handleBlur('rw')}
