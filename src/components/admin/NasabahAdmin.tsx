@@ -44,12 +44,13 @@ export default function NasabahAdmin() {
         if (!nasabahToDelete) return;
 
         try {
-            const success = await deleteNasabah(nasabahToDelete.id);
-            if (success) {
+            const result = await deleteNasabah(nasabahToDelete.id);
+            if (result.success) {
                 showStandaloneToast('success', 'Nasabah Dihapus', `Nasabah ${nasabahToDelete.name} berhasil dihapus`);
                 refreshData();
+                setShowDeleteModal(false); // Close modal on success
             } else {
-                showStandaloneToast('error', 'Gagal Menghapus', 'Gagal menghapus nasabah');
+                showStandaloneToast('error', 'Gagal Menghapus', result.error || 'Gagal menghapus nasabah');
             }
         } catch (error) {
             console.error('Delete error:', error);

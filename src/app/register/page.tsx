@@ -208,21 +208,48 @@ export default function Register() {
         setIsSubmitting(true);
 
         try {
-            // Check NIK uniqueness
-            const { data: existingNasabah, error: checkError } = await supabase
-                .from('nasabah')
-                .select('id')
-                .eq('nik', formData.nik)
-                .single();
+            // Check for duplicates (NIK, Email, Phone) in parallel for better performance
+            const [nikCheck, emailCheck, phoneCheck] = await Promise.all([
+                supabase.from('nasabah').select('id').eq('nik', formData.nik).limit(1),
+                supabase.from('nasabah').select('id').eq('email', formData.email).limit(1),
+                supabase.from('nasabah').select('id').eq('phone', formData.phoneNumber).limit(1)
+            ]);
 
-            // If we found a row (checking for null/error is tricky with .single(), 
-            // usually if found it returns data, if not found it returns error code PGRST116)
-            if (existingNasabah) {
+            // Check NIK
+            if (nikCheck.data && nikCheck.data.length > 0) {
                 setErrors(prev => ({ ...prev, nik: 'NIK sudah terdaftar. Silakan gunakan NIK lain.' }));
                 setIsSubmitting(false);
                 return;
             }
 
+            // Check Email
+            if (emailCheck.data && emailCheck.data.length > 0) {
+                setErrors(prev => ({ ...prev, email: 'Email sudah terdaftar. Silakan login.' }));
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Check Phone
+            if (phoneCheck.data && phoneCheck.data.length > 0) {
+                setErrors(prev => ({ ...prev, phoneNumber: 'Nomor HP sudah terdaftar.' }));
+                setIsSubmitting(false);
+                return;
+            }
+
+            // Also check if username exists (good practice since it's unique in DB)
+            const { data: usernameCheck } = await supabase
+                .from('nasabah')
+                .select('id')
+                .eq('username', formData.username)
+                .limit(1);
+
+            if (usernameCheck && usernameCheck.length > 0) {
+                setErrors(prev => ({ ...prev, username: 'Username sudah digunakan.' }));
+                setIsSubmitting(false);
+                return;
+            }
+
+            // If we get here, all checks passed
             sessionStorage.setItem('registrationData', JSON.stringify({
                 fullName: formData.fullName,
                 username: formData.username,
@@ -237,23 +264,7 @@ export default function Register() {
             router.push('/data-diri');
         } catch (error) {
             console.error('Error during registration check:', error);
-            // Ignore "Row not found" error which is actually good here
-            if ((error as any)?.code !== 'PGRST116') {
-                setErrors(prev => ({ ...prev, email: t('auth.otp.error_generic') }));
-            } else {
-                // Double check logic: if strictly error was thrown for not found, we proceed
-                sessionStorage.setItem('registrationData', JSON.stringify({
-                    fullName: formData.fullName,
-                    username: formData.username,
-                    email: formData.email,
-                    phoneNumber: formData.phoneNumber,
-                    nik: formData.nik,
-                    password: formData.password,
-                }));
-                sessionStorage.setItem('otpEmail', formData.email);
-                router.push('/data-diri');
-                return;
-            }
+            setErrors(prev => ({ ...prev, email: t('auth.otp.error_generic') }));
         } finally {
             if (isSubmitting) setIsSubmitting(false);
         }

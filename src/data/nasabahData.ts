@@ -312,7 +312,8 @@ export const addSaldoToNasabah = async (name: string, amount: number): Promise<N
 };
 
 // Delete nasabah completely (including Auth account)
-export const deleteNasabah = async (id: string): Promise<boolean> => {
+// Delete nasabah completely (including Auth account)
+export const deleteNasabah = async (id: string): Promise<{ success: boolean; error?: string }> => {
     try {
         const { data, error } = await supabase.rpc('delete_nasabah_completely', {
             target_nasabah_id: id
@@ -326,16 +327,24 @@ export const deleteNasabah = async (id: string): Promise<boolean> => {
                 .delete()
                 .eq('id', id);
 
-            if (localError) return false;
+            if (localError) {
+                return { success: false, error: localError.message };
+            }
             await initNasabahCache();
-            return true;
+            return { success: true };
+        }
+
+        // RPC returned false explicitly? The function returns boolean.
+        // data is the return value of the function.
+        if (data === false) {
+            return { success: false, error: 'Database function returned false (User might not exist or deletion failed)' };
         }
 
         await initNasabahCache();
-        return true;
-    } catch (error) {
+        return { success: true };
+    } catch (error: any) {
         console.error('Failed to delete nasabah:', error);
-        return false;
+        return { success: false, error: error.message || 'Unknown error occurred' };
     }
 };
 
