@@ -113,30 +113,45 @@ BEGIN
     BEGIN
         target_uuid := target_nasabah_id::UUID;
     EXCEPTION WHEN OTHERS THEN
-        RETURN FALSE;
+        RAISE EXCEPTION 'Invalid UUID format: %', target_nasabah_id;
     END;
 
-    -- Pre-cleanup: Delete notifications explicitly to avoid any doubt
-    DELETE FROM public.notifications WHERE recipient_id = target_uuid;
-
+    -- 1. Identify relationships first
     SELECT auth_user_id INTO target_auth_id
     FROM public.nasabah
     WHERE id = target_uuid;
 
+    -- 2. Pre-cleanup Notifications
+    -- Notifications usually use Auth User ID for RLS, but might use Nasabah ID in some systems.
+    -- We delete BOTH to be safe and clear any blocking constraints.
+    -- We wrap this in a block to safely ignore if the table doesn't exist (Error 42P01)
+    BEGIN
+        DELETE FROM public.notifications WHERE recipient_id = target_uuid;
+    EXCEPTION WHEN undefined_table THEN
+        NULL; -- Ignore if table missing
+    END;
+    
     IF target_auth_id IS NOT NULL THEN
+        BEGIN
+            DELETE FROM public.notifications WHERE recipient_id = target_auth_id;
+        EXCEPTION WHEN undefined_table THEN
+            NULL; -- Ignore if table missing
+        END;
+        
+        -- 3. Delete Auth User (Cascades to Nasabah)
         DELETE FROM auth.users WHERE id = target_auth_id;
-        -- Fallback if cascade didn't happen for some reason
-        DELETE FROM public.nasabah WHERE id = target_uuid; 
+        
+        -- Safety check: Force delete nasabah if cascade failed
+        IF EXISTS (SELECT 1 FROM public.nasabah WHERE id = target_uuid) THEN
+            DELETE FROM public.nasabah WHERE id = target_uuid;
+        END IF;
+        
         RETURN TRUE;
     ELSE
+        -- Orphan nasabah
         DELETE FROM public.nasabah WHERE id = target_uuid;
         RETURN TRUE;
     END IF;
 
-    RETURN FALSE;
-EXCEPTION
-    WHEN OTHERS THEN
-        RAISE NOTICE 'Error deleting user: %', SQLERRM;
-        RETURN FALSE;
 END;
 $$;

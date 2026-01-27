@@ -320,31 +320,35 @@ export const deleteNasabah = async (id: string): Promise<{ success: boolean; err
         });
 
         if (error) {
-            console.error('Failed to delete nasabah (RPC):', error);
-            // Fallback: Try deleting locally if RPC failed (though likely auth error)
+            console.error('Failed to delete nasabah (RPC):', JSON.stringify(error, null, 2));
+            console.error('RPC Error Details:', error.message, error.details, error.hint);
+
+            // Fallback: Try deleting locally if RPC failed
             const { error: localError } = await supabase
                 .from('nasabah')
                 .delete()
                 .eq('id', id);
 
             if (localError) {
-                return { success: false, error: localError.message };
+                console.error('Local delete failed:', JSON.stringify(localError, null, 2));
+                return { success: false, error: `RPC: ${error.message} | Local: ${localError.message}` };
             }
+            // If local delete worked after RPC failed? Rare but possible if RPC bug.
             await initNasabahCache();
             return { success: true };
         }
 
-        // RPC returned false explicitly? The function returns boolean.
-        // data is the return value of the function.
+        // RPC returned false explicitly? 
         if (data === false) {
+            console.warn('RPC delete_nasabah_completely returned FALSE');
             return { success: false, error: 'Database function returned false (User might not exist or deletion failed)' };
         }
 
         await initNasabahCache();
         return { success: true };
     } catch (error: any) {
-        console.error('Failed to delete nasabah:', error);
-        return { success: false, error: error.message || 'Unknown error occurred' };
+        console.error('Exception in deleteNasabah:', error);
+        return { success: false, error: error?.message || 'Unknown exception' };
     }
 };
 

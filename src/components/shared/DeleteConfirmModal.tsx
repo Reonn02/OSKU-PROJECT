@@ -32,20 +32,20 @@ export default function DeleteConfirmModal({ isOpen, onClose, onConfirm, bankNam
 
                 {/* Buttons */}
                 <div className="flex gap-3">
-                    {/* Hapus Button */}
-                    <button
-                        onClick={handleConfirm}
-                        className="flex-1 py-3 px-6 rounded-full border-2 border-primary text-primary font-bold hover:bg-primary hover:text-white transition-all duration-200 cursor-pointer "
-                    >
-                        Hapus
-                    </button>
-
-                    {/* Tidak Button */}
+                    {/* Tidak Button (Left, Outline) */}
                     <button
                         onClick={onClose}
-                        className="flex-1 py-3 px-6 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-all duration-200 cursor-pointer "
+                        className="flex-1 py-3 px-6 rounded-full border-2 border-primary text-primary font-bold hover:bg-primary/10 transition-all duration-200 cursor-pointer"
                     >
                         Tidak
+                    </button>
+
+                    {/* Hapus Button (Right, Filled Primary) */}
+                    <button
+                        onClick={handleConfirm}
+                        className="flex-1 py-3 px-6 rounded-full bg-primary text-white font-bold hover:bg-primary-dark transition-all duration-200 cursor-pointer"
+                    >
+                        Hapus
                     </button>
                 </div>
             </div>
