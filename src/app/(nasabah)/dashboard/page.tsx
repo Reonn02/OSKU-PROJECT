@@ -1524,13 +1524,32 @@ function Dashboard() {
                                             placeholder={t('common.enter_weight')}
                                             value={calcBerat}
                                             onChange={(e) => {
-                                                const berat = e.target.value;
+                                                let berat = e.target.value;
+                                                // Prevent negative input
+                                                if (parseFloat(berat) < 0) {
+                                                    berat = '0';
+                                                }
+                                                // Sanitize input to allow only valid numbers
+                                                berat = berat.replace(/[^0-9.]/g, '');
+
+                                                // Prevent multiple dots
+                                                const parts = berat.split('.');
+                                                if (parts.length > 2) {
+                                                    berat = parts[0] + '.' + parts.slice(1).join('');
+                                                }
+
                                                 setCalcBerat(berat);
                                                 if (calcJenisSampah && berat) {
                                                     const newSaldo = calculateFilteredSaldo(calcJenisSampah, parseFloat(berat));
                                                     setCalcSaldo(newSaldo);
                                                 } else {
                                                     setCalcSaldo(0);
+                                                }
+                                            }}
+                                            onKeyDown={(e) => {
+                                                // Prevent entering minus sign
+                                                if (e.key === '-' || e.key === 'e') {
+                                                    e.preventDefault();
                                                 }
                                             }}
                                             disabled={!calcJenisSampah}
