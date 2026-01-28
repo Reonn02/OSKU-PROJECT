@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, Suspense, useActionState, useEffect } from 'react';
+import { useState, Suspense, useActionState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { showStandaloneToast } from '@/components/shared/Toast';
 import { loginAdmin } from '@/app/actions/auth';
@@ -14,25 +14,24 @@ function AdminLoginContent() {
 
     const [state, formAction, isPending] = useActionState(loginAdmin, { success: false, error: '' });
 
+    const toastShown = useRef(false);
+
     useEffect(() => {
-        if (state.success) {
+        if (state.success && !toastShown.current) {
+            toastShown.current = true;
             showStandaloneToast('success', 'Login Berhasil', 'Selamat datang!');
 
-            // Trigger context refresh to potentially load data if needed, 
-            // though context primarily fetches from client-side Supabase.
-            // Since we are moving to cookies, client-side Supabase might lose session 
-            // if we don't sync it, but for Admin we mainly used localStorage.
-            // We set localStorage as a flag for UI components that check it.
             localStorage.setItem('adminLoggedIn', 'true');
-
-            // Refresh context (which might fail if it relies on client supabase, 
-            // but we are pivoting to server actions. Context might need update later.)
             refreshAdmin();
 
             setTimeout(() => {
                 router.push('/admin/dashboard');
             }, 1000);
-        } else if (state.error) {
+        } else if (state.error && !toastShown.current) {
+            // Reset toastShown on error so it can show again if retry fails? 
+            // Or better separate success/error refs if error state persists?
+            // Actually, useActionState might not reset state immediately.
+            // But let's just show error. Error usually allows retry.
             showStandaloneToast('error', 'Login Gagal', state.error);
         }
     }, [state, router, refreshAdmin]);
