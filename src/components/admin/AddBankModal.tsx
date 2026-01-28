@@ -124,8 +124,8 @@ export default function AddBankModal({ onClose, onSuccess, editingBank }: AddBan
     };
 
     const handlePetugasSelect = (petugas: Petugas) => {
-        // Just use the name as requested
-        const contactName = petugas.nama;
+        // Use name + phone number so WhatsApp link works (regex strips non-digits)
+        const contactName = petugas.noHp ? `${petugas.nama} (${petugas.noHp})` : petugas.nama;
         setFormData(prev => ({
             ...prev,
             kontakLayanan: contactName
