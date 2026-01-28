@@ -305,8 +305,24 @@ function Dashboard() {
 
     // Handle profile save
     // Handle profile save
+    // Handle profile save
     const handleSaveProfile = async () => {
         try {
+            // Check NIK uniqueness
+            if (userNIK && userNIK !== '-') {
+                const { data: existingNik } = await supabase
+                    .from('nasabah')
+                    .select('id')
+                    .eq('nik', userNIK)
+                    .neq('id', userId)
+                    .single();
+
+                if (existingNik) {
+                    showStandaloneToast('error', 'Gagal', 'NIK sudah digunakan oleh pengguna lain');
+                    return;
+                }
+            }
+
             // Update Supabase
             if (userId && userId !== '-') {
                 const { error } = await supabase
@@ -318,6 +334,7 @@ function Dashboard() {
                         address: userAddress,
                         rt: userRT,
                         rw: userRW,
+                        nik: userNIK,
                         // email is usually read-only or handled via auth
                     })
                     .eq('id', userId);
@@ -336,6 +353,7 @@ function Dashboard() {
                 userProfile.address = userAddress;
                 userProfile.rt = userRT;
                 userProfile.rw = userRW;
+                userProfile.nik = userNIK;
                 // Save back
                 sessionStorage.setItem('userProfile', JSON.stringify(userProfile));
             }
@@ -1363,6 +1381,10 @@ function Dashboard() {
                                     <div>
                                         <label className="block text-xs font-bold text-primary mb-1">Nomor HP</label>
                                         <input type="text" value={userPhone} onChange={(e) => setUserPhone(e.target.value)} className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-sm" />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-bold text-primary mb-1">NIK</label>
+                                        <input type="text" value={userNIK} onChange={(e) => setUserNIK(e.target.value)} className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-sm" maxLength={16} />
                                     </div>
 
                                     <div className="flex justify-center mt-6">
