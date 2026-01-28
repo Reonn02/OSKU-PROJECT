@@ -38,16 +38,16 @@ export default function KonfirmasiLogout({ onCancel, onConfirm }: KonfirmasiLogo
 
                 <div className="flex flex-col sm:flex-row gap-4 w-full max-w-sm">
                     <button
-                        onClick={onConfirm}
+                        onClick={onCancel}
                         className="flex-1 bg-[#E8F5E9] hover:bg-[#C8E6C9] text-primary font-bold py-4 rounded-full transition-all duration-300 text-sm flex items-center justify-center shadow-sm cursor-pointer border-none"
                     >
-                        Ya
+                        Tidak
                     </button>
                     <button
-                        onClick={onCancel}
+                        onClick={onConfirm}
                         className="flex-1 bg-primary hover:bg-primary-dark text-white font-bold py-4 rounded-full transition-all duration-300 text-sm cursor-pointer border-none shadow-md hover:shadow-lg"
                     >
-                        Tidak
+                        Ya
                     </button>
                 </div>
             </div>
