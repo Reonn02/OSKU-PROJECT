@@ -39,6 +39,9 @@ export function middleware(request: NextRequest) {
     }
 
     // 3. Nasabah (Dashboard) Route Protection
+    // Disabled temporarily as Nasabah uses client-side auth (localStorage) which Middleware cannot see.
+    // relying on component-level AuthGuard for now.
+    /*
     if (pathname.startsWith('/dashboard')) {
         // Check for Supabase Auth Cookie
         // Supabase cookies usually look like: sb-<project-ref>-auth-token
@@ -50,6 +53,7 @@ export function middleware(request: NextRequest) {
             return NextResponse.redirect(new URL('/login', request.url));
         }
     }
+    */
 
     return NextResponse.next();
 }
