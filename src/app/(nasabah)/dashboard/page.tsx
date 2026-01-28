@@ -1353,7 +1353,7 @@ function Dashboard() {
                                         <p className="text-[10px] text-gray-500 mt-1 ml-4">Email tidak dapat diubah karena digunakan sebagai identitas akun</p>
                                     </div>
                                     <div>
-                                        <label className="block text-xs font-bold text-primary mb-1">Nama Tampilan</label>
+                                        <label className="block text-xs font-bold text-primary mb-1">Nama Lengkap</label>
                                         <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="w-full px-4 py-2 rounded-full border border-gray-300 focus:outline-none focus:border-primary text-sm" />
                                     </div>
                                     <div>
