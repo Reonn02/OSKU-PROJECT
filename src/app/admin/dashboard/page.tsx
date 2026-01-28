@@ -14,6 +14,7 @@ import { useAdmin } from '@/contexts/AdminContext';
 import { supabase } from '@/lib/supabase';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { logout } from '@/app/actions/auth';
 
 export default function AdminDashboard() {
     const searchParams = useSearchParams();
@@ -25,7 +26,8 @@ export default function AdminDashboard() {
     const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
     const router = useRouter();
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        await logout(); // Clear cookies
         localStorage.removeItem('adminLoggedIn');
         localStorage.removeItem('adminData');
         localStorage.removeItem('isLoggedIn');

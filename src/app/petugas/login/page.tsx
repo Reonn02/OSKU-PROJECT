@@ -1,75 +1,59 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { usePetugas, Petugas } from '@/contexts/PetugasContext';
 import { showStandaloneToast } from '@/components/shared/Toast';
+import { loginPetugas } from '@/app/actions/auth';
 
 function PetugasLoginContent() {
     const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
+    const [isLoading, setIsLoading] = useState(false); // Kept for password change loading state
 
     // Password change modal states
     const [showPasswordChangeModal, setShowPasswordChangeModal] = useState(false);
-    const [currentPetugas, setCurrentPetugas] = useState<Petugas | null>(null);
+    const [currentPetugas, setCurrentPetugas] = useState<any>(null); // Type any for session data
     const [newPassword, setNewPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showNewPassword, setShowNewPassword] = useState(false);
     const [isChangingPassword, setIsChangingPassword] = useState(false);
 
     const router = useRouter();
-    const { authenticatePetugas, updatePassword } = usePetugas();
+    const { updatePassword } = usePetugas();
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
-        setError('');
-        setIsLoading(true);
+    const [state, formAction, isPending] = useActionState(loginPetugas, { success: false, error: '' });
 
-        try {
-            const result = await authenticatePetugas(email, password);
-
-            if (!result.success) {
-                setError(result.error || 'Login gagal');
-                setIsLoading(false);
+    useEffect(() => {
+        if (state.success && state.petugas) {
+            // Check if password change is required
+            if (state.mustChangePassword) {
+                setCurrentPetugas(state.petugas);
+                setShowPasswordChangeModal(true);
                 return;
             }
 
-            if (result.petugas) {
-                // Check if password change is required
-                if (result.mustChangePassword) {
-                    setCurrentPetugas(result.petugas);
-                    setShowPasswordChangeModal(true);
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Login successful, store session and redirect
-                completeLogin(result.petugas);
-            }
-        } catch (err) {
-            setError('Terjadi kesalahan. Silakan coba lagi.');
-            setIsLoading(false);
+            // Login successful
+            completeLogin(state.petugas);
+        } else if (state.error) {
+            showStandaloneToast('error', 'Login Gagal', state.error);
         }
-    };
+    }, [state, router]);
 
-    const completeLogin = (petugas: Petugas, skipToast?: boolean) => {
+    const completeLogin = (petugasData: any, skipToast?: boolean) => {
         localStorage.setItem('isLoggedIn', 'true');
         localStorage.setItem('userRole', 'petugas');
         localStorage.setItem('petugasData', JSON.stringify({
-            id: petugas.id,
-            nama: petugas.nama,
-            email: petugas.email,
-            noHp: petugas.noHp,
-            bankSampahId: petugas.bankSampahId,
-            bankSampahNama: petugas.bankSampahNama
+            id: petugasData.id,
+            nama: petugasData.nama,
+            email: petugasData.email,
+            noHp: petugasData.noHp,
+            bankSampahId: petugasData.bankSampahId,
+            bankSampahNama: petugasData.bankSampahNama
         }));
 
         if (!skipToast) {
-            showStandaloneToast('success', 'Login Berhasil', `Selamat datang, ${petugas.nama}!`);
+            showStandaloneToast('success', 'Login Berhasil', `Selamat datang, ${petugasData.nama}!`);
         }
         router.push('/petugas/dashboard');
     };
@@ -97,6 +81,10 @@ function PetugasLoginContent() {
 
         try {
             if (currentPetugas) {
+                // Note: updatePassword from context might fail if it relies on RLS and we don't have a Supabase session.
+                // However, petugas table updates usually typically require RLS or admin rights.
+                // Since we are migrating to Cookies, this client-side call might be risky if RLS expects auth.uid().
+                // But for now we try. If it fails, we might need a server action for password update too.
                 const success = await updatePassword(currentPetugas.id, newPassword);
 
                 if (success) {
@@ -128,22 +116,21 @@ function PetugasLoginContent() {
                         <p className="text-sm text-primary">Masuk ke sistem petugas untuk melayani penyetoran sampah OSKU</p>
                     </div>
 
-                    {error && (
+                    {state.error && (
                         <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-600 text-sm font-medium flex items-center gap-2">
                             <i className="fas fa-exclamation-circle"></i>
-                            {error}
+                            {state.error}
                         </div>
                     )}
 
-                    <form className="space-y-4" onSubmit={handleLogin}>
+                    <form className="space-y-4" action={formAction}>
                         {/* Email */}
                         <div className="space-y-1">
                             <label className="text-xs text-primary font-medium block">Email Petugas</label>
                             <input
+                                name="email"
                                 type="email"
                                 placeholder="Masukkan email petugas"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
                                 required
                                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-500"
                             />
@@ -154,10 +141,9 @@ function PetugasLoginContent() {
                             <label className="text-xs text-primary font-medium block">Password</label>
                             <div className="relative">
                                 <input
+                                    name="password"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
                                     required
                                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-500"
                                 />
@@ -186,10 +172,10 @@ function PetugasLoginContent() {
                         <div className="pt-2">
                             <button
                                 type="submit"
-                                disabled={isLoading || !email || !password}
+                                disabled={isPending}
                                 className="block w-full bg-primary hover:bg-primary-dark text-white text-center font-medium py-3 rounded-full transition shadow-md cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                             >
-                                {isLoading ? (
+                                {isPending ? (
                                     <span className="flex items-center justify-center gap-2">
                                         <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

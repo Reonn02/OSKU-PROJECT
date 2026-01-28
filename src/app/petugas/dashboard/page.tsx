@@ -21,6 +21,7 @@ import { usePenyetoran } from '@/contexts/PenyetoranContext';
 import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo, getNasabahByBankSampah, getNasabahByBankId } from '@/data/nasabahData';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { logout } from '@/app/actions/auth';
 
 export default function PetugasDashboard() {
     const { t } = useLanguage();
@@ -39,7 +40,8 @@ export default function PetugasDashboard() {
 
     const [showLogoutModal, setShowLogoutModal] = useState(false);
 
-    const handleLogout = () => {
+    const handleLogout = async () => {
+        await logout(); // Clear cookies
         localStorage.removeItem('petugasLoggedIn');
         localStorage.removeItem('petugasData');
         localStorage.removeItem('isLoggedIn');

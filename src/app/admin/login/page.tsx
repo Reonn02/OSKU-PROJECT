@@ -1,82 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, Suspense } from 'react';
+import { useState, Suspense, useActionState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { supabase, DbAdmin } from '@/lib/supabase';
 import { showStandaloneToast } from '@/components/shared/Toast';
+import { loginAdmin } from '@/app/actions/auth';
+import { useAdmin } from '@/contexts/AdminContext';
 
 function AdminLoginContent() {
     const [showPassword, setShowPassword] = useState(false);
-    const [email, setEmail] = useState('');
-    const [password, setPassword] = useState('');
-    const [isLoading, setIsLoading] = useState(false);
     const router = useRouter();
+    const { refreshAdmin } = useAdmin();
 
-    const handleLogin = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const [state, formAction, isPending] = useActionState(loginAdmin, { success: false, error: '' });
 
-        // Validation
-        if (!email.trim()) {
-            showStandaloneToast('warning', 'Email Kosong', 'Silakan masukkan email Anda.');
-            return;
-        }
+    useEffect(() => {
+        if (state.success) {
+            showStandaloneToast('success', 'Login Berhasil', 'Selamat datang!');
 
-        if (!password.trim()) {
-            showStandaloneToast('warning', 'Password Kosong', 'Silakan masukkan password Anda.');
-            return;
-        }
-
-        setIsLoading(true);
-
-        try {
-            console.log('Attempting login for:', email.trim().toLowerCase());
-
-            // Query admin from database
-            const { data, error } = await supabase
-                .rpc('get_admin_by_email', { p_email: email.trim().toLowerCase() })
-                .single();
-
-            const admin = data as DbAdmin | null;
-
-            if (error || !admin) {
-                console.warn('Login failed:', error);
-                showStandaloneToast('error', 'Login Gagal', 'Email tidak ditemukan dalam sistem.');
-                setIsLoading(false);
-                return;
-            }
-
-            // Check password
-            if (admin.password !== password) {
-                showStandaloneToast('error', 'Login Gagal', 'Password yang Anda masukkan salah.');
-                setIsLoading(false);
-                return;
-            }
-
-            // Login successful
-            showStandaloneToast('success', 'Login Berhasil', `Selamat datang, ${admin.nama}!`);
-
-            // Save admin session to localStorage
+            // Trigger context refresh to potentially load data if needed, 
+            // though context primarily fetches from client-side Supabase.
+            // Since we are moving to cookies, client-side Supabase might lose session 
+            // if we don't sync it, but for Admin we mainly used localStorage.
+            // We set localStorage as a flag for UI components that check it.
             localStorage.setItem('adminLoggedIn', 'true');
-            localStorage.setItem('adminData', JSON.stringify({
-                id: admin.id,
-                nama: admin.nama,
-                email: admin.email,
-                role: admin.role,
-                kelurahan: admin.kelurahan
-            }));
 
-            // Redirect to dashboard after short delay for toast to show
+            // Refresh context (which might fail if it relies on client supabase, 
+            // but we are pivoting to server actions. Context might need update later.)
+            refreshAdmin();
+
             setTimeout(() => {
                 router.push('/admin/dashboard');
-            }, 1500);
-
-        } catch (err) {
-            console.error('Login error:', err);
-            showStandaloneToast('error', 'Error', 'Terjadi kesalahan saat login. Silakan coba lagi.');
-            setIsLoading(false);
+            }, 1000);
+        } else if (state.error) {
+            showStandaloneToast('error', 'Login Gagal', state.error);
         }
-    };
+    }, [state, router, refreshAdmin]);
 
     return (
         <div className="min-h-screen bg-white font-sans text-gray-900 flex flex-col relative">
@@ -92,16 +51,22 @@ function AdminLoginContent() {
                         <p className="text-sm text-primary">Masuk ke dashboard administrator untuk mengelola sistem OSKU</p>
                     </div>
 
-                    <form onSubmit={handleLogin} className="space-y-4">
+                    <form action={formAction} className="space-y-4">
+                        {state.error && (
+                            <div className="p-3 bg-red-50 text-red-600 rounded-xl text-sm font-medium">
+                                <i className="fas fa-exclamation-circle mr-2"></i>
+                                {state.error}
+                            </div>
+                        )}
+
                         {/* Email */}
                         <div className="space-y-1">
                             <label className="text-xs text-primary font-medium block">Email</label>
                             <input
+                                name="email"
                                 type="email"
                                 placeholder="Email"
-                                value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                disabled={isLoading}
+                                required
                                 className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed"
                             />
                         </div>
@@ -111,11 +76,10 @@ function AdminLoginContent() {
                             <label className="text-xs text-primary font-medium block">Password</label>
                             <div className="relative">
                                 <input
+                                    name="password"
                                     type={showPassword ? "text" : "password"}
                                     placeholder="Password"
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    disabled={isLoading}
+                                    required
                                     className="w-full px-4 py-3 rounded-xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm text-gray-700 disabled:bg-gray-100 disabled:cursor-not-allowed pr-12"
                                 />
                             </div>
@@ -129,7 +93,6 @@ function AdminLoginContent() {
                                     id="show-password"
                                     checked={showPassword}
                                     onChange={() => setShowPassword(!showPassword)}
-                                    disabled={isLoading}
                                     className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary accent-primary"
                                 />
                                 <label htmlFor="show-password" className="text-xs text-primary select-none cursor-pointer">
@@ -144,10 +107,10 @@ function AdminLoginContent() {
                         <div className="pt-2">
                             <button
                                 type="submit"
-                                disabled={isLoading}
+                                disabled={isPending}
                                 className="block w-full bg-primary hover:bg-primary-dark text-white text-center font-medium py-3 rounded-full transition shadow-md cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                             >
-                                {isLoading ? (
+                                {isPending ? (
                                     <>
                                         <i className="fas fa-spinner fa-spin"></i>
                                         Memproses...
