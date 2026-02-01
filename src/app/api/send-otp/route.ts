@@ -1,5 +1,22 @@
 import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { createClient } from '@supabase/supabase-js';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+// Create Supabase admin client lazily
+const getSupabaseAdmin = () => {
+    if (!supabaseUrl || !supabaseServiceKey) {
+        return null;
+    }
+    return createClient(supabaseUrl, supabaseServiceKey, {
+        auth: {
+            autoRefreshToken: false,
+            persistSession: false
+        }
+    });
+};
 
 /**
  * API Route for sending OTP emails
@@ -27,6 +44,39 @@ export async function POST(request: NextRequest) {
 
         // Determine email content based on type
         const isForgotPassword = type === 'forgot-password';
+
+        // For forgot-password, verify that email exists in nasabah or petugas table
+        if (isForgotPassword) {
+            const supabase = getSupabaseAdmin();
+            if (!supabase) {
+                return NextResponse.json(
+                    { success: false, message: 'Konfigurasi server bermasalah' },
+                    { status: 500 }
+                );
+            }
+
+            // Check if email exists in nasabah table
+            const { data: nasabah } = await supabase
+                .from('nasabah')
+                .select('id')
+                .eq('email', email.trim())
+                .single();
+
+            // Check if email exists in petugas table
+            const { data: petugas } = await supabase
+                .from('petugas')
+                .select('id')
+                .eq('email', email.trim())
+                .single();
+
+            // If email not found in both tables, return error
+            if (!nasabah && !petugas) {
+                return NextResponse.json(
+                    { success: false, error: 'Email tidak terdaftar' },
+                    { status: 404 }
+                );
+            }
+        }
 
         const emailSubject = isForgotPassword
             ? 'Reset Password OTP - OSKU'
