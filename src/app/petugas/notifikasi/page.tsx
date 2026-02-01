@@ -23,16 +23,33 @@ export default function NotifikasiPetugasPage() {
     const { signOut } = useAuth();
     const [notifications, setNotifications] = useState<Notification[]>([]);
     const [loading, setLoading] = useState(true);
+    const [petugasBankId, setPetugasBankId] = useState<string | null>(null);
+
+    // Load petugas bank ID from localStorage
+    useEffect(() => {
+        const savedData = localStorage.getItem('petugasData');
+        if (savedData) {
+            try {
+                const petugasData = JSON.parse(savedData);
+                setPetugasBankId(petugasData.bankSampahId);
+            } catch (error) {
+                console.error('Error loading petugas data:', error);
+            }
+        }
+    }, []);
 
     useEffect(() => {
         const fetchNotifications = async () => {
+            if (!petugasBankId) return; // Wait for bank ID
+
             try {
                 setLoading(true);
-                // Petugas sees 'petugas' role notifications
+                // Petugas sees 'petugas' role notifications filtered by their bank
                 const { data, error } = await supabase
                     .from('notifikasi')
                     .select('*')
                     .eq('recipient_role', 'petugas')
+                    .eq('bank_sampah_id', petugasBankId)
                     .order('created_at', { ascending: false });
 
                 if (error) throw error;
@@ -59,7 +76,7 @@ export default function NotifikasiPetugasPage() {
         };
 
         fetchNotifications();
-    }, []);
+    }, [petugasBankId]);
 
     const handleLogout = async () => {
         await signOut();
@@ -68,7 +85,7 @@ export default function NotifikasiPetugasPage() {
 
     return (
         <div className="min-h-screen bg-[#F0FAF4]">
-            <NavbarPetugas onLogout={handleLogout} />
+            <NavbarPetugas onLogout={handleLogout} petugasBankId={petugasBankId} />
 
             <div className="p-6 md:p-8">
                 <div className="max-w-4xl mx-auto">

@@ -11,6 +11,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 interface NavbarPetugasProps {
     onLogout: () => void;
     onToggleSidebar?: () => void;
+    petugasBankId?: string | null; // Bank sampah ID for filtering notifications
 }
 
 interface Notification {
@@ -25,7 +26,7 @@ interface Notification {
     link?: string;
 }
 
-export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetugasProps) {
+export default function NavbarPetugas({ onLogout, onToggleSidebar, petugasBankId }: NavbarPetugasProps) {
     const router = useRouter();
     const { t } = useLanguage();
     const [showNotifications, setShowNotifications] = useState(false);
@@ -34,11 +35,14 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
     // Load notifikasi dari Supabase
     useEffect(() => {
         const fetchNotifications = async () => {
+            if (!petugasBankId) return; // Wait for bank ID
+
             try {
                 const { data, error } = await supabase
                     .from('notifikasi')
                     .select('*')
                     .eq('recipient_role', 'petugas')
+                    .eq('bank_sampah_id', petugasBankId) // Filter by bank
                     .order('created_at', { ascending: false })
                     .limit(20);
 
@@ -65,7 +69,7 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
 
         fetchNotifications();
 
-        // Realtime subscription
+        // Realtime subscription for INSERT and DELETE events
         const subscription = supabase
             .channel('public:notifications:petugas')
             .on('postgres_changes', {
@@ -75,26 +79,39 @@ export default function NavbarPetugas({ onLogout, onToggleSidebar }: NavbarPetug
                 filter: `recipient_role=eq.petugas`
             }, (payload) => {
                 const item = payload.new as any;
-                const newNotif: Notification = {
-                    id: item.id,
-                    type: item.type,
-                    title: item.title,
-                    message: item.message,
-                    time: 'Baru saja',
-                    icon: item.type === 'konfirmasi' ? 'fa-thumbs-up' : 'fa-clock',
-                    color: item.type === 'konfirmasi' ? 'text-primary' : 'text-yellow-600',
-                    isRead: item.is_read,
-                    link: item.link
-                };
-                setNotifications(prev => [newNotif, ...prev]);
-                // Play sound optional
+                // Only add if it's for our bank
+                if (item.bank_sampah_id === petugasBankId) {
+                    const newNotif: Notification = {
+                        id: item.id,
+                        type: item.type,
+                        title: item.title,
+                        message: item.message,
+                        time: 'Baru saja',
+                        icon: item.type === 'konfirmasi' ? 'fa-thumbs-up' : 'fa-clock',
+                        color: item.type === 'konfirmasi' ? 'text-primary' : 'text-yellow-600',
+                        isRead: item.is_read,
+                        link: item.link
+                    };
+                    setNotifications(prev => [newNotif, ...prev]);
+                }
+            })
+            .on('postgres_changes', {
+                event: 'DELETE',
+                schema: 'public',
+                table: 'notifikasi'
+            }, (payload) => {
+                // Remove deleted notification from state
+                const deletedId = (payload.old as any)?.id;
+                if (deletedId) {
+                    setNotifications(prev => prev.filter(n => n.id !== deletedId));
+                }
             })
             .subscribe();
 
         return () => {
             supabase.removeChannel(subscription);
         };
-    }, []);
+    }, [petugasBankId]);
 
     const unreadCount = notifications.filter(n => !n.isRead).length;
 

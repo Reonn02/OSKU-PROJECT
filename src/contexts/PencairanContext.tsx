@@ -186,6 +186,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
             await supabase.from('notifikasi').insert({
                 recipient_role: 'petugas',
                 recipient_id: null, // Broadcast to all petugas
+                bank_sampah_id: data.bank_sampah_id, // Filter by bank
                 type: 'persetujuan',
                 title: 'Pengajuan Baru',
                 message: `Nasabah mengajukan pencairan sebesar Rp ${data.jumlah.toLocaleString('id-ID')}`,
