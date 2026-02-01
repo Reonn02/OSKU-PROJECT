@@ -90,13 +90,13 @@ export default function PrediksiAdmin() {
         // Find header line - look for various possible column names
         const headerLine = lines.find(l => {
             const lower = l.toLowerCase();
-            const hasDateCol = lower.includes('tanggal') || lower.includes('date') || lower.includes('minggu');
+            const hasDateCol = lower.includes('tanggal') || lower.includes('date') || lower.includes('minggu') || lower.includes('bulan');
             const hasValueCol = lower.includes('saldo') || lower.includes('nilai') || lower.includes('value') || lower.includes('amount');
             return hasDateCol && hasValueCol;
         });
 
         if (!headerLine) {
-            throw new Error('Format CSV tidak valid. Pastikan ada header: "tanggal, saldo" atau "date, value"');
+            throw new Error('Format CSV tidak valid. Pastikan ada header: "Bulan, Nilai" atau "tanggal, saldo"');
         }
 
         const rows: WeeklyData[] = [];
@@ -105,7 +105,7 @@ export default function PrediksiAdmin() {
 
         // Flexible column matching
         const tanggalIdx = headers.findIndex(h =>
-            h === 'tanggal' || h === 'date' || h === 'minggu' || h.includes('tanggal') || h.includes('date')
+            h === 'tanggal' || h === 'date' || h === 'minggu' || h === 'bulan' || h.includes('tanggal') || h.includes('date')
         );
         const saldoIdx = headers.findIndex(h =>
             h === 'saldo' || h === 'nilai' || h === 'value' || h === 'amount' || h.includes('saldo') || h.includes('nilai')
