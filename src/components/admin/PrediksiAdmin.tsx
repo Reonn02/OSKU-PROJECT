@@ -59,28 +59,60 @@ export default function PrediksiAdmin() {
         }
     };
 
-    // Parse CSV for weekly data (format: tanggal,saldo)
+    // Parse date from various formats
+    const parseFlexibleDate = (dateStr: string): Date | null => {
+        // Try standard date parse first
+        let date = new Date(dateStr);
+        if (!isNaN(date.getTime())) return date;
+
+        // Try format "Jan 1 2025" or "Feb 15 2025"
+        const monthMap: Record<string, number> = {
+            'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
+            'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+        };
+        const parts = dateStr.trim().split(/\s+/);
+        if (parts.length >= 3) {
+            const monthStr = parts[0].toLowerCase().slice(0, 3);
+            const day = parseInt(parts[1]);
+            const year = parseInt(parts[2]);
+            if (monthMap[monthStr] !== undefined && !isNaN(day) && !isNaN(year)) {
+                return new Date(year, monthMap[monthStr], day);
+            }
+        }
+
+        return null;
+    };
+
+    // Parse CSV for weekly data - flexible column matching
     const parseCSV = (content: string): WeeklyData[] => {
         const lines = content.trim().split('\n');
 
-        // Find header line
-        const headerLine = lines.find(l =>
-            l.toLowerCase().includes('tanggal') && l.toLowerCase().includes('saldo')
-        );
+        // Find header line - look for various possible column names
+        const headerLine = lines.find(l => {
+            const lower = l.toLowerCase();
+            const hasDateCol = lower.includes('tanggal') || lower.includes('date') || lower.includes('minggu');
+            const hasValueCol = lower.includes('saldo') || lower.includes('nilai') || lower.includes('value') || lower.includes('amount');
+            return hasDateCol && hasValueCol;
+        });
 
         if (!headerLine) {
-            throw new Error('Format CSV tidak valid. Pastikan ada header: "tanggal, saldo"');
+            throw new Error('Format CSV tidak valid. Pastikan ada header: "tanggal, saldo" atau "date, value"');
         }
 
         const rows: WeeklyData[] = [];
         const headerIndex = lines.indexOf(headerLine);
         const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
 
-        const tanggalIdx = headers.findIndex(h => h === 'tanggal');
-        const saldoIdx = headers.findIndex(h => h === 'saldo');
+        // Flexible column matching
+        const tanggalIdx = headers.findIndex(h =>
+            h === 'tanggal' || h === 'date' || h === 'minggu' || h.includes('tanggal') || h.includes('date')
+        );
+        const saldoIdx = headers.findIndex(h =>
+            h === 'saldo' || h === 'nilai' || h === 'value' || h === 'amount' || h.includes('saldo') || h.includes('nilai')
+        );
 
         if (tanggalIdx === -1 || saldoIdx === -1) {
-            throw new Error('Kolom "tanggal" dan "saldo" harus ada');
+            throw new Error('Kolom tanggal/date dan saldo/nilai harus ada');
         }
 
         for (let i = headerIndex + 1; i < lines.length; i++) {
@@ -88,12 +120,14 @@ export default function PrediksiAdmin() {
             if (!line) continue;
 
             const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-            const tanggal = values[tanggalIdx];
-            const saldo = parseFloat(values[saldoIdx]);
+            const tanggalStr = values[tanggalIdx];
+            const saldoStr = values[saldoIdx];
+            const saldo = parseFloat(saldoStr.replace(/[^\d.-]/g, '')); // Remove non-numeric chars
 
-            if (tanggal && !isNaN(saldo)) {
-                // Parse date to get week info
-                const date = new Date(tanggal);
+            if (tanggalStr && !isNaN(saldo)) {
+                const date = parseFlexibleDate(tanggalStr);
+                if (!date) continue;
+
                 const bulan = date.getMonth() + 1;
                 const minggu_dalam_bulan = Math.ceil(date.getDate() / 7);
 
@@ -102,8 +136,11 @@ export default function PrediksiAdmin() {
                 const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
                 const minggu_ke = Math.ceil((days + startOfYear.getDay() + 1) / 7);
 
+                // Store in ISO format for consistency
+                const isoDate = date.toISOString().split('T')[0];
+
                 rows.push({
-                    tanggal,
+                    tanggal: isoDate,
                     saldo,
                     minggu_ke,
                     bulan,
@@ -117,6 +154,7 @@ export default function PrediksiAdmin() {
 
         return rows;
     };
+
 
     // Handle file upload
     const handleFileUpload = (file: File) => {
