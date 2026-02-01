@@ -95,7 +95,9 @@ export async function loginPetugas(prevState: any, formData: FormData) {
             role: 'petugas',
             nama: petugas.nama,
             email: petugas.email,
+            noHp: petugas.no_hp,
             bankSampahId: petugas.bank_sampah_id,
+            bankSampahNama: petugas.bank_sampah?.nama || null,
             mustChangePassword: petugas.must_change_password
         };
 
