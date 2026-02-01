@@ -4,54 +4,43 @@ import { useState, useRef } from 'react';
 import Image from 'next/image';
 import { showStandaloneToast } from '@/components/shared/Toast';
 
-interface CSVRow {
-    tahun: number;
-    bulan: string;
-    bulan_num: number;
-    saldo_rup: number;
-    saldo_juta: number;
+interface WeeklyData {
+    tanggal: string; // Format: YYYY-MM-DD
+    saldo: number;
+    minggu_ke?: number;
+    bulan?: number;
+    minggu_dalam_bulan?: number;
 }
 
-interface PredictionData {
-    bulan: string;
-    tahun: number;
-    bulan_num: number;
-    saldo_aktual: number | null;
+interface PredictionResult {
+    tanggal: string;
+    saldo: number | null;
     prediksi: number | null;
     isPredict: boolean;
 }
 
-// Simple Linear Regression for simulation
-function linearRegression(data: { x: number; y: number }[]): { slope: number; intercept: number } {
-    const n = data.length;
-    if (n === 0) return { slope: 0, intercept: 0 };
-
-    const sumX = data.reduce((acc, d) => acc + d.x, 0);
-    const sumY = data.reduce((acc, d) => acc + d.y, 0);
-    const sumXY = data.reduce((acc, d) => acc + d.x * d.y, 0);
-    const sumXX = data.reduce((acc, d) => acc + d.x * d.x, 0);
-
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-
-    return { slope: isNaN(slope) ? 0 : slope, intercept: isNaN(intercept) ? 0 : intercept };
+// Format date for display
+function formatDate(dateStr: string): string {
+    const date = new Date(dateStr);
+    const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+    return date.toLocaleDateString('id-ID', options);
 }
 
-const BULAN_NAMES = [
-    'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
-    'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desember'
-];
+// Format currency
+function formatCurrency(value: number): string {
+    return `Rp ${value.toLocaleString('id-ID')}`;
+}
 
 export default function PrediksiAdmin() {
-    const [csvData, setCsvData] = useState<CSVRow[]>([]);
-    const [predictions, setPredictions] = useState<PredictionData[]>([]);
+    const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
+    const [predictions, setPredictions] = useState<PredictionResult[]>([]);
+    const [nextWeekPrediction, setNextWeekPrediction] = useState<number | null>(null);
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [hasAnalyzed, setHasAnalyzed] = useState(false);
     const [fileName, setFileName] = useState<string>('');
     const [trendPercentage, setTrendPercentage] = useState<number>(0);
-    const [predictionMonths, setPredictionMonths] = useState<number>(6);
-    const [useApiMode, setUseApiMode] = useState<boolean>(false);
-    const [apiEndpoint, setApiEndpoint] = useState<string>('http://localhost:5000/predict');
+    const [apiEndpoint, setApiEndpoint] = useState<string>('');
+    const [apiError, setApiError] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Handle drag over
@@ -70,115 +59,61 @@ export default function PrediksiAdmin() {
         }
     };
 
-    // Parse CSV content
-    const parseCSV = (content: string): CSVRow[] => {
+    // Parse CSV for weekly data (format: tanggal,saldo)
+    const parseCSV = (content: string): WeeklyData[] => {
         const lines = content.trim().split('\n');
 
-        // Check format type
-        const headerLine = lines.find(l => l.toLowerCase().includes('bulan') && l.toLowerCase().includes('nilai'));
-        const oldHeaderLine = lines.find(l => l.toLowerCase().includes('tahun') && l.toLowerCase().includes('bulan'));
+        // Find header line
+        const headerLine = lines.find(l =>
+            l.toLowerCase().includes('tanggal') && l.toLowerCase().includes('saldo')
+        );
 
-        if (!headerLine && !oldHeaderLine) {
-            throw new Error('Format CSV tidak valid. Pastikan ada header: "Bulan, Nilai" (Format Baru) atau "Tahun, Bulan, Saldo" (Format Lama)');
+        if (!headerLine) {
+            throw new Error('Format CSV tidak valid. Pastikan ada header: "tanggal, saldo"');
         }
 
-        // NEW FORMAT: Weekly Data (Bulan, Nilai) -> needs aggregation
-        if (headerLine && !oldHeaderLine) {
-            const rows: Record<string, CSVRow> = {}; // Key: "Year-MonthNum" to aggregate
+        const rows: WeeklyData[] = [];
+        const headerIndex = lines.indexOf(headerLine);
+        const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
 
-            // Find header index
-            const headerIndex = lines.indexOf(headerLine);
-            const headers = headerLine.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
-            const bulanLabelIdx = headers.findIndex(h => h === 'bulan');
-            const nilaiIdx = headers.findIndex(h => h === 'nilai');
+        const tanggalIdx = headers.findIndex(h => h === 'tanggal');
+        const saldoIdx = headers.findIndex(h => h === 'saldo');
 
-            if (bulanLabelIdx === -1 || nilaiIdx === -1) throw new Error('Kolom Bulan dan Nilai harus ada');
-
-            for (let i = headerIndex + 1; i < lines.length; i++) {
-                const line = lines[i].trim();
-                if (!line || line.toLowerCase().startsWith('total')) continue;
-
-                const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
-                const label = values[bulanLabelIdx]; // e.g. "Jan 1-7 2026"
-                const nilaiStr = values[nilaiIdx];
-                const nilai = parseFloat(nilaiStr);
-
-                if (!label || isNaN(nilai)) continue;
-
-                // Parse Label "Jan 1-7 2026"
-                const parts = label.split(' '); // ["Jan", "1-7", "2026"]
-                if (parts.length < 3) continue;
-
-                const monthName = parts[0]; // "Jan"
-                const yearStr = parts[parts.length - 1]; // "2026"
-                const year = parseInt(yearStr);
-
-                // Map Short Month to Index
-                const shortMonths = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                let monthIndex = shortMonths.indexOf(monthName);
-
-                // Fallback for full names if needed, though chart uses short
-                if (monthIndex === -1) {
-                    monthIndex = BULAN_NAMES.findIndex(m => m.toLowerCase().startsWith(monthName.toLowerCase()));
-                }
-
-                if (monthIndex !== -1 && !isNaN(year)) {
-                    const key = `${year}-${monthIndex}`;
-
-                    if (!rows[key]) {
-                        rows[key] = {
-                            tahun: year,
-                            bulan: BULAN_NAMES[monthIndex], // Use full name for internal consistent data
-                            bulan_num: monthIndex + 1,
-                            saldo_rup: 0,
-                            saldo_juta: 0
-                        };
-                    }
-
-                    rows[key].saldo_rup += nilai;
-                }
-            }
-
-            // Convert map to array and update saldo_juta
-            return Object.values(rows).map(row => ({
-                ...row,
-                saldo_juta: row.saldo_rup / 1000000
-            }));
+        if (tanggalIdx === -1 || saldoIdx === -1) {
+            throw new Error('Kolom "tanggal" dan "saldo" harus ada');
         }
-
-        // OLD FORMAT (Legacy Support)
-        const rows: CSVRow[] = [];
-        const headerIndex = lines.indexOf(oldHeaderLine!);
-        const headers = oldHeaderLine!.split(',').map(h => h.trim().toLowerCase().replace(/"/g, ''));
-
-        const tahunIdx = headers.findIndex(h => h === 'tahun');
-        const bulanIdx = headers.findIndex(h => h === 'bulan');
-        const bulanNumIdx = headers.findIndex(h => h.includes('bulan_num'));
-        const saldoRupIdx = headers.findIndex(h => h.includes('saldo_rup'));
-        const saldoJutaIdx = headers.findIndex(h => h.includes('saldo_juta'));
 
         for (let i = headerIndex + 1; i < lines.length; i++) {
             const line = lines[i].trim();
-            if (!line || line.toLowerCase().includes('total')) continue;
+            if (!line) continue;
 
             const values = line.split(',').map(v => v.trim().replace(/"/g, ''));
+            const tanggal = values[tanggalIdx];
+            const saldo = parseFloat(values[saldoIdx]);
 
-            const tahun = parseInt(values[tahunIdx]);
-            const bulan = values[bulanIdx];
-            const bulanNum = bulanNumIdx !== -1 ? parseInt(values[bulanNumIdx]) : BULAN_NAMES.indexOf(bulan) + 1;
-            const saldoRup = saldoRupIdx !== -1 ? parseInt(values[saldoRupIdx].replace(/\D/g, '')) : 0;
-            const saldoJuta = saldoJutaIdx !== -1 ? parseFloat(values[saldoJutaIdx]) : saldoRup / 1000000;
+            if (tanggal && !isNaN(saldo)) {
+                // Parse date to get week info
+                const date = new Date(tanggal);
+                const bulan = date.getMonth() + 1;
+                const minggu_dalam_bulan = Math.ceil(date.getDate() / 7);
 
-            if (!isNaN(tahun) && bulan && !isNaN(bulanNum)) {
+                // Calculate week of year
+                const startOfYear = new Date(date.getFullYear(), 0, 1);
+                const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
+                const minggu_ke = Math.ceil((days + startOfYear.getDay() + 1) / 7);
+
                 rows.push({
-                    tahun,
+                    tanggal,
+                    saldo,
+                    minggu_ke,
                     bulan,
-                    bulan_num: bulanNum,
-                    saldo_rup: saldoRup || saldoJuta * 1000000,
-                    saldo_juta: saldoJuta || saldoRup / 1000000
+                    minggu_dalam_bulan
                 });
             }
         }
+
+        // Sort by date
+        rows.sort((a, b) => new Date(a.tanggal).getTime() - new Date(b.tanggal).getTime());
 
         return rows;
     };
@@ -206,11 +141,18 @@ export default function PrediksiAdmin() {
                     return;
                 }
 
-                setCsvData(parsed);
+                if (parsed.length < 4) {
+                    showStandaloneToast('warning', 'Data Kurang', 'Minimal 4 minggu data diperlukan untuk prediksi.');
+                    return;
+                }
+
+                setWeeklyData(parsed);
                 setFileName(file.name);
                 setHasAnalyzed(false);
                 setPredictions([]);
-                showStandaloneToast('success', 'File Berhasil Diupload', `${parsed.length} baris data ditemukan.`);
+                setNextWeekPrediction(null);
+                setApiError('');
+                showStandaloneToast('success', 'File Berhasil Diupload', `${parsed.length} minggu data ditemukan.`);
             } catch (error: any) {
                 showStandaloneToast('error', 'Parsing Gagal', error.message || 'Terjadi kesalahan saat membaca CSV.');
             }
@@ -218,126 +160,107 @@ export default function PrediksiAdmin() {
         reader.readAsText(file);
     };
 
-    // Generate predictions using Linear Regression (simulation)
-    const generateSimulatedPredictions = () => {
-        if (csvData.length === 0) return;
-
-        // Sort data by year and month
-        const sortedData = [...csvData].sort((a, b) => {
-            if (a.tahun !== b.tahun) return a.tahun - b.tahun;
-            return a.bulan_num - b.bulan_num;
-        });
-
-        // Prepare data for regression (x = sequential month number, y = saldo)
-        const regressionData = sortedData.map((row, idx) => ({
-            x: idx + 1,
-            y: row.saldo_juta
-        }));
-
-        const { slope, intercept } = linearRegression(regressionData);
-
-        // Get last data point
-        const lastRow = sortedData[sortedData.length - 1];
-        let nextYear = lastRow.tahun;
-        let nextBulanNum = lastRow.bulan_num + 1;
-
-        // Build prediction data
-        const allData: PredictionData[] = [];
-
-        // Add historical data
-        sortedData.forEach(row => {
-            allData.push({
-                bulan: row.bulan,
-                tahun: row.tahun,
-                bulan_num: row.bulan_num,
-                saldo_aktual: row.saldo_juta,
-                prediksi: null,
-                isPredict: false
-            });
-        });
-
-        // Generate future predictions
-        const startX = sortedData.length + 1;
-        for (let i = 0; i < predictionMonths; i++) {
-            if (nextBulanNum > 12) {
-                nextBulanNum = 1;
-                nextYear++;
-            }
-
-            const predictedValue = slope * (startX + i) + intercept;
-            // Add some random variation for realism
-            const variation = (Math.random() - 0.5) * 5;
-            const finalPrediction = Math.max(0, predictedValue + variation);
-
-            allData.push({
-                bulan: BULAN_NAMES[nextBulanNum - 1],
-                tahun: nextYear,
-                bulan_num: nextBulanNum,
-                saldo_aktual: null,
-                prediksi: Math.round(finalPrediction * 100) / 100,
-                isPredict: true
-            });
-
-            nextBulanNum++;
+    // Call API for prediction (Random Forest model)
+    const callApiPrediction = async () => {
+        if (!apiEndpoint) {
+            setApiError('API Endpoint harus diisi');
+            return null;
         }
 
-        // Calculate trend percentage
-        const firstValue = sortedData[0].saldo_juta;
-        const lastValue = sortedData[sortedData.length - 1].saldo_juta;
-        const trend = ((lastValue - firstValue) / firstValue) * 100;
-        setTrendPercentage(Math.round(trend * 10) / 10);
-
-        return allData;
-    };
-
-    // Call API for predictions (for future use)
-    const callApiPrediction = async () => {
         try {
+            // Prepare data for API - send weekly saldo data
+            const apiData = weeklyData.map(d => ({
+                tanggal: d.tanggal,
+                saldo: d.saldo
+            }));
+
             const response = await fetch(apiEndpoint, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    data: csvData,
-                    months: predictionMonths
+                    data: apiData,
+                    weeks: 1 // Predict 1 week ahead
                 })
             });
 
             if (!response.ok) {
-                throw new Error('API request failed');
+                const errorText = await response.text();
+                throw new Error(`API Error: ${response.status} - ${errorText}`);
             }
 
             const result = await response.json();
-            return result.predictions;
-        } catch (error) {
-            showStandaloneToast('error', 'API Error', 'Gagal menghubungi API. Menggunakan simulasi.');
-            return generateSimulatedPredictions();
+
+            // Expected response format: { prediction: number, next_date: string }
+            if (result.prediction !== undefined) {
+                return {
+                    prediction: result.prediction,
+                    next_date: result.next_date || getNextWeekDate()
+                };
+            }
+
+            throw new Error('Format response API tidak valid');
+        } catch (error: any) {
+            setApiError(error.message || 'Gagal menghubungi API');
+            showStandaloneToast('error', 'API Error', error.message || 'Gagal menghubungi API.');
+            return null;
         }
     };
 
-    // Analyze data
+    // Get next week date from last data
+    const getNextWeekDate = (): string => {
+        if (weeklyData.length === 0) return '';
+        const lastDate = new Date(weeklyData[weeklyData.length - 1].tanggal);
+        lastDate.setDate(lastDate.getDate() + 7);
+        return lastDate.toISOString().split('T')[0];
+    };
+
+    // Analyze data and get prediction
     const handleAnalyze = async () => {
-        if (csvData.length === 0) {
+        if (weeklyData.length === 0) {
             showStandaloneToast('warning', 'Data Kosong', 'Silakan upload file CSV terlebih dahulu.');
             return;
         }
 
-        setIsAnalyzing(true);
-
-        // Simulate processing time
-        await new Promise(resolve => setTimeout(resolve, 1500));
-
-        let result: PredictionData[] | undefined;
-
-        if (useApiMode) {
-            result = await callApiPrediction();
-        } else {
-            result = generateSimulatedPredictions();
+        if (!apiEndpoint) {
+            showStandaloneToast('warning', 'API Endpoint Kosong', 'Silakan masukkan URL API prediksi.');
+            return;
         }
 
+        setIsAnalyzing(true);
+        setApiError('');
+
+        const result = await callApiPrediction();
+
         if (result) {
-            setPredictions(result);
+            // Build prediction data for chart
+            const allData: PredictionResult[] = weeklyData.map(d => ({
+                tanggal: d.tanggal,
+                saldo: d.saldo,
+                prediksi: null,
+                isPredict: false
+            }));
+
+            // Add prediction for next week
+            allData.push({
+                tanggal: result.next_date,
+                saldo: null,
+                prediksi: result.prediction,
+                isPredict: true
+            });
+
+            setPredictions(allData);
+            setNextWeekPrediction(result.prediction);
             setHasAnalyzed(true);
-            showStandaloneToast('success', 'Analisis Selesai', `Prediksi ${predictionMonths} bulan ke depan berhasil dibuat.`);
+
+            // Calculate trend
+            if (weeklyData.length >= 2) {
+                const firstValue = weeklyData[0].saldo;
+                const lastValue = weeklyData[weeklyData.length - 1].saldo;
+                const trend = ((lastValue - firstValue) / firstValue) * 100;
+                setTrendPercentage(Math.round(trend * 10) / 10);
+            }
+
+            showStandaloneToast('success', 'Prediksi Selesai', 'Prediksi 1 minggu ke depan berhasil dibuat.');
         }
 
         setIsAnalyzing(false);
@@ -345,10 +268,12 @@ export default function PrediksiAdmin() {
 
     // Reset all
     const handleReset = () => {
-        setCsvData([]);
+        setWeeklyData([]);
         setPredictions([]);
         setFileName('');
         setHasAnalyzed(false);
+        setNextWeekPrediction(null);
+        setApiError('');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
@@ -356,13 +281,15 @@ export default function PrediksiAdmin() {
 
     // Calculate max chart value
     const maxChartValue = Math.max(
-        ...predictions.map(p => Math.max(p.saldo_aktual || 0, p.prediksi || 0)),
-        1 // Prevent division by zero
+        ...predictions.map(p => Math.max(p.saldo || 0, p.prediksi || 0)),
+        1
     );
 
-    // Calculate summary stats
-    const nextMonthPrediction = predictions.find(p => p.isPredict);
-    const threeMonthPrediction = predictions.filter(p => p.isPredict).slice(0, 3).pop();
+    // Get last week data for comparison
+    const lastWeekData = weeklyData.length > 0 ? weeklyData[weeklyData.length - 1] : null;
+    const predictionChange = lastWeekData && nextWeekPrediction
+        ? ((nextWeekPrediction - lastWeekData.saldo) / lastWeekData.saldo) * 100
+        : 0;
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10">
@@ -372,22 +299,22 @@ export default function PrediksiAdmin() {
                     <img src="/icon/Prediksi.svg" className="w-6 h-6" alt="prediksi logo" />
                 </div>
                 <div>
-                    <h1 className="text-2xl font-bold text-primary">Prediksi Pemasukan</h1>
-                    <p className="text-xs text-primary-light opacity-70">Analisis trend dan prediksi pemasukan bank sampah</p>
+                    <h1 className="text-2xl font-bold text-primary">Prediksi Saldo Mingguan</h1>
+                    <p className="text-xs text-primary-light opacity-70">Prediksi saldo 1 minggu ke depan menggunakan AI</p>
                 </div>
             </div>
 
             {/* Info Card */}
             <div className="bg-white border border-blue-100 rounded-2xl p-5">
                 <div className="flex gap-4">
-                    <div className="flex-shrink-0  bg-tertiary rounded-[8px] p-2">
+                    <div className="flex-shrink-0 bg-tertiary rounded-[8px] p-2">
                         <i className="fas fa-brain text-primary text-xl"></i>
                     </div>
                     <div>
-                        <h4 className="font-bold text-primary text-sm mb-1">Analisis Prediksi AI</h4>
+                        <h4 className="font-bold text-primary text-sm mb-1">Prediksi AI - Random Forest</h4>
                         <p className="text-primary text-xs">
-                            Unggah data CSV pemasukan bank sampah untuk melihat prediksi trend kenaikan.
-                            Format CSV bisa berupa: <span className="font-semibold">Bulan (e.g., "Jan 1-7 2026"), Nilai</span> (Format Mingguan) atau format lama.
+                            Unggah data CSV saldo mingguan untuk melihat prediksi 1 minggu ke depan.
+                            Format CSV: <span className="font-semibold">tanggal (YYYY-MM-DD), saldo</span>. Minimal 4 minggu data.
                         </p>
                     </div>
                 </div>
@@ -424,7 +351,7 @@ export default function PrediksiAdmin() {
                                     </div>
                                     <div className="text-center">
                                         <p className="text-sm font-bold text-primary mb-1">{fileName}</p>
-                                        <p className="text-xs text-gray-500">{csvData.length} baris data</p>
+                                        <p className="text-xs text-gray-500">{weeklyData.length} minggu data</p>
                                     </div>
                                     <button
                                         onClick={(e) => { e.stopPropagation(); handleReset(); }}
@@ -451,29 +378,27 @@ export default function PrediksiAdmin() {
                         </div>
 
                         {/* CSV Preview */}
-                        {csvData.length > 0 && (
+                        {weeklyData.length > 0 && (
                             <div className="bg-gray-50 rounded-xl p-4 max-h-[200px] overflow-auto">
-                                <h4 className="text-xs font-bold text-gray-600 mb-2">Preview Data (5 baris pertama)</h4>
+                                <h4 className="text-xs font-bold text-gray-600 mb-2">Preview Data (5 baris terakhir)</h4>
                                 <table className="w-full text-xs">
                                     <thead>
                                         <tr className="text-left text-gray-500">
-                                            <th className="pb-2">Tahun</th>
-                                            <th className="pb-2">Bulan</th>
-                                            <th className="pb-2">Saldo (Juta)</th>
+                                            <th className="pb-2">Tanggal</th>
+                                            <th className="pb-2">Saldo</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        {csvData.slice(0, 5).map((row, idx) => (
+                                        {weeklyData.slice(-5).map((row, idx) => (
                                             <tr key={idx} className="border-t border-gray-200">
-                                                <td className="py-2">{row.tahun}</td>
-                                                <td className="py-2">{row.bulan}</td>
-                                                <td className="py-2 font-medium text-primary">Rp {row.saldo_juta.toLocaleString('id-ID')} jt</td>
+                                                <td className="py-2">{formatDate(row.tanggal)}</td>
+                                                <td className="py-2 font-medium text-primary">{formatCurrency(row.saldo)}</td>
                                             </tr>
                                         ))}
                                     </tbody>
                                 </table>
-                                {csvData.length > 5 && (
-                                    <p className="text-xs text-gray-400 mt-2 text-center">... dan {csvData.length - 5} baris lainnya</p>
+                                {weeklyData.length > 5 && (
+                                    <p className="text-xs text-gray-400 mt-2 text-center">Menampilkan 5 dari {weeklyData.length} baris</p>
                                 )}
                             </div>
                         )}
@@ -482,73 +407,40 @@ export default function PrediksiAdmin() {
                     {/* Settings */}
                     <div className="space-y-6">
                         <div>
-                            <label className="text-sm font-bold text-primary-light block px-1 mb-3">Pengaturan Prediksi</label>
+                            <label className="text-sm font-bold text-primary-light block px-1 mb-3">Pengaturan API</label>
 
-                            {/* Prediction Months */}
+                            {/* API Endpoint */}
                             <div className="mb-4">
-                                <label className="text-xs text-gray-600 block mb-2">Jumlah Bulan Prediksi</label>
-                                <div className="flex gap-2">
-                                    {[3, 6, 12].map(months => (
-                                        <button
-                                            key={months}
-                                            onClick={() => setPredictionMonths(months)}
-                                            className={`px-4 py-2 rounded-xl text-sm font-medium transition-all ${predictionMonths === months
-                                                ? 'bg-primary text-white'
-                                                : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                                }`}
-                                        >
-                                            {months} Bulan
-                                        </button>
-                                    ))}
-                                </div>
+                                <label className="text-xs text-gray-600 block mb-2">API Endpoint (URL Backend Prediksi)</label>
+                                <input
+                                    type="text"
+                                    value={apiEndpoint}
+                                    onChange={(e) => { setApiEndpoint(e.target.value); setApiError(''); }}
+                                    placeholder="https://your-api.vercel.app/api/predict"
+                                    className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:border-primary ${apiError ? 'border-red-300 bg-red-50' : 'border-gray-200'
+                                        }`}
+                                />
+                                {apiError && (
+                                    <p className="text-xs text-red-500 mt-1">
+                                        <i className="fas fa-exclamation-circle mr-1"></i>
+                                        {apiError}
+                                    </p>
+                                )}
                             </div>
 
-                            {/* API Mode Toggle */}
-                            <div className="mb-4">
-                                <label className="text-xs text-gray-600 block mb-2">Mode Prediksi</label>
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={() => setUseApiMode(false)}
-                                        className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all ${!useApiMode
-                                            ? 'bg-primary text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <i className="fas fa-calculator mr-2"></i>
-                                        Simulasi
-                                    </button>
-                                    <button
-                                        onClick={() => setUseApiMode(true)}
-                                        className={`flex-1 px-4 py-3 rounded-xl text-sm font-medium transition-all ${useApiMode
-                                            ? 'bg-primary text-white'
-                                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                                            }`}
-                                    >
-                                        <i className="fas fa-cloud mr-2"></i>
-                                        API (Backend)
-                                    </button>
-                                </div>
+                            {/* Prediction Info */}
+                            <div className="bg-tertiary/30 rounded-xl p-4 mb-4">
+                                <p className="text-xs text-primary">
+                                    <i className="fas fa-info-circle mr-2"></i>
+                                    Prediksi menggunakan model <strong>Random Forest</strong> dengan fitur: lag_1, lag_2, lag_3, ma_4, bulan, minggu_dalam_bulan.
+                                </p>
                             </div>
-
-                            {/* API Endpoint (if API mode) */}
-                            {useApiMode && (
-                                <div className="mb-4">
-                                    <label className="text-xs text-gray-600 block mb-2">API Endpoint</label>
-                                    <input
-                                        type="text"
-                                        value={apiEndpoint}
-                                        onChange={(e) => setApiEndpoint(e.target.value)}
-                                        placeholder="http://localhost:5000/predict"
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-primary"
-                                    />
-                                </div>
-                            )}
                         </div>
 
                         {/* Analyze Button */}
                         <button
                             onClick={handleAnalyze}
-                            disabled={isAnalyzing || csvData.length === 0}
+                            disabled={isAnalyzing || weeklyData.length === 0 || !apiEndpoint}
                             className="w-full bg-primary hover:bg-primary-dark text-white px-8 py-4 rounded-2xl font-bold transition-all shadow-lg active:scale-95 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-3"
                         >
                             {isAnalyzing ? (
@@ -559,62 +451,53 @@ export default function PrediksiAdmin() {
                             ) : (
                                 <>
                                     <i className="fas fa-chart-line"></i>
-                                    Analisis & Prediksi
+                                    Prediksi 1 Minggu Ke Depan
                                 </>
                             )}
                         </button>
-
-                        {/* Info about mode */}
-                        <div className="bg-tertiary/30 rounded-xl p-4">
-                            <p className="text-xs text-primary">
-                                <i className="fas fa-info-circle mr-2"></i>
-                                {useApiMode
-                                    ? 'Mode API akan memanggil backend untuk prediksi menggunakan model ML (ARIMA/Prophet).'
-                                    : 'Mode Simulasi menggunakan Linear Regression sederhana untuk demo.'}
-                            </p>
-                        </div>
                     </div>
                 </div>
             </div>
 
             {/* Results Section */}
-            {hasAnalyzed && predictions.length > 0 && (
+            {hasAnalyzed && nextWeekPrediction !== null && (
                 <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                        {/* Next Month Prediction */}
+                        {/* Next Week Prediction */}
                         <div className="bg-white rounded-[20px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center">
-                                    <i className="fas fa-calendar-day text-primary"></i>
+                                    <i className="fas fa-calendar-week text-primary"></i>
                                 </div>
-                                <p className="text-xs font-bold text-primary opacity-60 uppercase">Prediksi Bulan Depan</p>
+                                <p className="text-xs font-bold text-primary opacity-60 uppercase">Prediksi Minggu Depan</p>
                             </div>
                             <p className="text-2xl font-bold text-primary">
-                                Rp {nextMonthPrediction?.prediksi?.toLocaleString('id-ID') || '-'} jt
+                                {formatCurrency(nextWeekPrediction)}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                {nextMonthPrediction?.bulan} {nextMonthPrediction?.tahun}
+                                {formatDate(getNextWeekDate())}
                             </p>
                         </div>
 
-                        {/* 3 Month Prediction */}
+                        {/* Change from Last Week */}
                         <div className="bg-white rounded-[20px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                             <div className="flex items-center gap-3 mb-3">
-                                <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center">
-                                    <i className="fas fa-chart-bar text-primary"></i>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${predictionChange >= 0 ? 'bg-tertiary' : 'bg-red-50'
+                                    }`}>
+                                    <i className={`fas ${predictionChange >= 0 ? 'fa-arrow-up text-primary' : 'fa-arrow-down text-warning'}`}></i>
                                 </div>
-                                <p className="text-xs font-bold text-primary opacity-60 uppercase">Prediksi 3 Bulan</p>
+                                <p className="text-xs font-bold text-primary opacity-60 uppercase">Perubahan</p>
                             </div>
-                            <p className="text-2xl font-bold text-primary">
-                                Rp {threeMonthPrediction?.prediksi?.toLocaleString('id-ID') || '-'} jt
+                            <p className={`text-2xl font-bold ${predictionChange >= 0 ? 'text-primary' : 'text-warning'}`}>
+                                {predictionChange >= 0 ? '+' : ''}{Math.round(predictionChange * 10) / 10}%
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                {threeMonthPrediction?.bulan} {threeMonthPrediction?.tahun}
+                                Dari minggu terakhir
                             </p>
                         </div>
 
-                        {/* Trend */}
+                        {/* Historical Trend */}
                         <div className="bg-white rounded-[20px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                             <div className="flex items-center gap-3 mb-3">
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${trendPercentage >= 0 ? 'bg-tertiary' : 'bg-red-50'
@@ -627,17 +510,17 @@ export default function PrediksiAdmin() {
                                 {trendPercentage >= 0 ? '+' : ''}{trendPercentage}%
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                Dibanding awal periode
+                                Selama {weeklyData.length} minggu
                             </p>
                         </div>
                     </div>
 
-                    {/* Chart Section - Dot/Line Chart Style */}
+                    {/* Chart Section */}
                     <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-primary">Grafik Prediksi Pemasukan</h3>
-                                <p className="text-xs text-gray-500">Data historis dan prediksi {predictionMonths} bulan ke depan</p>
+                                <h3 className="text-lg font-bold text-primary">Grafik Saldo Mingguan</h3>
+                                <p className="text-xs text-gray-500">Data historis dan prediksi 1 minggu ke depan</p>
                             </div>
                             <div className="flex items-center gap-4 text-xs">
                                 <div className="flex items-center gap-2">
@@ -645,25 +528,25 @@ export default function PrediksiAdmin() {
                                     <span className="text-gray-600">Data Aktual</span>
                                 </div>
                                 <div className="flex items-center gap-2">
-                                    <div className="w-3 h-3 bg-primary/50 rounded-full"></div>
+                                    <div className="w-3 h-3 bg-green-500 rounded-full"></div>
                                     <span className="text-gray-600">Prediksi</span>
                                 </div>
                             </div>
                         </div>
 
-                        {/* Dot/Line Chart */}
+                        {/* Chart */}
                         <div className="relative h-[300px] w-full">
                             {/* Y-axis labels */}
-                            <div className="absolute left-0 top-0 bottom-8 w-14 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right">
-                                <span>{Math.round(maxChartValue * 1.1)} jt</span>
-                                <span>{Math.round(maxChartValue * 0.75)} jt</span>
-                                <span>{Math.round(maxChartValue * 0.5)} jt</span>
-                                <span>{Math.round(maxChartValue * 0.25)} jt</span>
+                            <div className="absolute left-0 top-0 bottom-8 w-20 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right">
+                                <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
+                                <span>{formatCurrency(Math.round(maxChartValue * 0.75))}</span>
+                                <span>{formatCurrency(Math.round(maxChartValue * 0.5))}</span>
+                                <span>{formatCurrency(Math.round(maxChartValue * 0.25))}</span>
                                 <span>0</span>
                             </div>
 
                             {/* Chart area */}
-                            <div className="ml-14 h-full border-l border-b border-gray-200 relative">
+                            <div className="ml-20 h-full border-l border-b border-gray-200 relative">
                                 {/* Grid lines */}
                                 <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ paddingBottom: '32px' }}>
                                     {[0, 1, 2, 3, 4].map(i => (
@@ -671,13 +554,11 @@ export default function PrediksiAdmin() {
                                     ))}
                                 </div>
 
-                                {/* Dots only - no connecting lines for cleaner look */}
-
-                                {/* Data points (dots) */}
+                                {/* Data points */}
                                 <div className="absolute inset-0 flex items-end justify-between" style={{ paddingBottom: '32px', paddingLeft: '4px', paddingRight: '4px' }}>
                                     {predictions.map((p, idx) => {
-                                        const value = p.isPredict ? p.prediksi : p.saldo_aktual;
-                                        const chartAreaHeight = 268; // 300px - 32px padding
+                                        const value = p.isPredict ? p.prediksi : p.saldo;
+                                        const chartAreaHeight = 268;
                                         const maxVal = maxChartValue * 1.1;
                                         const dotBottom = maxVal > 0 ? ((value || 0) / maxVal) * chartAreaHeight : 0;
 
@@ -689,7 +570,7 @@ export default function PrediksiAdmin() {
                                             >
                                                 {/* Dot */}
                                                 <div
-                                                    className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-150 ${p.isPredict ? 'bg-primary/50' : 'bg-primary'
+                                                    className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-150 ${p.isPredict ? 'bg-green-500' : 'bg-primary'
                                                         }`}
                                                     style={{
                                                         bottom: `${dotBottom}px`,
@@ -703,8 +584,8 @@ export default function PrediksiAdmin() {
                                                     style={{ bottom: `${dotBottom + 20}px` }}
                                                 >
                                                     <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
-                                                        <p className="font-bold">{p.bulan} {p.tahun}</p>
-                                                        <p>{p.isPredict ? 'Prediksi' : 'Aktual'}: Rp {value?.toLocaleString('id-ID')} jt</p>
+                                                        <p className="font-bold">{formatDate(p.tanggal)}</p>
+                                                        <p>{p.isPredict ? 'Prediksi' : 'Aktual'}: {formatCurrency(value || 0)}</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -715,7 +596,6 @@ export default function PrediksiAdmin() {
                                 {/* X-axis labels */}
                                 <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-between items-end px-1">
                                     {predictions.map((p, idx) => {
-                                        // Show label for every nth item depending on total count
                                         const showLabel = predictions.length <= 12
                                             || idx === 0
                                             || idx === predictions.length - 1
@@ -724,11 +604,11 @@ export default function PrediksiAdmin() {
                                         return (
                                             <div
                                                 key={idx}
-                                                className={`text-center text-[10px] ${p.isPredict ? 'text-primary/60 font-medium' : 'text-gray-400'}`}
+                                                className={`text-center text-[10px] ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
                                                 style={{ flex: 1 }}
                                             >
                                                 {showLabel && (
-                                                    <span>{p.bulan.substring(0, 3)} {p.tahun.toString().slice(-2)}</span>
+                                                    <span>{new Date(p.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
                                                 )}
                                             </div>
                                         );
@@ -738,12 +618,12 @@ export default function PrediksiAdmin() {
                         </div>
                     </div>
 
-                    {/* Prediction Table */}
+                    {/* Data Table */}
                     <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                         <div className="flex items-center justify-between mb-6">
                             <div>
-                                <h3 className="text-lg font-bold text-primary">Detail Prediksi</h3>
-                                <p className="text-xs text-gray-500">Perbandingan data aktual dan prediksi</p>
+                                <h3 className="text-lg font-bold text-primary">Detail Data</h3>
+                                <p className="text-xs text-gray-500">Data aktual dan hasil prediksi</p>
                             </div>
                         </div>
 
@@ -751,27 +631,25 @@ export default function PrediksiAdmin() {
                             <table className="w-full text-sm">
                                 <thead>
                                     <tr className="bg-primary text-white text-xs uppercase">
-                                        <th className="px-4 py-3 text-left rounded-tl-xl">Bulan</th>
-                                        <th className="px-4 py-3 text-left">Tahun</th>
+                                        <th className="px-4 py-3 text-left rounded-tl-xl">Tanggal</th>
                                         <th className="px-4 py-3 text-right">Saldo Aktual</th>
                                         <th className="px-4 py-3 text-right">Prediksi</th>
                                         <th className="px-4 py-3 text-center rounded-tr-xl">Status</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {predictions.map((p, idx) => (
-                                        <tr key={idx} className={`border-b border-gray-100 ${p.isPredict ? 'bg-tertiary/20' : 'bg-white'}`}>
-                                            <td className="px-4 py-3 font-medium">{p.bulan}</td>
-                                            <td className="px-4 py-3">{p.tahun}</td>
+                                    {predictions.slice(-10).map((p, idx) => (
+                                        <tr key={idx} className={`border-b border-gray-100 ${p.isPredict ? 'bg-green-50' : 'bg-white'}`}>
+                                            <td className="px-4 py-3 font-medium">{formatDate(p.tanggal)}</td>
                                             <td className="px-4 py-3 text-right">
-                                                {p.saldo_aktual ? `Rp ${p.saldo_aktual.toLocaleString('id-ID')} jt` : '-'}
+                                                {p.saldo ? formatCurrency(p.saldo) : '-'}
                                             </td>
-                                            <td className="px-4 py-3 text-right font-medium text-primary">
-                                                {p.prediksi ? `Rp ${p.prediksi.toLocaleString('id-ID')} jt` : '-'}
+                                            <td className="px-4 py-3 text-right font-medium text-green-600">
+                                                {p.prediksi ? formatCurrency(p.prediksi) : '-'}
                                             </td>
                                             <td className="px-4 py-3 text-center">
                                                 <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${p.isPredict
-                                                    ? 'bg-blue-50 text-blue-600'
+                                                    ? 'bg-green-100 text-green-700'
                                                     : 'bg-tertiary text-primary'
                                                     }`}>
                                                     <i className={`fas ${p.isPredict ? 'fa-robot' : 'fa-check-circle'} text-[10px]`}></i>
