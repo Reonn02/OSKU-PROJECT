@@ -20,7 +20,7 @@ const getSupabaseAdmin = () => {
 
 export async function POST(request: NextRequest) {
     try {
-        const { email: rawEmail, newPassword } = await request.json();
+        const { email: rawEmail, newPassword, role } = await request.json();
 
         // Validate input
         if (!rawEmail || !newPassword) {
@@ -42,6 +42,9 @@ export async function POST(request: NextRequest) {
 
         let userType = null;
         let passwordReset = false;
+
+        // Use role from URL if provided to determine priority
+        const preferredRole = role as 'nasabah' | 'petugas' | null;
 
         // 1. Try to find user in nasabah table (Supabase Auth) and update if found
         const supabase = getSupabaseAdmin();
@@ -76,22 +79,32 @@ export async function POST(request: NextRequest) {
         // 2. Try to find user in petugas table (Custom Auth/Plaintext) and update if found
         const { data: petugas, error: petugasError } = await getSupabaseAdmin()
             .from('petugas')
-            .select('id')
+            .select('id, password')
             .eq('email', email)
             .single();
 
         if (petugas && petugas.id) {
-            const supabase = getSupabaseAdmin();
+            // Check if new password is same as old password
+            if (petugas.password === newPassword) {
+                return NextResponse.json(
+                    { success: false, error: 'Password baru tidak boleh sama dengan password lama' },
+                    { status: 400 }
+                );
+            }
+
+            const supabaseAdmin = getSupabaseAdmin();
             // Update password in petugas table
-            const { error: updatePetugasError } = await supabase
+            const { error: updatePetugasError } = await supabaseAdmin
                 .from('petugas')
                 .update({ password: newPassword })
                 .eq('id', petugas.id);
 
             if (!updatePetugasError) {
                 console.log('✅ Password berhasil direset untuk petugas:', email);
-                // If it's a petugas, we prefer redirecting to petugas login as it's more specific
-                userType = 'petugas';
+                // Only set to petugas if we haven't already set nasabah, OR if the preferred role is petugas
+                if (!userType || preferredRole === 'petugas') {
+                    userType = 'petugas';
+                }
                 passwordReset = true;
             } else {
                 console.error('Error updating petugas password:', updatePetugasError);
@@ -99,6 +112,12 @@ export async function POST(request: NextRequest) {
         }
 
         if (passwordReset) {
+            // If a preferred role was passed and user exists in that role, use that userType
+            // This ensures nasabah coming from nasabah login stays on nasabah login
+            if (preferredRole && ((preferredRole === 'nasabah' && nasabah) || (preferredRole === 'petugas' && petugas))) {
+                userType = preferredRole;
+            }
+
             return NextResponse.json({
                 success: true,
                 message: 'Password berhasil direset',

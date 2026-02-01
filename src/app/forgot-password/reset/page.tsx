@@ -1,8 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useEffect, FormEvent } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, FormEvent, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { useLanguage } from '@/contexts/LanguageContext';
 import LanguageSwitcher from '@/components/shared/LanguageSwitcher';
 import {
@@ -16,15 +16,17 @@ import {
 } from '@/utils/validationUtils';
 import { clearOTP } from '@/utils/otpUtils';
 
-export default function ResetPassword() {
+function ResetPasswordContent() {
     const router = useRouter();
+    const searchParams = useSearchParams();
+    const roleFromUrl = searchParams.get('role') as 'nasabah' | 'petugas' | null;
     const { t } = useLanguage();
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [showPassword, setShowPassword] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [success, setSuccess] = useState(false);
-    const [userType, setUserType] = useState<'nasabah' | 'petugas' | null>(null);
+    const [userType, setUserType] = useState<'nasabah' | 'petugas' | null>(roleFromUrl);
     const [errors, setErrors] = useState<{ password?: string; confirmPassword?: string }>({});
     const [touched, setTouched] = useState<{ password?: boolean; confirmPassword?: boolean }>({});
 
@@ -104,6 +106,7 @@ export default function ResetPassword() {
                 body: JSON.stringify({
                     email: email,
                     newPassword: password,
+                    role: roleFromUrl, // Pass role from URL to prioritize userType
                 }),
             });
 
@@ -272,5 +275,13 @@ export default function ResetPassword() {
                 </div>
             </main>
         </div>
+    );
+}
+
+export default function ResetPassword() {
+    return (
+        <Suspense fallback={null}>
+            <ResetPasswordContent />
+        </Suspense>
     );
 }

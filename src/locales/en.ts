@@ -226,7 +226,9 @@ export const en: Dictionary = {
             success_title: 'Password Changed Successfully!',
             success_desc: 'Your password has been successfully updated. You will be redirected to the login page shortly.',
             back_login: 'To Login Page',
-            back_login_petugas: 'To Staff Login'
+            back_login_nasabah: 'To Customer Login',
+            back_login_petugas: 'To Staff Login',
+            error_same_password: 'New password cannot be the same as the old password'
         }
     },
     admin: {

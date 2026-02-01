@@ -224,7 +224,9 @@ export const id = {
             success_title: 'Password Berhasil Diubah!',
             success_desc: 'Password anda telah berhasil diperbarui. Anda akan segera dialihkan ke halaman login.',
             back_login: 'Ke Halaman Login',
-            back_login_petugas: 'Ke Login Petugas'
+            back_login_nasabah: 'Ke Login Nasabah',
+            back_login_petugas: 'Ke Login Petugas',
+            error_same_password: 'Password baru tidak boleh sama dengan password lama'
         }
     },
     admin: {
