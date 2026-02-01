@@ -175,6 +175,7 @@ function Dashboard() {
             setUserRT(nasabah.rt || '-');
             setUserRW(nasabah.rw || '-');
             setUserId(nasabah.id || '-');
+            // Initial saldo from AuthContext (may be stale)
             setSaldoAmount(nasabah.saldo || 0);
 
             if (nasabah.bankSampah) {
@@ -184,6 +185,29 @@ function Dashboard() {
             console.log('✅ Loaded nasabah from AuthContext:', nasabah.name);
         }
     }, [nasabah]);
+
+    // Effect to fetch fresh saldo from database (auto-refresh)
+    useEffect(() => {
+        if (!nasabah?.id) return;
+
+        const fetchFreshSaldo = async () => {
+            try {
+                const freshSaldo = await getSaldoByNasabah(nasabah.id);
+                setSaldoAmount(freshSaldo);
+                console.log('💰 Fresh saldo fetched from database:', freshSaldo);
+            } catch (error) {
+                console.error('Error fetching fresh saldo:', error);
+            }
+        };
+
+        // Fetch immediately on mount
+        fetchFreshSaldo();
+
+        // Poll every 30 seconds for updates
+        const saldoInterval = setInterval(fetchFreshSaldo, 30000);
+
+        return () => clearInterval(saldoInterval);
+    }, [nasabah?.id, getSaldoByNasabah]);
 
     useEffect(() => {
         setIsMounted(true);
