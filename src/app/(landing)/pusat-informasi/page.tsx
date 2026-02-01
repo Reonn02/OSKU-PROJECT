@@ -9,8 +9,10 @@ import Image from "next/image";
 import { supabase } from '@/lib/supabase';
 
 export default function PusatInformasi() {
-    // Default fallback number
+    // Default fallback values
     const [phone, setPhone] = useState('085212436339');
+    const [operatingDays, setOperatingDays] = useState('Senin s.d Jumat');
+    const [operatingHours, setOperatingHours] = useState('08.00 - 16:30');
 
     useEffect(() => {
         const fetchContact = async () => {
@@ -18,13 +20,21 @@ export default function PusatInformasi() {
                 // Fetch Super Admin contact info, similar to Footer logic
                 const { data } = await supabase
                     .from('admins')
-                    .select('no_hp')
+                    .select('no_hp, operating_days, operating_hours')
                     .eq('role', 'superadmin')
                     .limit(1)
                     .single();
 
-                if (data && data.no_hp) {
-                    setPhone(data.no_hp);
+                if (data) {
+                    if (data.no_hp) {
+                        setPhone(data.no_hp);
+                    }
+                    if (data.operating_days) {
+                        setOperatingDays(data.operating_days);
+                    }
+                    if (data.operating_hours) {
+                        setOperatingHours(data.operating_hours);
+                    }
                 }
             } catch (error) {
                 console.error("Error fetching contact info:", error);
@@ -65,7 +75,7 @@ export default function PusatInformasi() {
                                 <div className="flex items-center gap-3 text-primary">
                                     <i className="far fa-clock text-primary text-xl"></i>
                                     <p className="text-base">
-                                        Senin s.d Jumat Pkl. 08.00 - 16: 30 WIB
+                                        {operatingDays} Pkl. {operatingHours} WIB
                                     </p>
                                 </div>
                             </div>

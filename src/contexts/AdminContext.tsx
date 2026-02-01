@@ -11,6 +11,8 @@ export interface Admin {
     noHp: string;
     role: 'superadmin';
     kelurahan: string;
+    operatingDays: string;
+    operatingHours: string;
     createdAt: Date;
     updatedAt?: Date;
 }
@@ -34,6 +36,8 @@ const DEFAULT_ADMIN: Admin = {
     noHp: '-',
     role: 'superadmin',
     kelurahan: '-',
+    operatingDays: 'Senin s.d Jumat',
+    operatingHours: '08.00 - 16:30',
     createdAt: new Date()
 };
 
@@ -45,6 +49,8 @@ const dbToAdmin = (db: DbAdmin): Admin => ({
     noHp: db.no_hp || '',
     role: db.role,
     kelurahan: db.kelurahan || '',
+    operatingDays: db.operating_days || 'Senin s.d Jumat',
+    operatingHours: db.operating_hours || '08.00 - 16:30',
     createdAt: new Date(db.created_at),
     updatedAt: db.updated_at ? new Date(db.updated_at) : undefined
 });
@@ -57,6 +63,8 @@ const adminToDb = (admin: Partial<Admin>): Partial<DbAdmin> => {
     if (admin.noHp !== undefined) result.no_hp = admin.noHp;
     if (admin.role !== undefined) result.role = admin.role;
     if (admin.kelurahan !== undefined) result.kelurahan = admin.kelurahan;
+    if (admin.operatingDays !== undefined) result.operating_days = admin.operatingDays;
+    if (admin.operatingHours !== undefined) result.operating_hours = admin.operatingHours;
     result.updated_at = new Date().toISOString();
     return result;
 };

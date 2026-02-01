@@ -70,6 +70,8 @@ export interface DbAdmin {
     no_hp: string | null;
     role: 'superadmin';
     kelurahan: string | null;
+    operating_days: string | null;
+    operating_hours: string | null;
     created_at: string;
     updated_at: string | null;
 }

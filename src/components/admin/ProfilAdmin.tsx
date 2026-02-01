@@ -8,7 +8,9 @@ export default function ProfilAdmin() {
         nama: '',
         email: '',
         noHp: '',
-        kelurahan: ''
+        kelurahan: '',
+        operatingDays: '',
+        operatingHours: ''
     });
 
     useEffect(() => {
@@ -17,7 +19,9 @@ export default function ProfilAdmin() {
                 nama: admin.nama || '',
                 email: admin.email || '',
                 noHp: admin.noHp || '',
-                kelurahan: admin.kelurahan || ''
+                kelurahan: admin.kelurahan || '',
+                operatingDays: admin.operatingDays || 'Senin s.d Jumat',
+                operatingHours: admin.operatingHours || '08.00 - 16:30'
             });
         }
     }, [admin]);
@@ -29,7 +33,9 @@ export default function ProfilAdmin() {
                     nama: formData.nama,
                     email: formData.email,
                     noHp: formData.noHp,
-                    kelurahan: formData.kelurahan
+                    kelurahan: formData.kelurahan,
+                    operatingDays: formData.operatingDays,
+                    operatingHours: formData.operatingHours
                 });
                 showStandaloneToast('success', 'Berhasil', 'Profil admin berhasil diperbarui');
             } catch (error) {
@@ -136,6 +142,37 @@ export default function ProfilAdmin() {
                                     onChange={(e) => setFormData({ ...formData, kelurahan: e.target.value })}
                                     className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
                                 />
+                            </div>
+                        </div>
+
+                        {/* Operating Hours Section */}
+                        <div className="pt-4 border-t border-gray-100">
+                            <h4 className="text-sm font-bold text-primary mb-3 flex items-center gap-2">
+                                <i className="far fa-clock"></i>
+                                Jam Operasional (Pusat Informasi)
+                            </h4>
+                            <p className="text-xs text-gray-500 mb-4">Informasi ini akan ditampilkan di halaman Pusat Informasi untuk pengguna.</p>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Hari Operasional</label>
+                                    <input
+                                        type="text"
+                                        value={formData.operatingDays}
+                                        onChange={(e) => setFormData({ ...formData, operatingDays: e.target.value })}
+                                        placeholder="Contoh: Senin s.d Jumat"
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                    />
+                                </div>
+                                <div>
+                                    <label className="block text-xs font-bold text-gray-500 mb-1">Jam Operasional</label>
+                                    <input
+                                        type="text"
+                                        value={formData.operatingHours}
+                                        onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
+                                        placeholder="Contoh: 08.00 - 16:30"
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
+                                    />
+                                </div>
                             </div>
                         </div>
 
