@@ -69,13 +69,8 @@ export default function PetugasDashboard() {
     // Get penyetoran from context
     const { penyetoranList, fetchPenyetoranByBank } = usePenyetoran();
 
-    // Set email from Auth Context (most reliable source)
-    useEffect(() => {
-        if (user && user.email) {
-            console.log('Setting petugas email from AuthContext:', user.email);
-            setPetugasEmail(user.email);
-        }
-    }, [user]);
+    // Note: petugasEmail is loaded from localStorage in the effect below
+    // Do NOT use user.email from AuthContext as it may be different from petugas email
 
     // Load petugas data from localStorage immediately on mount
     useEffect(() => {
