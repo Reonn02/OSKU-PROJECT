@@ -155,23 +155,42 @@ export default function ProfilAdmin() {
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Hari Operasional</label>
-                                    <input
-                                        type="text"
+                                    <select
                                         value={formData.operatingDays}
                                         onChange={(e) => setFormData({ ...formData, operatingDays: e.target.value })}
-                                        placeholder="Contoh: Senin s.d Jumat"
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
-                                    />
+                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm bg-white cursor-pointer"
+                                    >
+                                        <option value="Senin s.d Jumat">Senin s.d Jumat</option>
+                                        <option value="Senin s.d Sabtu">Senin s.d Sabtu</option>
+                                        <option value="Senin s.d Minggu">Senin s.d Minggu (Setiap Hari)</option>
+                                        <option value="Sabtu s.d Minggu">Sabtu s.d Minggu (Weekend)</option>
+                                    </select>
                                 </div>
                                 <div>
                                     <label className="block text-xs font-bold text-gray-500 mb-1">Jam Operasional</label>
-                                    <input
-                                        type="text"
-                                        value={formData.operatingHours}
-                                        onChange={(e) => setFormData({ ...formData, operatingHours: e.target.value })}
-                                        placeholder="Contoh: 08.00 - 16:30"
-                                        className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm"
-                                    />
+                                    <div className="flex items-center gap-2">
+                                        <input
+                                            type="time"
+                                            value={formData.operatingHours.split(' - ')[0]?.replace('.', ':') || '08:00'}
+                                            onChange={(e) => {
+                                                const startTime = e.target.value.replace(':', '.');
+                                                const endTime = formData.operatingHours.split(' - ')[1] || '16.30';
+                                                setFormData({ ...formData, operatingHours: `${startTime} - ${endTime}` });
+                                            }}
+                                            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm cursor-pointer"
+                                        />
+                                        <span className="text-gray-500 font-medium">s.d</span>
+                                        <input
+                                            type="time"
+                                            value={formData.operatingHours.split(' - ')[1]?.replace('.', ':') || '16:30'}
+                                            onChange={(e) => {
+                                                const startTime = formData.operatingHours.split(' - ')[0] || '08.00';
+                                                const endTime = e.target.value.replace(':', '.');
+                                                setFormData({ ...formData, operatingHours: `${startTime} - ${endTime}` });
+                                            }}
+                                            className="flex-1 px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm cursor-pointer"
+                                        />
+                                    </div>
                                 </div>
                             </div>
                         </div>
