@@ -85,7 +85,7 @@ export default function PersetujuanPetugas() {
             return pencairanList.map((item: any) => ({
                 id: item.id,
                 id_pengajuan: item.id || '-',
-                id_nasabah: item.nasabah_username || '-',
+                id_nasabah: item.nasabah_id || '-',
                 name: item.nasabah_name || '-',
                 amount: item.jumlah,
                 date: new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID'),
@@ -132,7 +132,7 @@ export default function PersetujuanPetugas() {
             return historyList.map((item: any) => ({
                 id: item.id,
                 id_pengajuan: item.id || '-',
-                id_nasabah: item.nasabah_username || '-',
+                id_nasabah: item.nasabah_id || '-',
                 name: item.nasabah_name || '-',
                 amount: item.jumlah,
                 date: new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID'),

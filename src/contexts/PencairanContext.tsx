@@ -52,7 +52,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 .from('pencairan')
                 .select(`
                     *,
-                    nasabah:nasabah_id (name, username, phone)
+                    nasabah:nasabah_id (id, name, username, phone)
                 `)
                 .eq('bank_sampah_id', bankId)
                 .eq('status', 'pending')
@@ -62,6 +62,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
 
             const mappedPending: PencairanWithDetails[] = (pendingData || []).map((item: any) => ({
                 ...item,
+                nasabah_id: item.nasabah?.id || item.nasabah_id || '-',
                 nasabah_name: item.nasabah?.name || '-',
                 nasabah_username: item.nasabah?.username || '-',
                 nasabah_phone: item.nasabah?.phone || '-',
@@ -74,7 +75,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 .from('pencairan')
                 .select(`
                     *,
-                    nasabah:nasabah_id (name, username, phone)
+                    nasabah:nasabah_id (id, name, username, phone)
                 `)
                 .eq('bank_sampah_id', bankId)
                 .in('status', ['approved', 'rejected', 'completed', 'cancelled'])
@@ -84,6 +85,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
 
             const mappedHistory: PencairanWithDetails[] = (historyData || []).map((item: any) => ({
                 ...item,
+                nasabah_id: item.nasabah?.id || item.nasabah_id || '-',
                 nasabah_name: item.nasabah?.name || '-',
                 nasabah_username: item.nasabah?.username || '-',
                 nasabah_phone: item.nasabah?.phone || '-',
@@ -106,11 +108,12 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
         setCurrentBankId(bankId);
 
         try {
+            // Fetch approved requests
             const { data, error: fetchError } = await supabase
                 .from('pencairan')
                 .select(`
                     *,
-                    nasabah:nasabah_id (name, username, phone)
+                    nasabah:nasabah_id (id, name, username, phone)
                 `)
                 .eq('bank_sampah_id', bankId)
                 .eq('status', 'approved')
@@ -120,12 +123,36 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
 
             const mappedData: PencairanWithDetails[] = (data || []).map((item: any) => ({
                 ...item,
+                nasabah_id: item.nasabah?.id || item.nasabah_id || '-',
                 nasabah_name: item.nasabah?.name || '-',
                 nasabah_username: item.nasabah?.username || '-',
                 nasabah_phone: item.nasabah?.phone || '-',
             }));
 
             setApprovedList(mappedData);
+
+            // Also fetch history (completed, cancelled) for Konfirmasi page
+            const { data: historyData, error: historyError } = await supabase
+                .from('pencairan')
+                .select(`
+                    *,
+                    nasabah:nasabah_id (id, name, username, phone)
+                `)
+                .eq('bank_sampah_id', bankId)
+                .in('status', ['completed', 'cancelled'])
+                .order('tanggal_selesai', { ascending: false });
+
+            if (historyError) throw historyError;
+
+            const mappedHistory: PencairanWithDetails[] = (historyData || []).map((item: any) => ({
+                ...item,
+                nasabah_id: item.nasabah?.id || item.nasabah_id || '-',
+                nasabah_name: item.nasabah?.name || '-',
+                nasabah_username: item.nasabah?.username || '-',
+                nasabah_phone: item.nasabah?.phone || '-',
+            }));
+
+            setHistoryList(mappedHistory);
         } catch (err: any) {
             console.error('Error fetching approved pencairan:', err);
             setError(err.message || 'Failed to fetch approved data');

@@ -215,9 +215,9 @@ export default function KonfirmasiPetugas() {
             headers.join(','),
             ...finalHistoryData.map(item => [
                 item.id || '-',
-                item.nasabah_username || '-',
+                item.nasabah_id || '-',
                 `"${item.nasabah_name}"`,
-                '-', // phone
+                item.nasabah_phone || '-',
                 item.jumlah,
                 item.tanggal_pengajuan ? new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID') : '-',
                 item.displayStatus,
@@ -524,9 +524,9 @@ export default function KonfirmasiPetugas() {
                                         {paginatedHistoryData.map((item, idx) => (
                                             <tr key={idx} className="hover:bg-gray-50 transition-colors">
                                                 <td className="px-5 py-4 font-bold text-gray-700">{item.id || '-'}</td>
-                                                <td className="px-5 py-4 font-medium text-gray-600">{item.nasabah_username || '-'}</td>
+                                                <td className="px-5 py-4 font-medium text-gray-600">{item.nasabah_id || '-'}</td>
                                                 <td className="px-5 py-4 text-gray-600">{item.nasabah_name}</td>
-                                                <td className="px-5 py-4 text-gray-500">{'-'}</td>
+                                                <td className="px-5 py-4 text-gray-500">{item.nasabah_phone || '-'}</td>
                                                 <td className="px-5 py-4 font-bold text-gray-700">
                                                     Rp {item.jumlah?.toLocaleString('id-ID') || '0'}
                                                 </td>
