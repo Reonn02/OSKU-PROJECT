@@ -1894,8 +1894,20 @@ function Dashboard() {
                                         <label className="block text-sm font-medium text-[#3B8A51] mb-3">Nominal Penarikan Saldo</label>
                                         <input
                                             type="text"
+                                            inputMode="numeric"
                                             value={withdrawalAmount}
-                                            onChange={(e) => setWithdrawalAmount(e.target.value)}
+                                            onChange={(e) => {
+                                                // Only allow numbers
+                                                const value = e.target.value.replace(/\D/g, '');
+                                                setWithdrawalAmount(value);
+                                            }}
+                                            onKeyDown={(e) => {
+                                                // Prevent non-numeric keys except backspace, delete, arrow keys
+                                                if (!/[0-9]/.test(e.key) &&
+                                                    !['Backspace', 'Delete', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
+                                                    e.preventDefault();
+                                                }
+                                            }}
                                             placeholder="Nominal Penarikan Saldo"
                                             className="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:border-[#3B8A51] focus:ring-1 focus:ring-[#3B8A51] text-sm placeholder-gray-400 transition-colors"
                                         />
@@ -2033,16 +2045,6 @@ function Dashboard() {
                                         className="bg-[#3D7A4D] hover:bg-[#2F5E3B] text-white font-medium py-3 px-16 rounded-full transition shadow-lg w-full sm:w-auto text-sm cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                                     >
                                         Kirim
-                                    </button>
-
-                                    <button
-                                        onClick={() => {
-                                            setWithdrawalAmount('');
-                                            setWithdrawalDate('');
-                                        }}
-                                        className="bg-gray-100 hover:bg-gray-200 text-gray-600 font-medium py-3 px-8 rounded-full transition shadow-sm w-full sm:w-auto text-sm cursor-pointer ml-3"
-                                    >
-                                        Reset
                                     </button>
                                 </div>
                             </div>
