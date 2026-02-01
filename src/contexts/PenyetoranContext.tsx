@@ -147,12 +147,51 @@ export function PenyetoranProvider({ children }: { children: ReactNode }) {
     // Update penyetoran
     const updatePenyetoran = useCallback(async (id: string, data: Partial<DbPenyetoran>): Promise<boolean> => {
         try {
+            // First, get the old penyetoran data to calculate saldo difference
+            const { data: oldPenyetoran, error: fetchError } = await supabase
+                .from('penyetoran')
+                .select('nasabah_id, total_harga')
+                .eq('id', id)
+                .single();
+
+            if (fetchError) throw fetchError;
+
+            // Perform the update
             const { error: updateError } = await supabase
                 .from('penyetoran')
                 .update(data)
                 .eq('id', id);
 
             if (updateError) throw updateError;
+
+            // If total_harga changed, update nasabah saldo
+            if (data.total_harga !== undefined && oldPenyetoran) {
+                const oldAmount = oldPenyetoran.total_harga || 0;
+                const newAmount = data.total_harga || 0;
+                const difference = newAmount - oldAmount;
+
+                if (difference !== 0) {
+                    const nasabahId = data.nasabah_id || oldPenyetoran.nasabah_id;
+
+                    if (nasabahId) {
+                        const { data: nasabah } = await supabase
+                            .from('nasabah')
+                            .select('saldo')
+                            .eq('id', nasabahId)
+                            .single();
+
+                        if (nasabah) {
+                            const newSaldo = Math.max(0, (nasabah.saldo || 0) + difference);
+                            await supabase
+                                .from('nasabah')
+                                .update({ saldo: newSaldo })
+                                .eq('id', nasabahId);
+
+                            console.log(`📊 Saldo nasabah updated: ${nasabah.saldo} → ${newSaldo} (diff: ${difference})`);
+                        }
+                    }
+                }
+            }
 
             // Refresh list
             if (currentBankId) {
