@@ -231,7 +231,13 @@ export default function PersetujuanPetugas() {
 
                     // Send Notification to Nasabah
                     try {
-                        const { error: notifError } = await supabase
+                        console.log('Attempting to send notification to nasabah:', {
+                            recipient_id: selectedItem.nasabah_id_real,
+                            amount: selectedItem.amount,
+                            ref_id: selectedItem.id
+                        });
+
+                        const { data: notifData, error: notifError } = await supabase
                             .from('notifikasi')
                             .insert({
                                 recipient_role: 'nasabah',
@@ -244,9 +250,16 @@ export default function PersetujuanPetugas() {
                                 reference_type: 'pencairan',
                                 status: 'Disetujui',
                                 amount: `Rp ${selectedItem.amount.toLocaleString('id-ID')}`
-                            });
+                            })
+                            .select();
+
+                        if (notifError) {
+                            console.error('Supabase Notification Insert Error:', notifError);
+                        } else {
+                            console.log('Notification sent successfully:', notifData);
+                        }
                     } catch (e) {
-                        console.error("Failed to send notification", e);
+                        console.error("Failed to send notification (Exception):", e);
                     }
                 } else {
                     // Fallback: update localStorage if database fails
@@ -289,7 +302,12 @@ export default function PersetujuanPetugas() {
 
                 // Send Notification to Nasabah
                 try {
-                    await supabase
+                    console.log('Attempting to send REJECTION notification:', {
+                        recipient_id: selectedItem.nasabah_id_real,
+                        reason: rejectReason
+                    });
+
+                    const { data: notifData, error: notifError } = await supabase
                         .from('notifikasi')
                         .insert({
                             recipient_role: 'nasabah',
@@ -301,9 +319,16 @@ export default function PersetujuanPetugas() {
                             reference_id: selectedItem.id,
                             reference_type: 'pencairan',
                             status: 'Ditolak'
-                        });
+                        })
+                        .select();
+
+                    if (notifError) {
+                        console.error('Supabase Notification Insert Error (Reject):', notifError);
+                    } else {
+                        console.log('Rejection notification sent:', notifData);
+                    }
                 } catch (e) {
-                    console.error("Failed to send notification", e);
+                    console.error("Failed to send notification (Exception):", e);
                 }
 
             } else {

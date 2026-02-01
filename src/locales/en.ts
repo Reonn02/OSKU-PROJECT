@@ -300,6 +300,16 @@ export const en: Dictionary = {
             btn_cancel: 'Cancel',
             btn_yes_finish: 'Yes, Finished',
             btn_yes_cancel: 'Yes, Cancel',
+        },
+        persetujuan: {
+            title: 'Withdrawal Approval',
+            withdrawal_id: 'Withdrawal ID',
+            nasabah_id: 'Customer ID',
+            nasabah_name: 'Customer Name',
+            amount: 'Amount',
+            reason: 'Reason',
+            end_date: 'Date Completed',
+            pending_approve: 'Pending Approval',
         }
     },
     nasabah: {

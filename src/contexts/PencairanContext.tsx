@@ -7,6 +7,7 @@ import { supabase, DbPencairan } from '@/lib/supabase';
 interface PencairanWithDetails extends DbPencairan {
     nasabah_name?: string;
     nasabah_username?: string;
+    nasabah_phone?: string;
     bank_sampah_name?: string;
 }
 
@@ -51,7 +52,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 .from('pencairan')
                 .select(`
                     *,
-                    nasabah:nasabah_id (name, username)
+                    nasabah:nasabah_id (name, username, phone)
                 `)
                 .eq('bank_sampah_id', bankId)
                 .eq('status', 'pending')
@@ -63,6 +64,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 ...item,
                 nasabah_name: item.nasabah?.name || '-',
                 nasabah_username: item.nasabah?.username || '-',
+                nasabah_phone: item.nasabah?.phone || '-',
             }));
 
             setPencairanList(mappedPending);
@@ -72,7 +74,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 .from('pencairan')
                 .select(`
                     *,
-                    nasabah:nasabah_id (name, username)
+                    nasabah:nasabah_id (name, username, phone)
                 `)
                 .eq('bank_sampah_id', bankId)
                 .in('status', ['approved', 'rejected', 'completed', 'cancelled'])
@@ -84,6 +86,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 ...item,
                 nasabah_name: item.nasabah?.name || '-',
                 nasabah_username: item.nasabah?.username || '-',
+                nasabah_phone: item.nasabah?.phone || '-',
             }));
 
             setHistoryList(mappedHistory);
@@ -107,7 +110,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 .from('pencairan')
                 .select(`
                     *,
-                    nasabah:nasabah_id (name, username)
+                    nasabah:nasabah_id (name, username, phone)
                 `)
                 .eq('bank_sampah_id', bankId)
                 .eq('status', 'approved')
@@ -119,6 +122,7 @@ export function PencairanProvider({ children }: { children: ReactNode }) {
                 ...item,
                 nasabah_name: item.nasabah?.name || '-',
                 nasabah_username: item.nasabah?.username || '-',
+                nasabah_phone: item.nasabah?.phone || '-',
             }));
 
             setApprovedList(mappedData);

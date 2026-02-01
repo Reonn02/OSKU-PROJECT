@@ -18,6 +18,7 @@ import BantuanContent from '@/components/landing/BantuanContent';
 import YearPicker from '@/components/shared/YearPicker';
 import { useBankSampah } from '@/contexts/BankSampahContext';
 import { usePenyetoran } from '@/contexts/PenyetoranContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { getAllNasabah, getTotalSaldo, getTotalNasabah, formatSaldo, getNasabahByBankSampah, getNasabahByBankId } from '@/data/nasabahData';
 import { supabase } from '@/lib/supabase';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -56,14 +57,27 @@ export default function PetugasDashboard() {
     const [showAllWasteTypes, setShowAllWasteTypes] = useState(false);
     const [petugasBankId, setPetugasBankId] = useState<string | null>(null);
     const [selectedWasteFilter, setSelectedWasteFilter] = useState('');
+    const [petugasEmail, setPetugasEmail] = useState<string>('');
+    const [petugasBankName, setPetugasBankName] = useState<string>('');
 
     // Get banks from context
     const { banks } = useBankSampah();
 
+    // Get auth user
+    const { user } = useAuth();
+
     // Get penyetoran from context
     const { penyetoranList, fetchPenyetoranByBank } = usePenyetoran();
 
-    // Load petugas bank ID from localStorage
+    // Set email from Auth Context (most reliable source)
+    useEffect(() => {
+        if (user && user.email) {
+            console.log('Setting petugas email from AuthContext:', user.email);
+            setPetugasEmail(user.email);
+        }
+    }, [user]);
+
+    // Load petugas data from localStorage immediately on mount
     useEffect(() => {
         const savedData = localStorage.getItem('petugasData');
         if (savedData) {
@@ -71,11 +85,35 @@ export default function PetugasDashboard() {
                 const petugasData = JSON.parse(savedData);
                 setPetugasBankId(petugasData.bankSampahId);
                 setPetugasBankName(petugasData.bankSampahNama);
+
+                // Set email from localStorage immediately
+                if (petugasData.email) {
+                    setPetugasEmail(petugasData.email);
+                } else if (petugasData.id) {
+                    // Fallback fetch if no email in localStorage
+                    const fetchEmail = async () => {
+                        try {
+                            const { data, error } = await supabase
+                                .from('petugas')
+                                .select('email')
+                                .eq('id', petugasData.id)
+                                .single();
+
+                            if (data && data.email) {
+                                setPetugasEmail(data.email);
+                            }
+                        } catch (err) {
+                            console.error('Error fetching petugas email:', err);
+                        }
+                    };
+                    fetchEmail();
+                }
+
             } catch (error) {
                 console.error('Error loading petugas data:', error);
             }
         }
-    }, []);
+    }, []); // Run once on mount
 
     // Fetch penyetoran when bank ID is available
     useEffect(() => {
@@ -122,7 +160,7 @@ export default function PetugasDashboard() {
         { label: 'petugas.dashboard.total_deposit', value: '0', icon: '/icon/LogoPenyetoran.svg' },
     ]);
 
-    const [petugasBankName, setPetugasBankName] = useState<string | null>(null);
+
 
     // Penyetoran values from database (amount per waste type)
     const [penyetoranValues, setPenyetoranValues] = useState<Record<string, { value: number; unit: string }>>({});
@@ -755,7 +793,7 @@ export default function PetugasDashboard() {
                     {activeTab === 'konfirmasi' && <KonfirmasiPetugas />}
                     {activeTab === 'penyetoran' && <PenyetoranPetugas />}
                     {activeTab === 'harga-sampah' && <HargaSampahPetugas />}
-                    {activeTab === 'laporan' && <LaporanPetugas />}
+                    {activeTab === 'laporan' && <LaporanPetugas petugasEmail={petugasEmail} />}
                     {activeTab === 'bantuan' && <BantuanContent role="petugas" />}
                 </main>
             </div>

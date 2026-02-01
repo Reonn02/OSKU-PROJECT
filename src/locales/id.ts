@@ -125,7 +125,7 @@ export const id = {
             waste_title: 'Sampah Yang Kami Kelola',
             waste_desc: 'Ini merupakan daftar sampah yang kami terima pada bank sampah kami',
             waste_bottle: 'Botol Plastik',
-            waste_bottle_desc: 'Botol plastik bekas minuman dengan various sizes',
+            waste_bottle_desc: 'Botol plastik bekas minuman dengan berbagai ukuran',
             waste_cardboard: 'Kardus',
             waste_cardboard_desc: 'Kardus bekas pakai dalam kondisi kering dan bersih',
             waste_jerrycan: 'Jerigen',
@@ -298,6 +298,16 @@ export const id = {
             btn_cancel: 'Batalkan',
             btn_yes_finish: 'Ya, Selesai',
             btn_yes_cancel: 'Ya, Batalkan',
+        },
+        persetujuan: {
+            title: 'Persetujuan Pencairan',
+            withdrawal_id: 'ID Pengajuan',
+            nasabah_id: 'ID Nasabah',
+            nasabah_name: 'Nama Nasabah',
+            amount: 'Jumlah',
+            reason: 'Alasan',
+            end_date: 'Tanggal Selesai',
+            pending_approve: 'Menunggu Persetujuan',
         }
     },
     nasabah: {

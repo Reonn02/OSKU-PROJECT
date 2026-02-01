@@ -50,27 +50,27 @@ export default function KonfirmasiPetugas() {
     }, [fetchApprovedByBank]);
 
     // Map database data to component format
-    const pendingData = approvedList.map(item => ({
+    const pendingData = approvedList.map((item: any) => ({
         id: item.id,
         withdrawal_id: item.id || '-',
-        nasabah_id: item.nasabah_username || '-',
+        nasabah_id: item.nasabah_id || '-', // Using actual UUID
         nasabah_name: item.nasabah_name || '-',
         amount: item.jumlah,
         approved_at: item.tanggal_pengajuan ? new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID') : '-',
-        phone: '-',
+        phone: item.nasabah_phone || '-', // Using flattened phone from context
         original_id: item.id
     }));
 
     const historyData = historyList
         .filter(item => item.status === 'completed' || item.status === 'cancelled')
-        .map(item => ({
+        .map((item: any) => ({
             id: item.id,
             withdrawal_id: item.id || '-',
-            nasabah_id: item.nasabah_username || '-',
+            nasabah_id: item.nasabah_id || '-', // Using actual UUID
             nasabah_name: item.nasabah_name || '-',
             amount: item.jumlah,
             approved_at: item.tanggal_pengajuan ? new Date(item.tanggal_pengajuan).toLocaleDateString('id-ID') : '-',
-            phone: '-',
+            phone: item.nasabah_phone || '-',
             status: item.status === 'completed' ? t('common.completed') : t('common.cancelled'),
 
             reason: item.alasan || '',

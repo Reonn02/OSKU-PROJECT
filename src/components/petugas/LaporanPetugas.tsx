@@ -1,17 +1,28 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { showStandaloneToast } from '@/components/shared/Toast';
 
-export default function LaporanPetugas() {
+interface LaporanPetugasProps {
+    petugasEmail?: string;
+}
+
+export default function LaporanPetugas({ petugasEmail = '' }: LaporanPetugasProps) {
     const [formData, setFormData] = useState({
-        emailPengirim: '',
+        emailPengirim: petugasEmail,
         emailPenerima: '',
         pesan: '',
         lampiran: [] as File[],
         lampiranPreviews: [] as string[]
     });
+
+    // Update emailPengirim when petugasEmail prop changes
+    useEffect(() => {
+        if (petugasEmail) {
+            setFormData(prev => ({ ...prev, emailPengirim: petugasEmail }));
+        }
+    }, [petugasEmail]);
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -146,7 +157,7 @@ export default function LaporanPetugas() {
                 showStandaloneToast('success', 'Laporan Berhasil Terkirim!', `Email telah dikirim ke ${formData.emailPenerima}`);
                 // Reset form
                 setFormData({
-                    emailPengirim: '',
+                    emailPengirim: petugasEmail || '',
                     emailPenerima: '',
                     pesan: '',
                     lampiran: [],
@@ -200,7 +211,9 @@ export default function LaporanPetugas() {
                                 placeholder="Contoh@gmail.com"
                                 value={formData.emailPengirim}
                                 onChange={(e) => setFormData({ ...formData, emailPengirim: e.target.value })}
-                                className="w-full px-6 py-3.5 rounded-2xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-medium text-gray-600 bg-white placeholder:text-primary/30"
+                                readOnly={!!petugasEmail}
+                                className={`w-full px-6 py-3.5 rounded-2xl border border-gray-300 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-sm font-medium text-gray-600 placeholder:text-primary/30 ${petugasEmail ? 'bg-gray-100 cursor-not-allowed' : 'bg-white'
+                                    }`}
                             />
                         </div>
 
