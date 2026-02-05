@@ -189,6 +189,7 @@ export default function PrediksiAdmin() {
                 setHasAnalyzed(false);
                 setPredictions([]);
                 setNextWeekPrediction(null);
+                setTrendPercentage(0);
                 setApiError('');
                 showStandaloneToast('success', 'File Berhasil Diupload', `${parsed.length} minggu data ditemukan.`);
             } catch (error: any) {
@@ -295,6 +296,11 @@ export default function PrediksiAdmin() {
                 const firstValue = weeklyData[0].saldo;
                 const lastValue = weeklyData[weeklyData.length - 1].saldo;
                 const trend = ((lastValue - firstValue) / firstValue) * 100;
+                console.log('=== TREND CALCULATION DEBUG ===');
+                console.log('First week date:', weeklyData[0].tanggal, 'saldo:', firstValue);
+                console.log('Last week date:', weeklyData[weeklyData.length - 1].tanggal, 'saldo:', lastValue);
+                console.log('Calculated trend:', trend, '%');
+                console.log('Rounded trend:', Math.round(trend * 10) / 10, '%');
                 setTrendPercentage(Math.round(trend * 10) / 10);
             }
 
