@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, useMemo } from 'react';
 import Image from 'next/image';
 import { showStandaloneToast } from '@/components/shared/Toast';
 
@@ -38,10 +38,22 @@ export default function PrediksiAdmin() {
     const [isAnalyzing, setIsAnalyzing] = useState(false);
     const [hasAnalyzed, setHasAnalyzed] = useState(false);
     const [fileName, setFileName] = useState<string>('');
-    const [trendPercentage, setTrendPercentage] = useState<number>(0);
     const [apiEndpoint, setApiEndpoint] = useState<string>('');
     const [apiError, setApiError] = useState<string>('');
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Calculate trend directly from weeklyData using useMemo
+    const trendPercentage = useMemo(() => {
+        if (weeklyData.length >= 2 && hasAnalyzed) {
+            const firstValue = weeklyData[0].saldo;
+            const lastValue = weeklyData[weeklyData.length - 1].saldo;
+            const trend = ((lastValue - firstValue) / firstValue) * 100;
+            console.log('=== TREND CALCULATION (useMemo) ===');
+            console.log('First:', firstValue, 'Last:', lastValue, 'Trend:', Math.round(trend * 10) / 10);
+            return Math.round(trend * 10) / 10;
+        }
+        return 0;
+    }, [weeklyData, hasAnalyzed]);
 
     // Handle drag over
     const handleDragOver = (e: React.DragEvent) => {
@@ -189,7 +201,6 @@ export default function PrediksiAdmin() {
                 setHasAnalyzed(false);
                 setPredictions([]);
                 setNextWeekPrediction(null);
-                setTrendPercentage(0);
                 setApiError('');
                 showStandaloneToast('success', 'File Berhasil Diupload', `${parsed.length} minggu data ditemukan.`);
             } catch (error: any) {
@@ -291,18 +302,7 @@ export default function PrediksiAdmin() {
             setNextWeekPrediction(result.prediction);
             setHasAnalyzed(true);
 
-            // Calculate trend
-            if (weeklyData.length >= 2) {
-                const firstValue = weeklyData[0].saldo;
-                const lastValue = weeklyData[weeklyData.length - 1].saldo;
-                const trend = ((lastValue - firstValue) / firstValue) * 100;
-                console.log('=== TREND CALCULATION DEBUG ===');
-                console.log('First week date:', weeklyData[0].tanggal, 'saldo:', firstValue);
-                console.log('Last week date:', weeklyData[weeklyData.length - 1].tanggal, 'saldo:', lastValue);
-                console.log('Calculated trend:', trend, '%');
-                console.log('Rounded trend:', Math.round(trend * 10) / 10, '%');
-                setTrendPercentage(Math.round(trend * 10) / 10);
-            }
+            // Note: Trend is now calculated via useMemo based on weeklyData and hasAnalyzed
 
             showStandaloneToast('success', 'Prediksi Selesai', 'Prediksi 1 minggu ke depan berhasil dibuat.');
         }
@@ -317,7 +317,6 @@ export default function PrediksiAdmin() {
         setFileName('');
         setHasAnalyzed(false);
         setNextWeekPrediction(null);
-        setTrendPercentage(0);
         setApiError('');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
