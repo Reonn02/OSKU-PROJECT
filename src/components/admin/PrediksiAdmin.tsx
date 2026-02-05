@@ -311,6 +311,7 @@ export default function PrediksiAdmin() {
         setFileName('');
         setHasAnalyzed(false);
         setNextWeekPrediction(null);
+        setTrendPercentage(0);
         setApiError('');
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
