@@ -210,6 +210,47 @@ export default function PrediksiAdmin() {
         reader.readAsText(file);
     };
 
+    // Calculate features from CSV data for the prediction API
+    const calculateFeatures = () => {
+        if (weeklyData.length < 4) {
+            throw new Error('Minimal 4 data diperlukan untuk prediksi');
+        }
+
+        // Data should already be sorted by date from parseCSV
+        const length = weeklyData.length;
+
+        // Lag features (saldo dari minggu-minggu sebelumnya)
+        const lag_1 = weeklyData[length - 1].saldo; // Saldo minggu terakhir
+        const lag_2 = weeklyData[length - 2].saldo; // Saldo 2 minggu lalu
+        const lag_3 = weeklyData[length - 3].saldo; // Saldo 3 minggu lalu
+
+        // Moving average 4 minggu terakhir
+        const ma_4 = (
+            weeklyData[length - 1].saldo +
+            weeklyData[length - 2].saldo +
+            weeklyData[length - 3].saldo +
+            weeklyData[length - 4].saldo
+        ) / 4;
+
+        // Hitung tanggal prediksi (1 minggu ke depan)
+        const lastDate = new Date(weeklyData[length - 1].tanggal);
+        const nextDate = new Date(lastDate);
+        nextDate.setDate(nextDate.getDate() + 7);
+
+        const bulan = nextDate.getMonth() + 1; // 1-12
+        const minggu_dalam_bulan = Math.ceil(nextDate.getDate() / 7); // 1-5
+
+        return {
+            lag_1,
+            lag_2,
+            lag_3,
+            ma_4,
+            bulan,
+            minggu_dalam_bulan,
+            predictionDate: nextDate.toISOString().split('T')[0]
+        };
+    };
+
     // Call API for prediction (Random Forest model)
     const callApiPrediction = async () => {
         if (!apiEndpoint) {
@@ -218,18 +259,25 @@ export default function PrediksiAdmin() {
         }
 
         try {
-            // Prepare data for API - send weekly saldo data
-            const apiData = weeklyData.map(d => ({
-                tanggal: d.tanggal,
-                saldo: d.saldo
-            }));
+            // Calculate features from data
+            const features = calculateFeatures();
 
-            const response = await fetch(apiEndpoint, {
+            console.log('=== API REQUEST DEBUG ===');
+            console.log('Endpoint:', apiEndpoint);
+            console.log('Features:', features);
+
+            const response = await fetch(`${apiEndpoint}/api/predict`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    data: apiData,
-                    weeks: 1 // Predict 1 week ahead
+                    features: {
+                        lag_1: features.lag_1,
+                        lag_2: features.lag_2,
+                        lag_3: features.lag_3,
+                        ma_4: features.ma_4,
+                        bulan: features.bulan,
+                        minggu_dalam_bulan: features.minggu_dalam_bulan
+                    }
                 })
             });
 
@@ -239,16 +287,18 @@ export default function PrediksiAdmin() {
             }
 
             const result = await response.json();
+            console.log('=== API RESPONSE DEBUG ===');
+            console.log('Result:', result);
 
-            // Expected response format: { prediction: number, next_date: string }
-            if (result.prediction !== undefined) {
+            // Expected response format: { success: true, prediction: number, message: string }
+            if (result.success && result.prediction !== undefined) {
                 return {
                     prediction: result.prediction,
-                    next_date: result.next_date || getNextWeekDate()
+                    next_date: features.predictionDate
                 };
             }
 
-            throw new Error('Format response API tidak valid');
+            throw new Error(result.message || 'Format response API tidak valid');
         } catch (error: any) {
             setApiError(error.message || 'Gagal menghubungi API');
             showStandaloneToast('error', 'API Error', error.message || 'Gagal menghubungi API.');
@@ -455,15 +505,16 @@ export default function PrediksiAdmin() {
 
                             {/* API Endpoint */}
                             <div className="mb-4">
-                                <label className="text-xs text-gray-600 block mb-2">API Endpoint (URL Backend Prediksi)</label>
+                                <label className="text-xs text-gray-600 block mb-2">API Base URL (tanpa /api/predict)</label>
                                 <input
                                     type="text"
                                     value={apiEndpoint}
                                     onChange={(e) => { setApiEndpoint(e.target.value); setApiError(''); }}
-                                    placeholder="https://your-api.vercel.app/api/predict"
+                                    placeholder="https://web-production-40b2a.up.railway.app"
                                     className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:border-primary ${apiError ? 'border-red-300 bg-red-50' : 'border-gray-200'
                                         }`}
                                 />
+                                <p className="text-xs text-gray-400 mt-1">/api/predict akan ditambahkan otomatis</p>
                                 {apiError && (
                                     <p className="text-xs text-red-500 mt-1">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
