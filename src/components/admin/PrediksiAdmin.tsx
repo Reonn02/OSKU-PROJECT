@@ -73,25 +73,69 @@ export default function PrediksiAdmin() {
 
     // Parse date from various formats
     const parseFlexibleDate = (dateStr: string): Date | null => {
-        // Try standard date parse first
-        let date = new Date(dateStr);
-        if (!isNaN(date.getTime())) return date;
-
-        // Try format "Jan 1 2025" or "Feb 15 2025"
+        // Month mapping (English + Indonesian)
         const monthMap: Record<string, number> = {
-            'jan': 0, 'feb': 1, 'mar': 2, 'apr': 3, 'may': 4, 'jun': 5,
-            'jul': 6, 'aug': 7, 'sep': 8, 'oct': 9, 'nov': 10, 'dec': 11
+            'jan': 0, 'januari': 0,
+            'feb': 1, 'februari': 1,
+            'mar': 2, 'maret': 2,
+            'apr': 3, 'april': 3,
+            'may': 4, 'mei': 4,
+            'jun': 5, 'juni': 5,
+            'jul': 6, 'juli': 6,
+            'aug': 7, 'agu': 7, 'agustus': 7,
+            'sep': 8, 'september': 8,
+            'oct': 9, 'okt': 9, 'oktober': 9,
+            'nov': 10, 'november': 10,
+            'dec': 11, 'des': 11, 'desember': 11
         };
-        const parts = dateStr.trim().split(/\s+/);
-        if (parts.length >= 3) {
-            const monthStr = parts[0].toLowerCase().slice(0, 3);
-            const day = parseInt(parts[1]);
-            const year = parseInt(parts[2]);
-            if (monthMap[monthStr] !== undefined && !isNaN(day) && !isNaN(year)) {
-                return new Date(year, monthMap[monthStr], day);
+
+        // Clean the string
+        const cleanStr = dateStr.trim();
+
+        // Try standard date parse first (e.g., "2026-01-01" or "01/01/2026")
+        let date = new Date(cleanStr);
+        if (!isNaN(date.getTime()) && date.getFullYear() > 1990 && date.getFullYear() < 2100) {
+            return date;
+        }
+
+        // Try format "Jan 1-7 2026" or "Jan 1-14 2026" (date range format)
+        // Extract: Month, StartDay, Year
+        const rangeMatch = cleanStr.match(/^([A-Za-z]+)\s+(\d+)[-–]\d+\s+(\d{4})$/);
+        if (rangeMatch) {
+            const monthStr = rangeMatch[1].toLowerCase();
+            const day = parseInt(rangeMatch[2]);
+            const year = parseInt(rangeMatch[3]);
+            const monthNum = monthMap[monthStr] ?? monthMap[monthStr.slice(0, 3)];
+            if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
+                return new Date(year, monthNum, day);
             }
         }
 
+        // Try format "Jan 1 2025" or "Feb 15 2025" (single date format)
+        const parts = cleanStr.split(/\s+/);
+        if (parts.length >= 3) {
+            const monthStr = parts[0].toLowerCase();
+            const day = parseInt(parts[1].replace(/[^\d]/g, '')); // Remove non-digits
+            const year = parseInt(parts[2]);
+            const monthNum = monthMap[monthStr] ?? monthMap[monthStr.slice(0, 3)];
+            if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
+                return new Date(year, monthNum, day);
+            }
+        }
+
+        // Try format "21 Mei 2031" or "7 Jan 2026" (day first)
+        const dayFirstMatch = cleanStr.match(/^(\d+)\s+([A-Za-z]+)\s+(\d{4})$/);
+        if (dayFirstMatch) {
+            const day = parseInt(dayFirstMatch[1]);
+            const monthStr = dayFirstMatch[2].toLowerCase();
+            const year = parseInt(dayFirstMatch[3]);
+            const monthNum = monthMap[monthStr] ?? monthMap[monthStr.slice(0, 3)];
+            if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
+                return new Date(year, monthNum, day);
+            }
+        }
+
+        console.warn('Could not parse date:', dateStr);
         return null;
     };
 
