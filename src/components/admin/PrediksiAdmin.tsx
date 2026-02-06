@@ -172,13 +172,19 @@ export default function PrediksiAdmin() {
     const handleFileUpload = (file: File) => {
         if (!file.name.endsWith('.csv')) {
             showStandaloneToast('warning', 'Format Tidak Valid', 'Hanya file CSV yang diizinkan.');
+            // Reset file input to allow re-upload
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
 
         if (file.size > 5 * 1024 * 1024) {
             showStandaloneToast('warning', 'File Terlalu Besar', 'Maksimal ukuran file 5MB.');
+            // Reset file input to allow re-upload
+            if (fileInputRef.current) fileInputRef.current.value = '';
             return;
         }
+
+        const isReplacing = fileName !== '' && fileName === file.name;
 
         const reader = new FileReader();
         reader.onload = (e) => {
@@ -188,11 +194,13 @@ export default function PrediksiAdmin() {
 
                 if (parsed.length === 0) {
                     showStandaloneToast('warning', 'Data Kosong', 'Tidak ditemukan data valid dalam CSV.');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
                     return;
                 }
 
                 if (parsed.length < 4) {
                     showStandaloneToast('warning', 'Data Kurang', 'Minimal 4 minggu data diperlukan untuk prediksi.');
+                    if (fileInputRef.current) fileInputRef.current.value = '';
                     return;
                 }
 
@@ -202,9 +210,19 @@ export default function PrediksiAdmin() {
                 setPredictions([]);
                 setNextWeekPrediction(null);
                 setApiError('');
-                showStandaloneToast('success', 'File Berhasil Diupload', `${parsed.length} minggu data ditemukan.`);
+
+                // Show appropriate toast message
+                if (isReplacing) {
+                    showStandaloneToast('success', 'File Berhasil Diubah', `Data diperbarui dengan ${parsed.length} minggu data.`);
+                } else {
+                    showStandaloneToast('success', 'File Berhasil Diupload', `${parsed.length} minggu data ditemukan.`);
+                }
+
+                // Reset file input to allow re-upload of same file
+                if (fileInputRef.current) fileInputRef.current.value = '';
             } catch (error: any) {
                 showStandaloneToast('error', 'Parsing Gagal', error.message || 'Terjadi kesalahan saat membaca CSV.');
+                if (fileInputRef.current) fileInputRef.current.value = '';
             }
         };
         reader.readAsText(file);
