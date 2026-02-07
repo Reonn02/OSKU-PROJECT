@@ -54,16 +54,24 @@ export default function PrediksiAdmin() {
     const fileInputRef = useRef<HTMLInputElement>(null);
 
     // Calculate trend directly from weeklyData using useMemo
-    const trendPercentage = useMemo(() => {
+    const trendPercentage = useMemo((): number | null => {
         if (weeklyData.length >= 2 && hasAnalyzed) {
             const firstValue = weeklyData[0].saldo;
             const lastValue = weeklyData[weeklyData.length - 1].saldo;
+
+            // Return null if firstValue is 0 (can't calculate percentage change)
+            if (firstValue === 0) {
+                console.log('=== TREND CALCULATION (useMemo) ===');
+                console.log('First value is 0, cannot calculate trend');
+                return null;
+            }
+
             const trend = ((lastValue - firstValue) / firstValue) * 100;
             console.log('=== TREND CALCULATION (useMemo) ===');
             console.log('First:', firstValue, 'Last:', lastValue, 'Trend:', Math.round(trend * 10) / 10);
             return Math.round(trend * 10) / 10;
         }
-        return 0;
+        return null;
     }, [weeklyData, hasAnalyzed]);
 
     // Handle drag over
@@ -418,6 +426,21 @@ export default function PrediksiAdmin() {
             return;
         }
 
+        // Validate data quality - check if all values are 0
+        const allZero = weeklyData.every(d => d.saldo === 0);
+        if (allZero) {
+            showStandaloneToast('warning', 'Data Tidak Valid', 'Semua data saldo bernilai 0. Prediksi tidak dapat dilakukan dengan data kosong.');
+            return;
+        }
+
+        // Check if last 4 weeks are all 0 (minimum requirement for prediction)
+        const last4Weeks = weeklyData.slice(-4);
+        const last4AllZero = last4Weeks.every(d => d.saldo === 0);
+        if (last4AllZero) {
+            showStandaloneToast('warning', 'Data Tidak Valid', 'Data 4 minggu terakhir bernilai 0. Prediksi memerlukan data saldo yang valid.');
+            return;
+        }
+
         setIsAnalyzing(true);
         setApiError('');
 
@@ -473,9 +496,17 @@ export default function PrediksiAdmin() {
 
     // Get last week data for comparison
     const lastWeekData = weeklyData.length > 0 ? weeklyData[weeklyData.length - 1] : null;
-    const predictionChange = lastWeekData && nextWeekPrediction
+    const predictionChange = lastWeekData && nextWeekPrediction && lastWeekData.saldo !== 0
         ? ((nextWeekPrediction - lastWeekData.saldo) / lastWeekData.saldo) * 100
-        : 0;
+        : null; // null indicates cannot calculate (division by zero)
+
+    // Helper to format percentage safely
+    const formatPercentage = (value: number | null): string => {
+        if (value === null || !isFinite(value) || isNaN(value)) {
+            return 'N/A';
+        }
+        return `${value >= 0 ? '+' : ''}${Math.round(value * 10) / 10}%`;
+    };
 
     return (
         <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full overflow-hidden">
@@ -681,34 +712,32 @@ export default function PrediksiAdmin() {
                         {/* Change from Last Week */}
                         <div className="bg-white rounded-[20px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                             <div className="flex items-center gap-3 mb-3">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${predictionChange >= 0 ? 'bg-tertiary' : 'bg-red-50'
-                                    }`}>
-                                    <i className={`fas ${predictionChange >= 0 ? 'fa-arrow-up text-primary' : 'fa-arrow-down text-warning'}`}></i>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${predictionChange === null ? 'bg-gray-100' : predictionChange >= 0 ? 'bg-tertiary' : 'bg-red-50'}`}>
+                                    <i className={`fas ${predictionChange === null ? 'fa-minus text-gray-400' : predictionChange >= 0 ? 'fa-arrow-up text-primary' : 'fa-arrow-down text-warning'}`}></i>
                                 </div>
-                                <p className={`text-xs font-bold uppercase ${predictionChange >= 0 ? 'text-primary opacity-60' : 'text-warning'}`}>Perubahan</p>
+                                <p className={`text-xs font-bold uppercase ${predictionChange === null ? 'text-gray-400' : predictionChange >= 0 ? 'text-primary opacity-60' : 'text-warning'}`}>Perubahan</p>
                             </div>
-                            <p className={`text-2xl font-bold ${predictionChange >= 0 ? 'text-primary' : 'text-warning'}`}>
-                                {predictionChange >= 0 ? '+' : ''}{Math.round(predictionChange * 10) / 10}%
+                            <p className={`text-2xl font-bold ${predictionChange === null ? 'text-gray-400' : predictionChange >= 0 ? 'text-primary' : 'text-warning'}`}>
+                                {formatPercentage(predictionChange)}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                Dari minggu terakhir
+                                {predictionChange === null ? 'Data sebelumnya 0' : 'Dari minggu terakhir'}
                             </p>
                         </div>
 
                         {/* Historical Trend */}
                         <div className="bg-white rounded-[20px] p-6 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                             <div className="flex items-center gap-3 mb-3">
-                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${trendPercentage >= 0 ? 'bg-tertiary' : 'bg-red-50'
-                                    }`}>
-                                    <i className={`fas ${trendPercentage >= 0 ? 'fa-arrow-trend-up text-primary' : 'fa-arrow-trend-down text-warning'}`}></i>
+                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${trendPercentage === null ? 'bg-gray-100' : trendPercentage >= 0 ? 'bg-tertiary' : 'bg-red-50'}`}>
+                                    <i className={`fas ${trendPercentage === null ? 'fa-minus text-gray-400' : trendPercentage >= 0 ? 'fa-arrow-trend-up text-primary' : 'fa-arrow-trend-down text-warning'}`}></i>
                                 </div>
-                                <p className={`text-xs font-bold uppercase ${trendPercentage >= 0 ? 'text-primary opacity-60' : 'text-warning'}`}>Trend Historis</p>
+                                <p className={`text-xs font-bold uppercase ${trendPercentage === null ? 'text-gray-400' : trendPercentage >= 0 ? 'text-primary opacity-60' : 'text-warning'}`}>Trend Historis</p>
                             </div>
-                            <p className={`text-2xl font-bold ${trendPercentage >= 0 ? 'text-primary' : 'text-warning'}`}>
-                                {trendPercentage >= 0 ? '+' : ''}{trendPercentage}%
+                            <p className={`text-2xl font-bold ${trendPercentage === null ? 'text-gray-400' : trendPercentage >= 0 ? 'text-primary' : 'text-warning'}`}>
+                                {formatPercentage(trendPercentage)}
                             </p>
                             <p className="text-xs text-gray-500 mt-1">
-                                Selama {weeklyData.length} minggu
+                                {trendPercentage === null ? 'Data awal 0' : `Selama ${weeklyData.length} minggu`}
                             </p>
                         </div>
                     </div>
@@ -733,9 +762,9 @@ export default function PrediksiAdmin() {
                         </div>
 
                         {/* Bar Chart */}
-                        <div className="relative h-[300px] w-full overflow-x-hidden overflow-y-visible pt-14">
+                        <div className="relative h-[360px] w-full overflow-visible">
                             {/* Y-axis labels */}
-                            <div className="absolute left-0 top-0 bottom-10 w-24 flex flex-col justify-between text-[10px] text-gray-400 pr-2 text-right z-10 bg-white">
+                            <div className="absolute left-0 top-0 bottom-10 w-28 flex flex-col justify-between text-[10px] text-gray-400 pr-3 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.75))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.5))}</span>
@@ -744,7 +773,7 @@ export default function PrediksiAdmin() {
                             </div>
 
                             {/* Chart area with horizontal scroll */}
-                            <div className="ml-24 h-full overflow-x-auto">
+                            <div className="ml-28 h-full overflow-x-auto">
                                 <div
                                     className="h-full border-l border-b border-gray-200 relative"
                                     style={{
@@ -760,7 +789,7 @@ export default function PrediksiAdmin() {
                                     </div>
 
                                     {/* Bar chart data */}
-                                    <div className="absolute inset-0 flex items-end justify-around gap-1" style={{ paddingBottom: '40px', paddingLeft: '8px', paddingRight: '8px' }}>
+                                    <div className="absolute inset-0 flex items-end justify-around gap-1" style={{ paddingBottom: '40px', paddingLeft: '60px', paddingRight: '8px' }}>
                                         {predictions.map((p, idx) => {
                                             const value = p.isPredict ? p.prediksi : p.saldo;
                                             const chartAreaHeight = 250;
@@ -783,9 +812,9 @@ export default function PrediksiAdmin() {
                                                         }}
                                                     ></div>
 
-                                                    {/* Tooltip */}
+                                                    {/* Tooltip - positioned to the right for first few bars to avoid clipping */}
                                                     <div
-                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] left-1/2 -translate-x-1/2"
+                                                        className={`absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] ${idx < 2 ? 'left-0' : 'left-1/2 -translate-x-1/2'}`}
                                                         style={{ bottom: `${barHeight + 10}px` }}
                                                     >
                                                         <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
@@ -799,7 +828,7 @@ export default function PrediksiAdmin() {
                                     </div>
 
                                     {/* X-axis labels */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-10 flex items-center justify-around gap-1" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
+                                    <div className="absolute bottom-0 left-0 right-0 h-10 flex items-center justify-around gap-1" style={{ paddingLeft: '60px', paddingRight: '8px' }}>
                                         {predictions.map((p, idx) => {
                                             // For prediction point, show "Prediksi" instead of date
                                             if (p.isPredict) {
@@ -817,6 +846,11 @@ export default function PrediksiAdmin() {
                                             const currentDate = parseFlexibleDate(p.tanggal) || new Date(p.tanggal);
                                             const day = currentDate.getDate();
                                             const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
+                                            const year = currentDate.getFullYear();
+                                            const monthIndex = currentDate.getMonth();
+
+                                            // Get the actual number of days in the month
+                                            const daysInMonth = new Date(year, monthIndex + 1, 0).getDate();
 
                                             let startDay: number, endDay: number;
                                             if (day <= 7) {
@@ -826,7 +860,8 @@ export default function PrediksiAdmin() {
                                             } else if (day <= 21) {
                                                 startDay = 15; endDay = 21;
                                             } else {
-                                                startDay = 22; endDay = 28;
+                                                // Last week of the month - use actual last day
+                                                startDay = 22; endDay = daysInMonth;
                                             }
 
                                             const label = `${month} ${startDay}-${endDay}`;
