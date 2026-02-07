@@ -75,64 +75,80 @@ export default function PrediksiAdmin() {
     const parseFlexibleDate = (dateStr: string): Date | null => {
         // Month mapping (English + Indonesian)
         const monthMap: Record<string, number> = {
-            'jan': 0, 'januari': 0,
-            'feb': 1, 'februari': 1,
-            'mar': 2, 'maret': 2,
+            'jan': 0, 'januari': 0, 'january': 0,
+            'feb': 1, 'februari': 1, 'february': 1,
+            'mar': 2, 'maret': 2, 'march': 2,
             'apr': 3, 'april': 3,
             'may': 4, 'mei': 4,
-            'jun': 5, 'juni': 5,
-            'jul': 6, 'juli': 6,
-            'aug': 7, 'agu': 7, 'agustus': 7,
+            'jun': 5, 'juni': 5, 'june': 5,
+            'jul': 6, 'juli': 6, 'july': 6,
+            'aug': 7, 'agu': 7, 'agustus': 7, 'august': 7,
             'sep': 8, 'september': 8,
-            'oct': 9, 'okt': 9, 'oktober': 9,
+            'oct': 9, 'okt': 9, 'oktober': 9, 'october': 9,
             'nov': 10, 'november': 10,
-            'dec': 11, 'des': 11, 'desember': 11
+            'dec': 11, 'des': 11, 'desember': 11, 'december': 11
         };
 
         // Clean the string
         const cleanStr = dateStr.trim();
 
-        // Try standard date parse first (e.g., "2026-01-01" or "01/01/2026")
-        let date = new Date(cleanStr);
-        if (!isNaN(date.getTime()) && date.getFullYear() > 1990 && date.getFullYear() < 2100) {
-            return date;
-        }
+        // Helper to get month number from string
+        const getMonthNum = (str: string): number | undefined => {
+            const lower = str.toLowerCase();
+            return monthMap[lower] ?? monthMap[lower.slice(0, 3)];
+        };
 
-        // Try format "Jan 1-7 2026" or "Jan 1-14 2026" (date range format)
-        // Extract: Month, StartDay, Year
+        // 1. Try format "Jan 1-7 2026" or "Jan 1-14 2026" (date range format)
         const rangeMatch = cleanStr.match(/^([A-Za-z]+)\s+(\d+)[-–]\d+\s+(\d{4})$/);
         if (rangeMatch) {
-            const monthStr = rangeMatch[1].toLowerCase();
+            const monthNum = getMonthNum(rangeMatch[1]);
             const day = parseInt(rangeMatch[2]);
             const year = parseInt(rangeMatch[3]);
-            const monthNum = monthMap[monthStr] ?? monthMap[monthStr.slice(0, 3)];
             if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
                 return new Date(year, monthNum, day);
             }
         }
 
-        // Try format "Jan 1 2025" or "Feb 15 2025" (single date format)
-        const parts = cleanStr.split(/\s+/);
-        if (parts.length >= 3) {
-            const monthStr = parts[0].toLowerCase();
-            const day = parseInt(parts[1].replace(/[^\d]/g, '')); // Remove non-digits
-            const year = parseInt(parts[2]);
-            const monthNum = monthMap[monthStr] ?? monthMap[monthStr.slice(0, 3)];
+        // 2. Try format "Jan 1 2025" or "Feb 15 2025" (Month Day Year)
+        const mdyMatch = cleanStr.match(/^([A-Za-z]+)\s+(\d+)\s+(\d{4})$/);
+        if (mdyMatch) {
+            const monthNum = getMonthNum(mdyMatch[1]);
+            const day = parseInt(mdyMatch[2]);
+            const year = parseInt(mdyMatch[3]);
+            if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
+                console.log(`Parsed "${cleanStr}" -> ${year}-${monthNum + 1}-${day}`);
+                return new Date(year, monthNum, day);
+            }
+        }
+
+        // 3. Try format "21 Mei 2031" or "7 Jan 2026" (Day Month Year)
+        const dmyMatch = cleanStr.match(/^(\d+)\s+([A-Za-z]+)\s+(\d{4})$/);
+        if (dmyMatch) {
+            const day = parseInt(dmyMatch[1]);
+            const monthNum = getMonthNum(dmyMatch[2]);
+            const year = parseInt(dmyMatch[3]);
             if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
                 return new Date(year, monthNum, day);
             }
         }
 
-        // Try format "21 Mei 2031" or "7 Jan 2026" (day first)
-        const dayFirstMatch = cleanStr.match(/^(\d+)\s+([A-Za-z]+)\s+(\d{4})$/);
-        if (dayFirstMatch) {
-            const day = parseInt(dayFirstMatch[1]);
-            const monthStr = dayFirstMatch[2].toLowerCase();
-            const year = parseInt(dayFirstMatch[3]);
-            const monthNum = monthMap[monthStr] ?? monthMap[monthStr.slice(0, 3)];
-            if (monthNum !== undefined && !isNaN(day) && !isNaN(year)) {
-                return new Date(year, monthNum, day);
-            }
+        // 4. Try ISO format "2026-01-01" or similar standard formats
+        // Only use native parser for clearly formatted dates
+        const isoMatch = cleanStr.match(/^(\d{4})[-/](\d{1,2})[-/](\d{1,2})$/);
+        if (isoMatch) {
+            const year = parseInt(isoMatch[1]);
+            const month = parseInt(isoMatch[2]) - 1; // 0-indexed
+            const day = parseInt(isoMatch[3]);
+            return new Date(year, month, day);
+        }
+
+        // 5. Try "DD/MM/YYYY" or "DD-MM-YYYY" format
+        const ddmmyyyyMatch = cleanStr.match(/^(\d{1,2})[-/](\d{1,2})[-/](\d{4})$/);
+        if (ddmmyyyyMatch) {
+            const day = parseInt(ddmmyyyyMatch[1]);
+            const month = parseInt(ddmmyyyyMatch[2]) - 1;
+            const year = parseInt(ddmmyyyyMatch[3]);
+            return new Date(year, month, day);
         }
 
         console.warn('Could not parse date:', dateStr);
@@ -694,7 +710,7 @@ export default function PrediksiAdmin() {
                         {/* Chart */}
                         <div className="relative h-[300px] w-full">
                             {/* Y-axis labels */}
-                            <div className="absolute left-0 top-0 bottom-8 w-20 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right">
+                            <div className="absolute left-0 top-0 bottom-8 w-20 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.75))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.5))}</span>
@@ -702,74 +718,93 @@ export default function PrediksiAdmin() {
                                 <span>0</span>
                             </div>
 
-                            {/* Chart area */}
-                            <div className="ml-20 h-full border-l border-b border-gray-200 relative">
-                                {/* Grid lines */}
-                                <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ paddingBottom: '32px' }}>
-                                    {[0, 1, 2, 3, 4].map(i => (
-                                        <div key={i} className="border-t border-gray-100 w-full"></div>
-                                    ))}
-                                </div>
+                            {/* Chart area with horizontal scroll */}
+                            <div className="ml-20 h-full overflow-x-auto">
+                                <div
+                                    className="h-full border-l border-b border-gray-200 relative"
+                                    style={{
+                                        minWidth: predictions.length > 12 ? `${predictions.length * 50}px` : '100%',
+                                        width: predictions.length <= 12 ? '100%' : 'auto'
+                                    }}
+                                >
+                                    {/* Grid lines */}
+                                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ paddingBottom: '32px' }}>
+                                        {[0, 1, 2, 3, 4].map(i => (
+                                            <div key={i} className="border-t border-gray-100 w-full"></div>
+                                        ))}
+                                    </div>
 
-                                {/* Data points */}
-                                <div className="absolute inset-0 flex items-end justify-between" style={{ paddingBottom: '32px', paddingLeft: '4px', paddingRight: '4px' }}>
-                                    {predictions.map((p, idx) => {
-                                        const value = p.isPredict ? p.prediksi : p.saldo;
-                                        const chartAreaHeight = 268;
-                                        const maxVal = maxChartValue * 1.1;
-                                        const dotBottom = maxVal > 0 ? ((value || 0) / maxVal) * chartAreaHeight : 0;
+                                    {/* Data points */}
+                                    <div className="absolute inset-0 flex items-end justify-between" style={{ paddingBottom: '32px', paddingLeft: '4px', paddingRight: '4px' }}>
+                                        {predictions.map((p, idx) => {
+                                            const value = p.isPredict ? p.prediksi : p.saldo;
+                                            const chartAreaHeight = 268;
+                                            const maxVal = maxChartValue * 1.1;
+                                            const dotBottom = maxVal > 0 ? ((value || 0) / maxVal) * chartAreaHeight : 0;
 
-                                        return (
-                                            <div
-                                                key={idx}
-                                                className="relative group"
-                                                style={{ flex: 1 }}
-                                            >
-                                                {/* Dot */}
+                                            return (
                                                 <div
-                                                    className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-150 ${p.isPredict ? 'bg-green-500' : 'bg-primary'
-                                                        }`}
-                                                    style={{
-                                                        bottom: `${dotBottom}px`,
-                                                        transform: 'translateX(-50%) translateY(50%)'
-                                                    }}
-                                                ></div>
-
-                                                {/* Tooltip */}
-                                                <div
-                                                    className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 left-1/2 -translate-x-1/2"
-                                                    style={{ bottom: `${dotBottom + 20}px` }}
+                                                    key={idx}
+                                                    className="relative group"
+                                                    style={{ flex: 1, minWidth: predictions.length > 12 ? '46px' : 'auto' }}
                                                 >
-                                                    <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
-                                                        <p className="font-bold">{formatDate(p.tanggal)}</p>
-                                                        <p>{p.isPredict ? 'Prediksi' : 'Aktual'}: {formatCurrency(value || 0)}</p>
+                                                    {/* Dot */}
+                                                    <div
+                                                        className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-150 ${p.isPredict ? 'bg-green-500' : 'bg-primary'
+                                                            }`}
+                                                        style={{
+                                                            bottom: `${dotBottom}px`,
+                                                            transform: 'translateX(-50%) translateY(50%)'
+                                                        }}
+                                                    ></div>
+
+                                                    {/* Tooltip */}
+                                                    <div
+                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 left-1/2 -translate-x-1/2"
+                                                        style={{ bottom: `${dotBottom + 20}px` }}
+                                                    >
+                                                        <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
+                                                            <p className="font-bold">{formatDate(p.tanggal)}</p>
+                                                            <p>{p.isPredict ? 'Prediksi' : 'Aktual'}: {formatCurrency(value || 0)}</p>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        );
-                                    })}
-                                </div>
+                                            );
+                                        })}
+                                    </div>
 
-                                {/* X-axis labels */}
-                                <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-between items-end px-1">
-                                    {predictions.map((p, idx) => {
-                                        const showLabel = predictions.length <= 12
-                                            || idx === 0
-                                            || idx === predictions.length - 1
-                                            || idx % Math.ceil(predictions.length / 6) === 0;
+                                    {/* X-axis labels - show all dates */}
+                                    <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-between items-end px-1">
+                                        {predictions.map((p, idx) => {
+                                            // Get month info for this and previous data point
+                                            const currentDate = new Date(p.tanggal);
+                                            const prevDate = idx > 0 ? new Date(predictions[idx - 1].tanggal) : null;
+                                            const isNewMonth = !prevDate || currentDate.getMonth() !== prevDate.getMonth();
 
-                                        return (
-                                            <div
-                                                key={idx}
-                                                className={`text-center text-[10px] ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
-                                                style={{ flex: 1 }}
-                                            >
-                                                {showLabel && (
-                                                    <span>{new Date(p.tanggal).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' })}</span>
-                                                )}
-                                            </div>
-                                        );
-                                    })}
+                                            // Show label if: first item, last item, new month, or every 4th item if more than 12
+                                            const showLabel = idx === 0
+                                                || idx === predictions.length - 1
+                                                || isNewMonth
+                                                || (predictions.length > 12 && idx % 4 === 0);
+
+                                            return (
+                                                <div
+                                                    key={idx}
+                                                    className={`text-center text-[10px] ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
+                                                    style={{ flex: 1, minWidth: predictions.length > 12 ? '46px' : 'auto' }}
+                                                >
+                                                    {showLabel && (
+                                                        <span className="whitespace-nowrap">
+                                                            {currentDate.toLocaleDateString('id-ID', {
+                                                                day: '2-digit',
+                                                                month: 'short'
+                                                            })}
+                                                        </span>
+                                                    )}
+                                                </div>
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
                         </div>
