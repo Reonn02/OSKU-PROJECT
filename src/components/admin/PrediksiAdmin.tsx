@@ -606,7 +606,7 @@ export default function PrediksiAdmin() {
                                     className={`w-full px-4 py-3 rounded-xl border text-sm focus:outline-none focus:border-primary ${apiError ? 'border-red-300 bg-red-50' : 'border-gray-200'
                                         }`}
                                 />
-                                <p className="text-xs text-gray-400 mt-1">/api/predict akan ditambahkan otomatis</p>
+
                                 <button
                                     type="button"
                                     onClick={() => {
@@ -685,7 +685,7 @@ export default function PrediksiAdmin() {
                                     }`}>
                                     <i className={`fas ${predictionChange >= 0 ? 'fa-arrow-up text-primary' : 'fa-arrow-down text-warning'}`}></i>
                                 </div>
-                                <p className="text-xs font-bold text-primary opacity-60 uppercase">Perubahan</p>
+                                <p className={`text-xs font-bold uppercase ${predictionChange >= 0 ? 'text-primary opacity-60' : 'text-warning'}`}>Perubahan</p>
                             </div>
                             <p className={`text-2xl font-bold ${predictionChange >= 0 ? 'text-primary' : 'text-warning'}`}>
                                 {predictionChange >= 0 ? '+' : ''}{Math.round(predictionChange * 10) / 10}%
@@ -702,7 +702,7 @@ export default function PrediksiAdmin() {
                                     }`}>
                                     <i className={`fas ${trendPercentage >= 0 ? 'fa-arrow-trend-up text-primary' : 'fa-arrow-trend-down text-warning'}`}></i>
                                 </div>
-                                <p className="text-xs font-bold text-primary opacity-60 uppercase">Trend Historis</p>
+                                <p className={`text-xs font-bold uppercase ${trendPercentage >= 0 ? 'text-primary opacity-60' : 'text-warning'}`}>Trend Historis</p>
                             </div>
                             <p className={`text-2xl font-bold ${trendPercentage >= 0 ? 'text-primary' : 'text-warning'}`}>
                                 {trendPercentage >= 0 ? '+' : ''}{trendPercentage}%
@@ -801,6 +801,19 @@ export default function PrediksiAdmin() {
                                     {/* X-axis labels */}
                                     <div className="absolute bottom-0 left-0 right-0 h-10 flex items-center justify-around gap-1" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
                                         {predictions.map((p, idx) => {
+                                            // For prediction point, show "Prediksi" instead of date
+                                            if (p.isPredict) {
+                                                return (
+                                                    <div
+                                                        key={idx}
+                                                        className="text-center text-[9px] flex-1 text-green-600 font-bold"
+                                                        style={{ minWidth: predictions.length > 8 ? '30px' : 'auto', maxWidth: '40px' }}
+                                                    >
+                                                        <span className="whitespace-nowrap">Prediksi</span>
+                                                    </div>
+                                                );
+                                            }
+
                                             const currentDate = parseFlexibleDate(p.tanggal) || new Date(p.tanggal);
                                             const day = currentDate.getDate();
                                             const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
@@ -821,7 +834,7 @@ export default function PrediksiAdmin() {
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className={`text-center text-[9px] flex-1 ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
+                                                    className="text-center text-[9px] flex-1 text-gray-400"
                                                     style={{ minWidth: predictions.length > 8 ? '30px' : 'auto', maxWidth: '40px' }}
                                                 >
                                                     <span className="whitespace-nowrap">{label}</span>
@@ -879,7 +892,8 @@ export default function PrediksiAdmin() {
                         </div>
                     </div>
                 </div>
-            )}
-        </div>
+            )
+            }
+        </div >
     );
 }
