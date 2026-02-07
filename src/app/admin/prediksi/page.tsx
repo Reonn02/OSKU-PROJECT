@@ -43,7 +43,7 @@ export default function PrediksiPage() {
     };
 
     return (
-        <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex">
+        <div className="min-h-screen bg-tertiary font-sans text-gray-900 flex overflow-x-hidden">
             {/* Sidebar */}
             <SidebarAdmin
                 activeTab="prediksi"
@@ -52,13 +52,13 @@ export default function PrediksiPage() {
             />
 
             {/* Main Content */}
-            <div className={`flex-grow ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col transition-all duration-300 ease-in-out`}>
+            <div className={`flex-grow ${isSidebarCollapsed ? 'lg:ml-20' : 'lg:ml-64'} flex flex-col transition-all duration-300 ease-in-out overflow-x-hidden max-w-full`}>
                 <NavbarAdmin
                     onLogout={() => setShowLogoutModal(true)}
                     onToggleSidebar={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
                 />
 
-                <main className="p-6 lg:p-10 space-y-6 max-w-[1600px] mx-auto w-full">
+                <main className="p-4 lg:p-8 space-y-6 w-full overflow-x-hidden">
                     <PrediksiAdmin />
                 </main>
             </div>
