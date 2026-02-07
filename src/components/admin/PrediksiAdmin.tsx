@@ -607,6 +607,17 @@ export default function PrediksiAdmin() {
                                         }`}
                                 />
                                 <p className="text-xs text-gray-400 mt-1">/api/predict akan ditambahkan otomatis</p>
+                                <button
+                                    type="button"
+                                    onClick={() => {
+                                        setApiEndpoint('https://web-production-40b2a.up.railway.app');
+                                        showStandaloneToast('success', 'URL Disalin', 'URL API telah diisi otomatis.');
+                                    }}
+                                    className="text-xs text-primary hover:underline mt-1 cursor-pointer"
+                                >
+                                    <i className="fas fa-link mr-1"></i>
+                                    Gunakan: https://web-production-40b2a.up.railway.app
+                                </button>
                                 {apiError && (
                                     <p className="text-xs text-red-500 mt-1">
                                         <i className="fas fa-exclamation-circle mr-1"></i>
@@ -721,10 +732,10 @@ export default function PrediksiAdmin() {
                             </div>
                         </div>
 
-                        {/* Chart */}
-                        <div className="relative h-[280px] w-full">
+                        {/* Bar Chart */}
+                        <div className="relative h-[300px] w-full overflow-hidden">
                             {/* Y-axis labels */}
-                            <div className="absolute left-0 top-0 bottom-10 w-20 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right z-10 bg-white">
+                            <div className="absolute left-0 top-0 bottom-10 w-24 flex flex-col justify-between text-[10px] text-gray-400 pr-2 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.75))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.5))}</span>
@@ -733,12 +744,12 @@ export default function PrediksiAdmin() {
                             </div>
 
                             {/* Chart area with horizontal scroll */}
-                            <div className="ml-20 h-full overflow-x-auto">
+                            <div className="ml-24 h-full overflow-x-auto">
                                 <div
                                     className="h-full border-l border-b border-gray-200 relative"
                                     style={{
-                                        minWidth: predictions.length > 12 ? `${predictions.length * 50}px` : '100%',
-                                        width: predictions.length <= 12 ? '100%' : 'auto'
+                                        minWidth: predictions.length > 8 ? `${predictions.length * 60}px` : '100%',
+                                        width: predictions.length <= 8 ? '100%' : 'auto'
                                     }}
                                 >
                                     {/* Grid lines */}
@@ -748,34 +759,34 @@ export default function PrediksiAdmin() {
                                         ))}
                                     </div>
 
-                                    {/* Data points */}
-                                    <div className="absolute inset-0 flex items-end justify-between" style={{ paddingBottom: '40px', paddingLeft: '4px', paddingRight: '4px' }}>
+                                    {/* Bar chart data */}
+                                    <div className="absolute inset-0 flex items-end justify-around gap-1" style={{ paddingBottom: '40px', paddingLeft: '8px', paddingRight: '8px' }}>
                                         {predictions.map((p, idx) => {
                                             const value = p.isPredict ? p.prediksi : p.saldo;
-                                            const chartAreaHeight = 268;
+                                            const chartAreaHeight = 250;
                                             const maxVal = maxChartValue * 1.1;
-                                            const dotBottom = maxVal > 0 ? ((value || 0) / maxVal) * chartAreaHeight : 0;
+                                            const barHeight = maxVal > 0 ? ((value || 0) / maxVal) * chartAreaHeight : 0;
 
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className="relative group"
-                                                    style={{ flex: 1, minWidth: predictions.length > 12 ? '46px' : 'auto' }}
+                                                    className="relative group flex-1"
+                                                    style={{ minWidth: predictions.length > 8 ? '30px' : 'auto', maxWidth: '40px' }}
                                                 >
-                                                    {/* Dot */}
+                                                    {/* Bar */}
                                                     <div
-                                                        className={`absolute left-1/2 -translate-x-1/2 w-3 h-3 rounded-full border-2 border-white shadow-md cursor-pointer transition-transform hover:scale-150 ${p.isPredict ? 'bg-green-500' : 'bg-primary'
+                                                        className={`w-full rounded-t-lg cursor-pointer transition-all duration-300 hover:opacity-80 ${p.isPredict ? 'bg-green-500' : 'bg-primary'
                                                             }`}
                                                         style={{
-                                                            bottom: `${dotBottom}px`,
-                                                            transform: 'translateX(-50%) translateY(50%)'
+                                                            height: `${barHeight}px`,
+                                                            minHeight: value ? '4px' : '0'
                                                         }}
                                                     ></div>
 
                                                     {/* Tooltip */}
                                                     <div
                                                         className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 left-1/2 -translate-x-1/2"
-                                                        style={{ bottom: `${dotBottom + 20}px` }}
+                                                        style={{ bottom: `${barHeight + 10}px` }}
                                                     >
                                                         <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
                                                             <p className="font-bold">{formatDate(p.tanggal)}</p>
@@ -787,15 +798,13 @@ export default function PrediksiAdmin() {
                                         })}
                                     </div>
 
-                                    {/* X-axis labels - show weekly range format like "Jan 1-7" */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-10 flex items-center" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
+                                    {/* X-axis labels */}
+                                    <div className="absolute bottom-0 left-0 right-0 h-10 flex items-center justify-around gap-1" style={{ paddingLeft: '8px', paddingRight: '8px' }}>
                                         {predictions.map((p, idx) => {
-                                            // Parse date correctly to avoid timezone issues
                                             const currentDate = parseFlexibleDate(p.tanggal) || new Date(p.tanggal);
                                             const day = currentDate.getDate();
                                             const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
 
-                                            // Calculate standard weekly range: 1-7, 8-14, 15-21, 22-28
                                             let startDay: number, endDay: number;
                                             if (day <= 7) {
                                                 startDay = 1; endDay = 7;
@@ -807,14 +816,13 @@ export default function PrediksiAdmin() {
                                                 startDay = 22; endDay = 28;
                                             }
 
-                                            // Format: "Jan 1-7" or "Feb 15-21"
                                             const label = `${month} ${startDay}-${endDay}`;
 
                                             return (
                                                 <div
                                                     key={idx}
-                                                    className={`text-center text-[10px] ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
-                                                    style={{ flex: 1, minWidth: predictions.length > 12 ? '46px' : 'auto' }}
+                                                    className={`text-center text-[9px] flex-1 ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
+                                                    style={{ minWidth: predictions.length > 8 ? '30px' : 'auto', maxWidth: '40px' }}
                                                 >
                                                     <span className="whitespace-nowrap">{label}</span>
                                                 </div>

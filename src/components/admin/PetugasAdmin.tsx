@@ -606,7 +606,7 @@ export default function PetugasAdmin() {
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteModal(false)}
-                                className="flex-1 px-6 py-3 border-2 border-[#3B8A51] text-[#3B8A51] rounded-full font-bold hover:bg-[#3B8A51] hover:text-white transition cursor-pointer"
+                                className="flex-1 px-6 py-3 border-2 border-[#3B8A51] text-[#3B8A51] rounded-full font-bold hover:bg-tertiary transition cursor-pointer"
                             >
                                 Tidak
                             </button>
