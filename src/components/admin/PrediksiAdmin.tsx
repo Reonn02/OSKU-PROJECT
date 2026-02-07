@@ -19,8 +19,19 @@ interface PredictionResult {
     isPredict: boolean;
 }
 
-// Format date for display
+// Format date for display (parse YYYY-MM-DD without timezone issues)
 function formatDate(dateStr: string): string {
+    // Parse YYYY-MM-DD format directly to avoid timezone conversion
+    const parts = dateStr.split('-');
+    if (parts.length === 3) {
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1; // 0-indexed
+        const day = parseInt(parts[2]);
+        const date = new Date(year, month, day);
+        const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
+        return date.toLocaleDateString('id-ID', options);
+    }
+    // Fallback for other formats
     const date = new Date(dateStr);
     const options: Intl.DateTimeFormatOptions = { day: 'numeric', month: 'short', year: 'numeric' };
     return date.toLocaleDateString('id-ID', options);
@@ -208,11 +219,14 @@ export default function PrediksiAdmin() {
                 const days = Math.floor((date.getTime() - startOfYear.getTime()) / (24 * 60 * 60 * 1000));
                 const minggu_ke = Math.ceil((days + startOfYear.getDay() + 1) / 7);
 
-                // Store in ISO format for consistency
-                const isoDate = date.toISOString().split('T')[0];
+                // Store in local YYYY-MM-DD format (not ISO which converts to UTC)
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const localDate = `${year}-${month}-${day}`;
 
                 rows.push({
-                    tanggal: isoDate,
+                    tanggal: localDate,
                     saldo,
                     minggu_ke,
                     bulan,
