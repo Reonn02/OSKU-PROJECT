@@ -478,7 +478,7 @@ export default function PrediksiAdmin() {
         : 0;
 
     return (
-        <div className="space-y-6 animate-in fade-in duration-500 pb-10">
+        <div className="space-y-6 animate-in fade-in duration-500 pb-10 w-full max-w-full overflow-hidden">
             {/* Header */}
             <div className="flex items-center gap-3">
                 <div className="w-10 h-10 rounded-xl bg-tertiary flex items-center justify-center">
@@ -507,8 +507,8 @@ export default function PrediksiAdmin() {
             </div>
 
             {/* Upload & Settings Section */}
-            <div className="bg-white rounded-[32px] p-8 md:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <div className="bg-white rounded-[32px] p-4 md:p-8 lg:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6">
                     {/* Drag & Drop Zone */}
                     <div className="space-y-4">
                         <label className="text-sm font-bold text-primary-light block px-1">Upload Data CSV</label>
@@ -659,7 +659,7 @@ export default function PrediksiAdmin() {
 
             {/* Results Section */}
             {hasAnalyzed && nextWeekPrediction !== null && (
-                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-500 overflow-hidden">
                     {/* Summary Cards */}
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                         {/* Next Week Prediction */}
@@ -714,7 +714,7 @@ export default function PrediksiAdmin() {
                     </div>
 
                     {/* Chart Section */}
-                    <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
+                    <div className="bg-white rounded-[32px] p-4 md:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-primary">Grafik Saldo Mingguan</h3>
@@ -835,7 +835,7 @@ export default function PrediksiAdmin() {
                     </div>
 
                     {/* Data Table */}
-                    <div className="bg-white rounded-[32px] p-6 md:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
+                    <div className="bg-white rounded-[32px] p-4 md:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-primary">Detail Data</h3>
