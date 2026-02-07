@@ -733,7 +733,7 @@ export default function PrediksiAdmin() {
                         </div>
 
                         {/* Bar Chart */}
-                        <div className="relative h-[300px] w-full overflow-hidden">
+                        <div className="relative h-[300px] w-full overflow-visible pt-12">
                             {/* Y-axis labels */}
                             <div className="absolute left-0 top-0 bottom-10 w-24 flex flex-col justify-between text-[10px] text-gray-400 pr-2 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
@@ -785,7 +785,7 @@ export default function PrediksiAdmin() {
 
                                                     {/* Tooltip */}
                                                     <div
-                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-20 left-1/2 -translate-x-1/2"
+                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 left-1/2 -translate-x-1/2"
                                                         style={{ bottom: `${barHeight + 10}px` }}
                                                     >
                                                         <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
