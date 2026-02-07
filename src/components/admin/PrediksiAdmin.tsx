@@ -722,9 +722,9 @@ export default function PrediksiAdmin() {
                         </div>
 
                         {/* Chart */}
-                        <div className="relative h-[300px] w-full">
+                        <div className="relative h-[280px] w-full">
                             {/* Y-axis labels */}
-                            <div className="absolute left-0 top-0 bottom-8 w-20 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right z-10 bg-white">
+                            <div className="absolute left-0 top-0 bottom-10 w-20 flex flex-col justify-between text-xs text-gray-400 pr-2 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.75))}</span>
                                 <span>{formatCurrency(Math.round(maxChartValue * 0.5))}</span>
@@ -742,14 +742,14 @@ export default function PrediksiAdmin() {
                                     }}
                                 >
                                     {/* Grid lines */}
-                                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ paddingBottom: '32px' }}>
+                                    <div className="absolute inset-0 flex flex-col justify-between pointer-events-none" style={{ paddingBottom: '40px' }}>
                                         {[0, 1, 2, 3, 4].map(i => (
                                             <div key={i} className="border-t border-gray-100 w-full"></div>
                                         ))}
                                     </div>
 
                                     {/* Data points */}
-                                    <div className="absolute inset-0 flex items-end justify-between" style={{ paddingBottom: '32px', paddingLeft: '4px', paddingRight: '4px' }}>
+                                    <div className="absolute inset-0 flex items-end justify-between" style={{ paddingBottom: '40px', paddingLeft: '4px', paddingRight: '4px' }}>
                                         {predictions.map((p, idx) => {
                                             const value = p.isPredict ? p.prediksi : p.saldo;
                                             const chartAreaHeight = 268;
@@ -788,7 +788,7 @@ export default function PrediksiAdmin() {
                                     </div>
 
                                     {/* X-axis labels - show weekly range format like "Jan 1-7" */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-8 flex items-end" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
+                                    <div className="absolute bottom-0 left-0 right-0 h-10 flex items-center" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
                                         {predictions.map((p, idx) => {
                                             // Parse date correctly to avoid timezone issues
                                             const currentDate = parseFlexibleDate(p.tanggal) || new Date(p.tanggal);
