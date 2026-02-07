@@ -781,15 +781,20 @@ export default function PrediksiAdmin() {
                                             const day = currentDate.getDate();
                                             const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
 
-                                            // Calculate end day of the week (7 days later, or capped at month end)
-                                            const endDate = new Date(currentDate);
-                                            endDate.setDate(day + 6);
-                                            const endDay = endDate.getMonth() === currentDate.getMonth()
-                                                ? endDate.getDate()
-                                                : new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+                                            // Calculate standard weekly range: 1-7, 8-14, 15-21, 22-28
+                                            let startDay: number, endDay: number;
+                                            if (day <= 7) {
+                                                startDay = 1; endDay = 7;
+                                            } else if (day <= 14) {
+                                                startDay = 8; endDay = 14;
+                                            } else if (day <= 21) {
+                                                startDay = 15; endDay = 21;
+                                            } else {
+                                                startDay = 22; endDay = 28;
+                                            }
 
                                             // Format: "Jan 1-7" or "Feb 15-21"
-                                            const label = `${month} ${day}-${endDay}`;
+                                            const label = `${month} ${startDay}-${endDay}`;
 
                                             return (
                                                 <div
