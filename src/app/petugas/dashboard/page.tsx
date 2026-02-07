@@ -695,18 +695,21 @@ export default function PetugasDashboard() {
 
                             {/* Bar Charts Section */}
                             <div className="space-y-6 mt-8">
-                                <WasteChart
-                                    title={t('petugas.dashboard.total_deposit_waste')}
-                                    unit="kg"
-                                    initialData={penyetoranChartData}
-                                    showWasteFilter={true}
-                                    onWasteTypeChange={setSelectedWasteFilter}
-                                    maxY={weightChartMaxY}
-                                    yAxisSteps={weightChartSteps}
-                                    showExportButton={true}
-                                    selectedYear={selectedYear}
-                                    bankId={petugasBankId || undefined}
-                                />
+                                {/* Only render chart when bankId is loaded */}
+                                {petugasBankId && (
+                                    <WasteChart
+                                        title={t('petugas.dashboard.total_deposit_waste')}
+                                        unit="kg"
+                                        initialData={penyetoranChartData}
+                                        showWasteFilter={true}
+                                        onWasteTypeChange={setSelectedWasteFilter}
+                                        maxY={weightChartMaxY}
+                                        yAxisSteps={weightChartSteps}
+                                        showExportButton={true}
+                                        selectedYear={selectedYear}
+                                        bankId={petugasBankId}
+                                    />
+                                )}
                                 <WasteChart
                                     title={t('petugas.dashboard.total_balance_collected')}
                                     unit=""
