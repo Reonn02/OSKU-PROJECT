@@ -600,23 +600,19 @@ export default function PetugasAdmin() {
                 <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-50 p-4" onClick={() => setShowDeleteModal(false)}>
                     <div className="bg-white rounded-3xl p-8 max-w-md w-full shadow-2xl animate-in fade-in zoom-in duration-300" onClick={(e) => e.stopPropagation()}>
                         <div className="text-center mb-6">
-                            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
-                                <i className="fas fa-trash text-warning text-2xl"></i>
-                            </div>
-                            <h3 className="text-xl font-bold text-red-500 mb-2">Hapus Petugas?</h3>
-                            <p className="text-gray-600 text-sm">Apakah Anda yakin ingin menghapus <span className="font-bold">{petugasToDelete?.name}</span>? Tindakan ini tidak dapat dibatalkan.</p>
+                            <p className="text-gray-700 text-sm">Apakah Anda yakin ingin menghapus "<span className="font-bold text-[#3B8A51]">{petugasToDelete?.name}</span>"?</p>
                         </div>
 
                         <div className="flex gap-3">
                             <button
                                 onClick={() => setShowDeleteModal(false)}
-                                className="flex-1 px-6 py-3 border-2 border-primary text-primary rounded-full font-bold hover:bg-primary hover:text-white transition cursor-pointer"
+                                className="flex-1 px-6 py-3 border-2 border-[#3B8A51] text-[#3B8A51] rounded-full font-bold hover:bg-[#3B8A51] hover:text-white transition cursor-pointer"
                             >
-                                Batal
+                                Tidak
                             </button>
                             <button
                                 onClick={handleDeleteOfficer}
-                                className="flex-1 px-6 py-3 bg-warning text-white rounded-full font-bold hover:bg-red-600 transition cursor-pointer"
+                                className="flex-1 px-6 py-3 bg-[#3B8A51] text-white rounded-full font-bold hover:bg-primary-dark transition cursor-pointer shadow-md"
                             >
                                 Hapus
                             </button>
