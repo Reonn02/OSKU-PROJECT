@@ -774,9 +774,10 @@ export default function PrediksiAdmin() {
                                     </div>
 
                                     {/* X-axis labels - show weekly range format like "Jan 1-7" */}
-                                    <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-between items-end px-1">
+                                    <div className="absolute bottom-0 left-0 right-0 h-8 flex items-end" style={{ paddingLeft: '4px', paddingRight: '4px' }}>
                                         {predictions.map((p, idx) => {
-                                            const currentDate = new Date(p.tanggal);
+                                            // Parse date correctly to avoid timezone issues
+                                            const currentDate = parseFlexibleDate(p.tanggal) || new Date(p.tanggal);
                                             const day = currentDate.getDate();
                                             const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
 
@@ -794,7 +795,7 @@ export default function PrediksiAdmin() {
                                                 <div
                                                     key={idx}
                                                     className={`text-center text-[10px] ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
-                                                    style={{ flex: 1, minWidth: '55px' }}
+                                                    style={{ flex: 1, minWidth: predictions.length > 12 ? '46px' : 'auto' }}
                                                 >
                                                     <span className="whitespace-nowrap">{label}</span>
                                                 </div>
