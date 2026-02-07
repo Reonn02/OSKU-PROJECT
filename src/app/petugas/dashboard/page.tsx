@@ -705,6 +705,7 @@ export default function PetugasDashboard() {
                                     yAxisSteps={weightChartSteps}
                                     showExportButton={true}
                                     selectedYear={selectedYear}
+                                    bankId={petugasBankId || undefined}
                                 />
                                 <WasteChart
                                     title={t('petugas.dashboard.total_balance_collected')}

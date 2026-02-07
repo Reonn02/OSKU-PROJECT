@@ -27,6 +27,7 @@ interface WasteChartProps {
     showExportButton?: boolean; // New prop for export button
     onWasteTypeChange?: (type: string) => void;
     valueFormatter?: (value: number) => string;
+    bankId?: string; // Filter waste types to specific bank
 }
 
 
@@ -44,18 +45,20 @@ export default function WasteChart({
     chartFilter = 'tahun',
     showExportButton = false,
     onWasteTypeChange,
-    valueFormatter
+    valueFormatter,
+    bankId
 }: WasteChartProps) {
     const { banks } = useBankSampah();
 
-    // Get all unique waste types from all banks
+    // Get unique waste types - filter by bankId if provided
     const allWasteTypes = useMemo(() => {
         const types = new Set<string>();
-        banks.forEach(bank => {
+        const banksToUse = bankId ? banks.filter(b => b.id === bankId) : banks;
+        banksToUse.forEach(bank => {
             (bank.wasteTypes || []).forEach(wt => types.add(wt.nama));
         });
         return Array.from(types);
-    }, [banks]);
+    }, [banks, bankId]);
 
     const [wasteType, setWasteType] = useState<string>(initialWasteType || (allWasteTypes[0] || ''));
     const [displayData, setDisplayData] = useState<ChartItem[]>(initialData);
