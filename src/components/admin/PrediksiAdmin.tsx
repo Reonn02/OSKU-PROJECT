@@ -783,10 +783,9 @@ export default function PrediksiAdmin() {
                                                         }}
                                                     ></div>
 
-                                                    {/* Tooltip */}
+                                                    {/* Tooltip - positioned at bottom of chart area, always visible */}
                                                     <div
-                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 left-1/2 -translate-x-1/2"
-                                                        style={{ bottom: `${barHeight + 10}px` }}
+                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 left-1/2 -translate-x-1/2 bottom-12"
                                                     >
                                                         <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
                                                             <p className="font-bold">{formatDate(p.tanggal)}</p>
