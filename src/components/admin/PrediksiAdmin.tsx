@@ -733,7 +733,7 @@ export default function PrediksiAdmin() {
                         </div>
 
                         {/* Bar Chart */}
-                        <div className="relative h-[300px] w-full overflow-hidden">
+                        <div className="relative h-[300px] w-full overflow-x-hidden overflow-y-visible pt-14">
                             {/* Y-axis labels */}
                             <div className="absolute left-0 top-0 bottom-10 w-24 flex flex-col justify-between text-[10px] text-gray-400 pr-2 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
