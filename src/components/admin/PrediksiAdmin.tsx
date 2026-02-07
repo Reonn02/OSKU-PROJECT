@@ -773,34 +773,30 @@ export default function PrediksiAdmin() {
                                         })}
                                     </div>
 
-                                    {/* X-axis labels - show all dates */}
+                                    {/* X-axis labels - show weekly range format like "Jan 1-7" */}
                                     <div className="absolute bottom-0 left-0 right-0 h-8 flex justify-between items-end px-1">
                                         {predictions.map((p, idx) => {
-                                            // Get month info for this and previous data point
                                             const currentDate = new Date(p.tanggal);
-                                            const prevDate = idx > 0 ? new Date(predictions[idx - 1].tanggal) : null;
-                                            const isNewMonth = !prevDate || currentDate.getMonth() !== prevDate.getMonth();
+                                            const day = currentDate.getDate();
+                                            const month = currentDate.toLocaleDateString('en-US', { month: 'short' });
 
-                                            // Show label if: first item, last item, new month, or every 4th item if more than 12
-                                            const showLabel = idx === 0
-                                                || idx === predictions.length - 1
-                                                || isNewMonth
-                                                || (predictions.length > 12 && idx % 4 === 0);
+                                            // Calculate end day of the week (7 days later, or capped at month end)
+                                            const endDate = new Date(currentDate);
+                                            endDate.setDate(day + 6);
+                                            const endDay = endDate.getMonth() === currentDate.getMonth()
+                                                ? endDate.getDate()
+                                                : new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0).getDate();
+
+                                            // Format: "Jan 1-7" or "Feb 15-21"
+                                            const label = `${month} ${day}-${endDay}`;
 
                                             return (
                                                 <div
                                                     key={idx}
                                                     className={`text-center text-[10px] ${p.isPredict ? 'text-green-600 font-bold' : 'text-gray-400'}`}
-                                                    style={{ flex: 1, minWidth: predictions.length > 12 ? '46px' : 'auto' }}
+                                                    style={{ flex: 1, minWidth: '55px' }}
                                                 >
-                                                    {showLabel && (
-                                                        <span className="whitespace-nowrap">
-                                                            {currentDate.toLocaleDateString('id-ID', {
-                                                                day: '2-digit',
-                                                                month: 'short'
-                                                            })}
-                                                        </span>
-                                                    )}
+                                                    <span className="whitespace-nowrap">{label}</span>
                                                 </div>
                                             );
                                         })}
