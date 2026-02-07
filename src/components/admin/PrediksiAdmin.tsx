@@ -714,7 +714,7 @@ export default function PrediksiAdmin() {
                     </div>
 
                     {/* Chart Section */}
-                    <div className="bg-white rounded-[32px] p-4 md:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
+                    <div className="bg-white rounded-[32px] p-4 md:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-primary">Grafik Saldo Mingguan</h3>
@@ -733,7 +733,7 @@ export default function PrediksiAdmin() {
                         </div>
 
                         {/* Bar Chart */}
-                        <div className="relative h-[300px] w-full overflow-visible pt-12">
+                        <div className="relative h-[300px] w-full overflow-hidden">
                             {/* Y-axis labels */}
                             <div className="absolute left-0 top-0 bottom-10 w-24 flex flex-col justify-between text-[10px] text-gray-400 pr-2 text-right z-10 bg-white">
                                 <span>{formatCurrency(Math.round(maxChartValue * 1.1))}</span>
@@ -783,9 +783,10 @@ export default function PrediksiAdmin() {
                                                         }}
                                                     ></div>
 
-                                                    {/* Tooltip - positioned at bottom of chart area, always visible */}
+                                                    {/* Tooltip */}
                                                     <div
-                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50 left-1/2 -translate-x-1/2 bottom-12"
+                                                        className="absolute opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-[100] left-1/2 -translate-x-1/2"
+                                                        style={{ bottom: `${barHeight + 10}px` }}
                                                     >
                                                         <div className="bg-gray-800 text-white text-xs px-3 py-2 rounded-lg whitespace-nowrap shadow-lg">
                                                             <p className="font-bold">{formatDate(p.tanggal)}</p>
