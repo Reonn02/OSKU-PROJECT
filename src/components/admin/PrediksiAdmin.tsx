@@ -714,7 +714,7 @@ export default function PrediksiAdmin() {
                     </div>
 
                     {/* Chart Section */}
-                    <div className="bg-white rounded-[32px] p-4 md:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50 overflow-hidden">
+                    <div className="bg-white rounded-[32px] p-4 md:p-6 lg:p-8 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-50">
                         <div className="flex items-center justify-between mb-6">
                             <div>
                                 <h3 className="text-lg font-bold text-primary">Grafik Saldo Mingguan</h3>
