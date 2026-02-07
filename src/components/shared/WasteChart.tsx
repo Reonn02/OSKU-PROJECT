@@ -54,9 +54,12 @@ export default function WasteChart({
     const allWasteTypes = useMemo(() => {
         const types = new Set<string>();
         const banksToUse = bankId ? banks.filter(b => b.id === bankId) : banks;
+        console.log('[WasteChart] bankId:', bankId, 'banks count:', banks.length, 'filtered banks:', banksToUse.length);
         banksToUse.forEach(bank => {
+            console.log('[WasteChart] Bank:', bank.nama, 'wasteTypes:', bank.wasteTypes?.map(w => w.nama));
             (bank.wasteTypes || []).forEach(wt => types.add(wt.nama));
         });
+        console.log('[WasteChart] Final waste types:', Array.from(types));
         return Array.from(types);
     }, [banks, bankId]);
 
