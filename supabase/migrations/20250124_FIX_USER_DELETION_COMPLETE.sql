@@ -1,8 +1,8 @@
 -- COMBINED FIX FOR USER DELETION
--- Run this ENTIRE script in the Supabase SQL Editor.
+
 
 -- PART 1: ADD "ON DELETE CASCADE" CONSTRAINTS
--- This allows deleting an Auth User to automatically delete their profile data without error.
+
 
 -- 1.1 Fix Nasabah Table
 ALTER TABLE public.nasabah
